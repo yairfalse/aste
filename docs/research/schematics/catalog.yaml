@@ -1,0 +1,79 @@
+schema: 1
+policy: "Link-only research metadata; no third-party manuals are redistributed."
+sources:
+  - manufacturer: "dbx, Inc."
+    product: "Model 160 compressor/limiter"
+    approximate_year: 1976
+    document_title: "Model 160 owner manual and calibration procedure"
+    document_origin: "Current manufacturer's official discontinued-product archive"
+    url: "https://dbxpro.com/en-US/products/160"
+    copyright_or_access_status: "Manufacturer-hosted; copyright retained; link only"
+    relevant_circuit_section: "RMS level detection, feed-forward gain control, calibration"
+    engineering_concept_extracted: "Separate level estimation from a logarithmic gain law; calibration is part of the behaviour"
+    treatment: "studied"
+
+  - manufacturer: "Spectra Sonics"
+    product: "Compressor-limiter circuit"
+    approximate_year: 1970
+    document_title: "US Patent 3,550,028"
+    document_origin: "Public patent record"
+    url: "https://patents.google.com/patent/US3550028A/en"
+    copyright_or_access_status: "Public patent publication; patent expired; link only"
+    relevant_circuit_section: "Distinct compressor and limiter recovery networks"
+    engineering_concept_extracted: "Fast transient control can coexist with slower programme recovery"
+    treatment: "studied"
+
+  - manufacturer: "Independent publication; D. R. G. Self"
+    product: "High-quality compressor/limiter"
+    approximate_year: 1975
+    document_title: "High-quality compressor/limiter, Wireless World, December 1975"
+    document_origin: "World Radio History periodical archive"
+    url: "https://worldradiohistory.com/UK/Wireless-World/70s/Wireless-World-1975-12a.pdf"
+    copyright_or_access_status: "Lawfully accessible archive; redistribution not established; link only"
+    relevant_circuit_section: "FET attenuator, harmonic cancellation, side-chain topology"
+    engineering_concept_extracted: "Gain-cell distortion depends on signal level and can be reduced structurally rather than cosmetically"
+    treatment: "studied"
+
+  - manufacturer: "dbx, Inc.; David E. Blackmer"
+    product: "Gain control system"
+    approximate_year: 1983
+    document_title: "US Patent 4,403,199"
+    document_origin: "Public patent record"
+    url: "https://patents.google.com/patent/US4403199A/en"
+    copyright_or_access_status: "Public patent publication; patent expired; link only"
+    relevant_circuit_section: "Complementary log/antilog gain-cell paths"
+    engineering_concept_extracted: "A decibel-linear control domain makes high-ratio gain laws predictable"
+    treatment: "studied"
+
+  - manufacturer: "Motorola, Inc."
+    product: "Audio compressor/limiter amplifier"
+    approximate_year: 1976
+    document_title: "US Patent 3,986,049"
+    document_origin: "Public patent record"
+    url: "https://patents.google.com/patent/US3986049A/en"
+    copyright_or_access_status: "Public patent publication; patent expired; link only"
+    relevant_circuit_section: "RC attack/release control around the gain element"
+    engineering_concept_extracted: "Recovery behaviour is an explicit memory system and should be measured with steps and bursts"
+    treatment: "studied"
+
+  - manufacturer: "Crown International"
+    product: "D-75 power amplifier"
+    approximate_year: 1989
+    document_title: "D-75 dual-channel power amplifier service manual"
+    document_origin: "Manufacturer support URL referenced by service community"
+    url: "https://www.crownaudio.com/en/product_documents/copy_of_d75_service_manual_-pdf"
+    copyright_or_access_status: "Manufacturer-hosted copyrighted service material; link only"
+    relevant_circuit_section: "Balanced input, output stage, protection and clipping indication"
+    engineering_concept_extracted: "Treat amplifier overload, recovery, load interaction and protection as separate measurable behaviours"
+    treatment: "studied"
+
+  - manufacturer: "BBC Research Department"
+    product: "Broadcast programme limiters"
+    approximate_year: 1967
+    document_title: "The dynamic characteristics of limiters for sound programme circuits"
+    document_origin: "BBC Research & Development official archive"
+    url: "https://downloads.bbc.co.uk/rd/pubs/reports/1967-13.pdf"
+    copyright_or_access_status: "Officially hosted research report; copyright retained; link only"
+    relevant_circuit_section: "Attack, recovery and programme-dependent audibility measurements"
+    engineering_concept_extracted: "Judge a limiter by dynamic response on representative programme, not only static curves"
+    treatment: "studied"
