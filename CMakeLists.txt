@@ -169,6 +169,10 @@ endif()
 
 if(ASTE_BUILD_VST3)
   include(FetchContent)
+  include(CheckCXXCompilerFlag)
+  check_cxx_compiler_flag(
+    "-Wno-unnecessary-virtual-specifier"
+    ASTE_HAS_NO_UNNECESSARY_VIRTUAL_SPECIFIER)
   set(JUCE_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
   set(JUCE_BUILD_EXTRAS OFF CACHE BOOL "" FORCE)
   FetchContent_Declare(
@@ -247,7 +251,7 @@ if(ASTE_BUILD_VST3)
   )
   target_compile_options(density_vst3_host PRIVATE
     -Wall -Wextra -Wpedantic -Werror)
-  if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang")
+  if(ASTE_HAS_NO_UNNECESSARY_VIRTUAL_SPECIFIER)
     target_compile_options(density_vst3_host PRIVATE
       -Wno-unnecessary-virtual-specifier)
   endif()
