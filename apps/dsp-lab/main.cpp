@@ -1,4 +1,5 @@
 #include "density_processor.hpp"
+#include "decimal_parse.hpp"
 
 #include <algorithm>
 #include <array>
@@ -738,11 +739,6 @@ bool parseGoldenLine(std::string_view line, GoldenMetrics& metrics) {
         std::from_chars(text.data(), text.data() + text.size(), value, base);
     return error == std::errc{} && end == text.data() + text.size();
   };
-  auto parseDecimal = [](std::string_view text, double& value) {
-    const auto [end, error] =
-        std::from_chars(text.data(), text.data() + text.size(), value);
-    return error == std::errc{} && end == text.data() + text.size();
-  };
   std::uint64_t sampleRate{};
   std::uint64_t frames{};
   std::uint64_t blockSize{};
@@ -751,12 +747,13 @@ bool parseGoldenLine(std::string_view line, GoldenMetrics& metrics) {
   if (!parseInteger(fields[2], sampleRate) ||
       !parseInteger(fields[3], frames) ||
       !parseInteger(fields[4], blockSize) ||
-      !parseDecimal(fields[5], metrics.rmsDb) ||
-      !parseDecimal(fields[6], metrics.peakDb) ||
-      !parseDecimal(fields[7], metrics.crestDb) ||
-      !parseDecimal(fields[8], metrics.gainChangeDb) ||
-      !parseDecimal(fields[9], metrics.correlation) ||
-      !parseDecimal(fields[10], metrics.maximumReductionDb) ||
+      !aste::density::parseFiniteDecimal(fields[5], metrics.rmsDb) ||
+      !aste::density::parseFiniteDecimal(fields[6], metrics.peakDb) ||
+      !aste::density::parseFiniteDecimal(fields[7], metrics.crestDb) ||
+      !aste::density::parseFiniteDecimal(fields[8], metrics.gainChangeDb) ||
+      !aste::density::parseFiniteDecimal(fields[9], metrics.correlation) ||
+      !aste::density::parseFiniteDecimal(fields[10],
+                                         metrics.maximumReductionDb) ||
       !parseInteger(fields[11], latency) ||
       !parseInteger(fields[12], metrics.fingerprint, 16)) {
     return false;

@@ -1,4 +1,5 @@
 #include "density_processor.hpp"
+#include "decimal_parse.hpp"
 
 #include <algorithm>
 #include <array>
@@ -10,6 +11,7 @@
 #include <limits>
 #include <new>
 #include <random>
+#include <string_view>
 #include <vector>
 
 namespace {
@@ -59,6 +61,18 @@ float rms(const std::vector<float>& values) {
     sum += static_cast<double>(value) * value;
   }
   return static_cast<float>(std::sqrt(sum / static_cast<double>(values.size())));
+}
+
+void testStrictDecimalParsing() {
+  double value{};
+  require(aste::density::parseFiniteDecimal("-123.5e-2", value) &&
+              std::abs(value + 1.235) < 1.0e-12,
+          "Decimal parsing accepts finite classic-locale values");
+  for (const auto invalid : std::array<std::string_view, 8>{
+           "", " 1", "1 ", "1x", "1,5", "nan", "inf", "1e9999"}) {
+    require(!aste::density::parseFiniteDecimal(invalid, value),
+            "Decimal parsing rejects malformed or non-finite values");
+  }
 }
 
 void testDensityMapping() {
@@ -278,6 +292,7 @@ void testNoProcessAllocation() {
 }  // namespace
 
 int main() {
+  testStrictDecimalParsing();
   testDensityMapping();
   testNonlinearNumericalSafety();
   testOversamplerRealtimeBoundary();

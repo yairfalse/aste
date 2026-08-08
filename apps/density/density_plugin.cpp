@@ -1,7 +1,8 @@
 #include "density_plugin.hpp"
 
+#include "decimal_parse.hpp"
+
 #include <algorithm>
-#include <charconv>
 #include <cmath>
 #include <memory>
 #include <string>
@@ -23,10 +24,7 @@ constexpr std::array<const char*, 11> kParameterIds{
 bool parseFiniteFloat(const juce::var& value, float& result) {
   const std::string text = value.toString().toStdString();
   double parsed{};
-  const auto [end, error] =
-      std::from_chars(text.data(), text.data() + text.size(), parsed);
-  if (error != std::errc{} || end != text.data() + text.size() ||
-      !std::isfinite(parsed)) {
+  if (!aste::density::parseFiniteDecimal(text, parsed)) {
     return false;
   }
   result = static_cast<float>(parsed);
