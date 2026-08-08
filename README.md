@@ -236,7 +236,9 @@ The exact run history is in [HOST_COMPATIBILITY.md](HOST_COMPATIBILITY.md).
 
 GitHub Actions builds the core on arm64 and Intel runners, builds a universal
 VST3, verifies its architectures and ad-hoc signature, and runs an arm64
-sanitizer tree. The workflow is [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+sanitizer tree. It also builds the pinned official Steinberg validator from
+source and requires its extensive suite to pass the signed bundle. The workflow
+is [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
 ### Real-time rules
 
@@ -302,7 +304,9 @@ The production DSP is ordinary C++20. JUCE is restricted to the VST3, host,
 state-adapter, and UI boundary. Product DSP does not depend on widgets, and
 serialized state does not depend on widget layouts. The accepted framework
 decision is [ADR 0001](docs/adr/0001-plugin-framework.md); the fixed zero-latency
-quality decision is [ADR 0002](docs/adr/0002-density-quality-latency.md).
+quality decision is [ADR 0002](docs/adr/0002-density-quality-latency.md); and the
+independent validation boundary is
+[ADR 0003](docs/adr/0003-independent-vst3-validator.md).
 
 ## Repository map
 

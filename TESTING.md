@@ -39,6 +39,9 @@ state, automation, parameter fuzzing, buses, all six sample rates, and all
 thirteen requested block sizes. The independent Steinberg VST3 SDK 3.8.0
 validator's extensive suite passes 537 tests, including bypass, state
 transitions, variable blocks, silence flags, automation, and threaded processing.
+The universal VST3 CI job rebuilds that validator from pinned MIT-licensed
+source and requires the extensive suite to pass the signed bundle. The
+validator is test tooling only and is not a product dependency.
 
 `density_vst3_host` is the smallest repo-owned standalone host. Unlike the
 linked adapter tests, it discovers and loads the built bundle through VST3,

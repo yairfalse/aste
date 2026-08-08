@@ -9,7 +9,7 @@ or hardware claim.
 | # | Release gate | Status | Evidence or closing action |
 |---:|---|---|---|
 | 1 | Loads in Cubase and Ableton | Pending | Neither host is installed; run the matrix in [HOST_COMPATIBILITY.md](HOST_COMPATIBILITY.md). |
-| 2 | Passes plugin validation | Pass | pluginval strictness 10 plus Steinberg extensive 537/537 on arm64, x86_64, and the universal bundle. |
+| 2 | Passes plugin validation | Pass | CI-enforced Steinberg extensive validation plus reviewed pluginval strictness 10 and 537/537 Steinberg results on arm64, x86_64, and the universal bundle. |
 | 3 | Restores state exactly | Pass | Deterministic round-trip and 3,072 malformed-state cases. |
 | 4 | Dry path is phase aligned | Pass | Production branches measure zero samples; the lab-only prototype aligns both at 44. |
 | 5 | Reported latency matches measured | Pass | Production reports and measures zero at every supported rate. |

@@ -24,6 +24,7 @@
 | 2026-08-08 | pluginval 1.0.4 arm64, seed `0xd01` | universal arm64+x86_64 VST3 | Pass, strictness 10 |
 | 2026-08-08 | Steinberg VST3 SDK 3.8.0 arm64 and x86_64 validators, extensive | matching slices of universal VST3 | Pass, 537/537 each |
 | 2026-08-08 | repository headless VST3 host | thin arm64, thin x86_64, and both universal slices | Pass, dynamic load, state, and six irregular blocks |
+| 2026-08-09 | Steinberg VST3 SDK 3.8.0 clean source-built arm64 validator, extensive | signed universal VST3 | Pass, 537/537 tests; pinned CI gate added |
 
 The run included cold/warm loading, editor open during processing, state and
 state restoration, background-thread state, parameter thread safety and fuzzing,

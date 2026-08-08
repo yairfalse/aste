@@ -53,6 +53,30 @@ jobs:
         run: codesign --verify --strict --deep "ci-vst3/DensityD01_artefacts/Release/VST3/Density D-01.vst3"
       - name: Verify universal binary
         run: lipo "ci-vst3/DensityD01_artefacts/Release/VST3/Density D-01.vst3/Contents/MacOS/Density D-01" -verify_arch arm64 x86_64
+      - name: Checkout Steinberg VST3 SDK validator source
+        uses: actions/checkout@v7
+        with:
+          repository: steinbergmedia/vst3sdk
+          ref: 9fad9770f2ae8542ab1a548a68c1ad1ac690abe0
+          path: ci-validator-src
+          persist-credentials: false
+      - name: Checkout Steinberg validator dependencies
+        run: git -C ci-validator-src submodule update --init --depth 1 base cmake pluginterfaces public.sdk
+      - name: Configure Steinberg validator
+        run: >-
+          cmake -S ci-validator-src -B ci-validator
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_C_COMPILER=/usr/bin/clang
+          -DCMAKE_CXX_COMPILER=/usr/bin/clang++
+          -DCMAKE_OSX_ARCHITECTURES=arm64
+          -DSMTG_BUILD_UNIVERSAL_BINARY=OFF
+          -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF
+          -DSMTG_ENABLE_VSTGUI_SUPPORT=OFF
+          -DSMTG_ADD_VST3_UTILITIES=OFF
+      - name: Build Steinberg validator
+        run: cmake --build ci-validator --target validator --parallel 3
+      - name: Steinberg extensive validation
+        run: ci-validator/bin/Release/validator -e "ci-vst3/DensityD01_artefacts/Release/VST3/Density D-01.vst3"
 
   sanitizers:
     name: ASan + UBSan / arm64
