@@ -4,8 +4,9 @@
 
 The first working VST3, DSP lab, state model, industrial editor, and automated
 foundation exist. A deterministic internal package rehearsal now checks bundle
-contents and provenance without publishing an artifact. Do not add new
-production DSP until the current blind packs have been reviewed.
+contents, provenance, and an SPDX dependency bill of materials without
+publishing an artifact. Do not add new production DSP until the current blind
+packs have been reviewed.
 
 Remaining release work:
 

@@ -2,6 +2,7 @@
 """Create and inspect deterministic internal Density development packages."""
 
 import argparse
+from datetime import datetime, timezone
 import hashlib
 import io
 import json
@@ -19,6 +20,7 @@ PRODUCT = "Density D-01"
 BUNDLE = f"{PRODUCT}.vst3"
 BUNDLE_ID = "invalid.aste.density-d01"
 ARCHITECTURES = ["arm64", "x86_64"]
+JUCE_COMMIT = "7c9d3783b127263d72bb65fe0a7e2dc8a02a7ac2"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 DEVELOPMENT_NOTICE = """DENSITY D-01 — INTERNAL DEVELOPMENT BUILD
 
@@ -40,6 +42,8 @@ def load_metadata(data, require_clean=False):
         fail("unsupported build metadata")
     if not re.fullmatch(r"[0-9a-f]{40}", metadata.get("commit", "")):
         fail("build metadata has no immutable commit")
+    if not str(metadata.get("commit_timestamp", "")).isdigit():
+        fail("build metadata has no commit timestamp")
     if metadata.get("source_dirty") not in {"true", "false"}:
         fail("invalid source_dirty value")
     if require_clean and metadata["source_dirty"] != "false":
@@ -52,6 +56,8 @@ def load_metadata(data, require_clean=False):
         fail("package must contain arm64 and x86_64")
     if not re.fullmatch(r"\d+\.\d+\.\d+", metadata.get("version", "")):
         fail("invalid product version")
+    if metadata.get("juce_commit") != JUCE_COMMIT:
+        fail("package does not use the reviewed JUCE commit")
     return metadata
 
 
@@ -116,11 +122,123 @@ def json_bytes(value):
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode()
 
 
-def collect_files(bundle, metadata_bytes, notices_bytes, record):
+def bundle_fingerprint(files):
+    digest = hashlib.sha256()
+    for name, (data, _) in sorted(files.items()):
+        if name.startswith(BUNDLE + "/"):
+            digest.update(name.encode())
+            digest.update(b"\0")
+            digest.update(hashlib.sha256(data).digest())
+    return digest.hexdigest()
+
+
+def sbom_record(metadata, fingerprint):
+    created = datetime.fromtimestamp(
+        int(metadata["commit_timestamp"]), timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    document_fingerprint = hashlib.sha256(
+        json_bytes(metadata) + fingerprint.encode()).hexdigest()
+    juce_location = f"git+https://github.com/juce-framework/JUCE.git@{JUCE_COMMIT}"
+    return {
+        "SPDXID": "SPDXRef-DOCUMENT",
+        "comment": (
+            f"Internal build: {metadata['compiler']}; {metadata['system']}; "
+            f"architectures {metadata['architecture']}. Complete packaged-file "
+            "checksums are in CONTENTS.sha256."
+        ),
+        "creationInfo": {
+            "created": created,
+            "creators": ["Tool: aste-package-density-1"],
+        },
+        "dataLicense": "CC0-1.0",
+        "documentNamespace": (
+            "https://spdx.org/spdxdocs/density-d01/"
+            f"{metadata['version']}/{metadata['commit']}/{document_fingerprint}"
+        ),
+        "name": f"Density-D01-{metadata['version']}-internal-SBOM",
+        "packages": [
+            {
+                "SPDXID": "SPDXRef-Package-DensityD01",
+                "copyrightText": "NOASSERTION",
+                "downloadLocation": "NONE",
+                "filesAnalyzed": False,
+                "licenseComments": (
+                    "Project and distribution licences are not selected; this "
+                    "artifact is internal-development-only."
+                ),
+                "licenseConcluded": "NOASSERTION",
+                "licenseDeclared": "NOASSERTION",
+                "name": PRODUCT,
+                "packageFileName": BUNDLE,
+                "primaryPackagePurpose": "APPLICATION",
+                "sourceInfo": f"Built from source commit {metadata['commit']}.",
+                "supplier": "NOASSERTION",
+                "versionInfo": metadata["version"],
+            },
+            {
+                "SPDXID": "SPDXRef-Package-JUCE",
+                "copyrightText": "Copyright Raw Material Software Limited",
+                "downloadLocation": juce_location,
+                "filesAnalyzed": False,
+                "licenseComments": (
+                    "JUCE declares AGPLv3 or JUCE 8 commercial licensing; the "
+                    "applicable distribution licence is unresolved."
+                ),
+                "licenseConcluded": "NOASSERTION",
+                "licenseDeclared": "NOASSERTION",
+                "name": "JUCE",
+                "primaryPackagePurpose": "LIBRARY",
+                "supplier": "Organization: Raw Material Software Limited",
+                "versionInfo": "8.0.13",
+            },
+            {
+                "SPDXID": "SPDXRef-Package-VST3SDK",
+                "copyrightText": (
+                    "Copyright (c) 2025, Steinberg Media Technologies GmbH"
+                ),
+                "downloadLocation": (
+                    f"{juce_location}#modules/juce_audio_processors_headless/"
+                    "format_types/VST3_SDK"
+                ),
+                "filesAnalyzed": False,
+                "licenseConcluded": "MIT",
+                "licenseDeclared": "MIT",
+                "name": "Steinberg VST 3 SDK bundled by JUCE",
+                "primaryPackagePurpose": "LIBRARY",
+                "supplier": "Organization: Steinberg Media Technologies GmbH",
+                "versionInfo": "3.8.0",
+            },
+        ],
+        "relationships": [
+            {
+                "relatedSpdxElement": "SPDXRef-Package-DensityD01",
+                "relationshipType": "DESCRIBES",
+                "spdxElementId": "SPDXRef-DOCUMENT",
+            },
+            {
+                "relatedSpdxElement": "SPDXRef-Package-JUCE",
+                "relationshipType": "STATIC_LINK",
+                "spdxElementId": "SPDXRef-Package-DensityD01",
+            },
+            {
+                "relatedSpdxElement": "SPDXRef-Package-VST3SDK",
+                "relationshipType": "STATIC_LINK",
+                "spdxElementId": "SPDXRef-Package-DensityD01",
+            },
+            {
+                "relatedSpdxElement": "SPDXRef-Package-VST3SDK",
+                "relationshipType": "CONTAINS",
+                "spdxElementId": "SPDXRef-Package-JUCE",
+            },
+        ],
+        "spdxVersion": "SPDX-2.3",
+    }
+
+
+def collect_files(bundle, metadata_bytes, notices_bytes, metadata):
     files = {
         "BUILD-METADATA.json": (metadata_bytes, 0o644),
         "DEVELOPMENT_BUILD.txt": (DEVELOPMENT_NOTICE.encode(), 0o644),
-        "PACKAGE.json": (json_bytes(record), 0o644),
+        "PACKAGE.json": (json_bytes(package_record(metadata)), 0o644),
         "THIRD_PARTY_NOTICES.md": (notices_bytes, 0o644),
     }
     executable = PurePosixPath(BUNDLE) / "Contents" / "MacOS" / PRODUCT
@@ -130,6 +248,9 @@ def collect_files(bundle, metadata_bytes, notices_bytes, record):
         relative = PurePosixPath(BUNDLE) / path.relative_to(bundle).as_posix()
         mode = 0o755 if relative == executable else 0o644
         files[str(relative)] = (path.read_bytes(), mode)
+
+    files["SBOM.spdx.json"] = (
+        json_bytes(sbom_record(metadata, bundle_fingerprint(files))), 0o644)
 
     manifest = "".join(
         f"{hashlib.sha256(data).hexdigest()}  {name}\n"
@@ -222,6 +343,7 @@ def verify_archive(path, require_clean=False):
         bundle_prefix = f"{BUNDLE}/Contents/"
         required = {
             "DEVELOPMENT_BUILD.txt",
+            "SBOM.spdx.json",
             "THIRD_PARTY_NOTICES.md",
             f"{bundle_prefix}Info.plist",
             f"{bundle_prefix}MacOS/{PRODUCT}",
@@ -230,6 +352,11 @@ def verify_archive(path, require_clean=False):
         }
         if not required.issubset(relative_files):
             fail(f"package is missing required files: {sorted(required - relative_files.keys())}")
+        expected_sbom = sbom_record(metadata, bundle_fingerprint({
+            name: (data, 0) for name, data in relative_files.items()
+        }))
+        if json.loads(relative_files["SBOM.spdx.json"]) != expected_sbom:
+            fail("SBOM does not match build provenance or dependency policy")
         binary_name = f"{root}/{bundle_prefix}MacOS/{PRODUCT}"
         binary_info = archive.getinfo(binary_name)
         if not binary_info.external_attr >> 16 & 0o111:
@@ -251,8 +378,8 @@ def create(args):
     metadata = load_metadata(metadata_bytes)
     inspect_bundle(args.bundle, metadata)
     root = f"Density-D01-{metadata['version']}-internal-macos-universal"
-    files = collect_files(args.bundle, metadata_bytes, args.notices.read_bytes(),
-                          package_record(metadata))
+    files = collect_files(
+        args.bundle, metadata_bytes, args.notices.read_bytes(), metadata)
     first = render_archive(root, files)
     if first != render_archive(root, files):
         fail("archive construction is not deterministic")

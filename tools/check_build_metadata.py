@@ -10,9 +10,10 @@ def main() -> int:
     path = Path(sys.argv[1])
     data = json.loads(path.read_text(encoding="utf-8"))
     required = {
-        "schema", "project", "version", "commit", "source_dirty", "system", "architecture",
-        "compiler", "generator", "build_type", "cxx_standard", "vst3",
-        "sanitizers", "juce_commit", "test_results",
+        "schema", "project", "version", "commit", "commit_timestamp",
+        "source_dirty", "system", "architecture", "compiler", "generator",
+        "build_type", "cxx_standard", "vst3", "sanitizers", "juce_commit",
+        "test_results",
     }
     missing = sorted(required - data.keys())
     invalid = data.get("schema") != 1 or data.get("project") != "aste_signal_instruments"

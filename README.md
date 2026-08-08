@@ -193,8 +193,10 @@ python3 tools/package_density.py verify \
 
 The archive is explicitly marked `internal-development-only`. It is ad-hoc
 signed, uses the placeholder bundle identity, is not notarized, and must not be
-distributed. The format decision is
-[ADR 0004](docs/adr/0004-internal-package-format.md).
+distributed. It includes a deterministic SPDX 2.3 SBOM for Density, pinned JUCE,
+and JUCE's bundled VST3 SDK. The format decisions are
+[ADR 0004](docs/adr/0004-internal-package-format.md) and
+[ADR 0005](docs/adr/0005-spdx-sbom.md).
 
 ## DSP laboratory
 
@@ -324,6 +326,7 @@ quality decision is [ADR 0002](docs/adr/0002-density-quality-latency.md); and th
 independent validation boundary is
 [ADR 0003](docs/adr/0003-independent-vst3-validator.md); and the internal-only
 package boundary is [ADR 0004](docs/adr/0004-internal-package-format.md).
+The package dependency boundary is [ADR 0005](docs/adr/0005-spdx-sbom.md).
 
 ## Repository map
 

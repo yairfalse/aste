@@ -11,6 +11,7 @@ set(ASTE_JUCE_COMMIT "7c9d3783b127263d72bb65fe0a7e2dc8a02a7ac2")
 
 find_package(Git QUIET)
 set(ASTE_GIT_COMMIT "unknown")
+set(ASTE_GIT_COMMIT_TIMESTAMP "unknown")
 set(ASTE_SOURCE_DIRTY "unknown")
 if(Git_FOUND)
   execute_process(
@@ -22,6 +23,16 @@ if(Git_FOUND)
     ERROR_QUIET)
   if(NOT ASTE_GIT_RESULT EQUAL 0)
     set(ASTE_GIT_COMMIT "unknown")
+  endif()
+  execute_process(
+    COMMAND "${GIT_EXECUTABLE}" show -s --format=%ct HEAD
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    RESULT_VARIABLE ASTE_GIT_TIMESTAMP_RESULT
+    OUTPUT_VARIABLE ASTE_GIT_COMMIT_TIMESTAMP
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET)
+  if(NOT ASTE_GIT_TIMESTAMP_RESULT EQUAL 0)
+    set(ASTE_GIT_COMMIT_TIMESTAMP "unknown")
   endif()
   execute_process(
     COMMAND "${GIT_EXECUTABLE}" status --porcelain

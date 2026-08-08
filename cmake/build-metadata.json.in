@@ -3,6 +3,7 @@
   "project": "@PROJECT_NAME@",
   "version": "@PROJECT_VERSION@",
   "commit": "@ASTE_GIT_COMMIT@",
+  "commit_timestamp": "@ASTE_GIT_COMMIT_TIMESTAMP@",
   "source_dirty": "@ASTE_SOURCE_DIRTY@",
   "system": "@CMAKE_SYSTEM_NAME@ @CMAKE_SYSTEM_VERSION@",
   "architecture": "@ASTE_BUILD_ARCHITECTURE@",

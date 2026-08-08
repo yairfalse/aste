@@ -6,7 +6,8 @@ or hardware claim.
 
 The deterministic internal package rehearsal is CI-inspected but deliberately
 not published. It does not satisfy final identity, licensing, Developer ID
-signing, notarization, or distribution approval.
+signing, notarization, or distribution approval. Its SPDX SBOM records
+unresolved licence conclusions as `NOASSERTION`.
 
 ## Gate ledger
 

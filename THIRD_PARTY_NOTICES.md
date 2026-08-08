@@ -10,6 +10,10 @@ commercial licence and full release notices remain a packaging gate.
 - Source: https://github.com/juce-framework/JUCE/tree/8.0.13
 - Licence: https://github.com/juce-framework/JUCE/blob/8.0.13/LICENSE.md
 
+The Density product SBOM also identifies the MIT-licensed Steinberg VST3 SDK
+3.8.0 sources bundled within the pinned JUCE tree. This is distinct from the
+standalone validator source described below.
+
 CI fetches Steinberg VST3 SDK 3.8.0 at commit
 `9fad9770f2ae8542ab1a548a68c1ad1ac690abe0` and builds only its official
 command-line validator target. The SDK source and validator are MIT-licensed.

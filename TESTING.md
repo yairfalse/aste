@@ -49,6 +49,10 @@ requires clean immutable provenance, the expected placeholder identity and
 version, actual arm64/x86_64 slices and strict ad-hoc signature verification
 after extraction, fixed ZIP metadata, safe paths, required bundle files, and a
 complete SHA-256 inventory. CI does not upload this development archive.
+The inspector also reconstructs the embedded SPDX 2.3 SBOM and requires exact
+Density, pinned JUCE, and JUCE-bundled VST3 SDK package identities plus their
+four reviewed relationships. Unresolved licence conclusions must remain
+`NOASSERTION`.
 
 `density_vst3_host` is the smallest repo-owned standalone host. Unlike the
 linked adapter tests, it discovers and loads the built bundle through VST3,
