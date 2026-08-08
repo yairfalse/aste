@@ -16,11 +16,17 @@ density_dsp  <- density_tests
       |  +--- density_lab
       |
       +------ JUCE VST3 adapter/UI <- density_plugin_tests
+                       ^
+                       +---------- density_vst3_host (dynamic VST3 load)
 ```
 
 The JUCE VST3 target adapts host buffers, automation, state, and UI to
 `density_dsp`; the DSP library contains no JUCE headers. No universal plugin
 engine or speculative shared library tree exists.
+
+The standalone smoke host uses JUCE's headless VST3 loader and links neither
+the product adapter nor the DSP library. It therefore reaches Density only
+through the built VST3 ABI.
 
 ## Density D-01 graph
 
@@ -38,6 +44,11 @@ Both branches currently have zero algorithmic latency, so phase alignment is
 exact without a delay line and reported latency is zero. Oversampling or
 lookahead may be added only with measured benefit; either requires one crush
 latency value, an equal dry delay, and matching host latency reporting.
+
+ADR 0002 fixes the first external build to this single 1x, zero-latency graph.
+The measured 73/33 oversampling path remains lab-only: it adds a 44-sample dry
+delay and aligned crush path but fails the default whole-instance CPU budget.
+No quality parameter or dynamic latency transition exists in the product.
 
 Stereo link interpolates each detector toward the greater channel detector.
 At 0% the envelopes are independent; at 100% both channels receive the same

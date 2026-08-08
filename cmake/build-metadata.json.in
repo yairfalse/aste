@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "project": "@PROJECT_NAME@",
+  "version": "@PROJECT_VERSION@",
+  "commit": "@ASTE_GIT_COMMIT@",
+  "source_dirty": "@ASTE_SOURCE_DIRTY@",
+  "system": "@CMAKE_SYSTEM_NAME@ @CMAKE_SYSTEM_VERSION@",
+  "architecture": "@ASTE_BUILD_ARCHITECTURE@",
+  "compiler": "@CMAKE_CXX_COMPILER_ID@ @CMAKE_CXX_COMPILER_VERSION@",
+  "generator": "@CMAKE_GENERATOR@",
+  "build_type": "@CMAKE_BUILD_TYPE@",
+  "cxx_standard": "@CMAKE_CXX_STANDARD@",
+  "vst3": "@ASTE_BUILD_VST3@",
+  "sanitizers": "@ASTE_SANITIZERS@",
+  "juce_commit": "@ASTE_JUCE_COMMIT@",
+  "test_results": "test-results.xml"
+}

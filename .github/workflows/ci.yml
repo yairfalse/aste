@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ASTE_FAST_RESEARCH: "1"
+  ASTE_SKIP_BENCHMARK: "1"
+
+jobs:
+  core:
+    name: Core / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Repository policy
+        run: python3 tools/check_docs.py .
+      - name: Configure
+        run: cmake -S . -B ci-core -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build ci-core --parallel 3
+      - name: Test
+        run: ctest --test-dir ci-core --output-on-failure --output-junit ci-core/test-results.xml
+      - name: Performance sanity
+        run: ./ci-core/density_lab --benchmark
+
+  vst3:
+    name: VST3 / arm64
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configure
+        run: cmake -S . -B ci-vst3 -DASTE_BUILD_VST3=ON -DCMAKE_BUILD_TYPE=Release '-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64'
+      - name: Build
+        run: cmake --build ci-vst3 --parallel 3
+      - name: Test
+        run: ctest --test-dir ci-vst3 --output-on-failure --output-junit ci-vst3/test-results.xml
+      - name: Verify bundle signature
+        run: codesign --verify --strict --deep "ci-vst3/DensityD01_artefacts/Release/VST3/Density D-01.vst3"
+      - name: Verify universal binary
+        run: lipo "ci-vst3/DensityD01_artefacts/Release/VST3/Density D-01.vst3/Contents/MacOS/Density D-01" -verify_arch arm64 x86_64
+
+  sanitizers:
+    name: ASan + UBSan / arm64
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configure
+        run: cmake -S . -B ci-sanitize -DASTE_BUILD_VST3=ON -DASTE_SANITIZERS=ON -DCMAKE_BUILD_TYPE=Debug
+      - name: Build
+        run: cmake --build ci-sanitize --parallel 3
+      - name: Test
+        run: ctest --test-dir ci-sanitize --output-on-failure --output-junit ci-sanitize/test-results.xml

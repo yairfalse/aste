@@ -92,7 +92,7 @@ class DensityLookAndFeel final : public juce::LookAndFeel_V4 {
 class Knob final : public juce::Component {
  public:
   Knob(juce::AudioProcessorValueTreeState& state, const char* id,
-       const char* name, const char* suffix, double initial)
+       const char* name, const char* suffix, double initial, int focusOrder)
       : attachment_{state, id, slider_} {
     slider_.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
     slider_.textFromValueFunction = [this](double value) {
@@ -106,6 +106,7 @@ class Knob final : public juce::Component {
     slider_.setTitle(name);
     slider_.setDescription(juce::String{name} + " parameter");
     slider_.setWantsKeyboardFocus(true);
+    slider_.setExplicitFocusOrder(focusOrder);
     label_.setText(name, juce::dontSendNotification);
     label_.setJustificationType(juce::Justification::centred);
     label_.setFont(juce::FontOptions{12.0F, juce::Font::bold});
@@ -128,12 +129,13 @@ class Knob final : public juce::Component {
 class Switch final : public juce::Component {
  public:
   Switch(juce::AudioProcessorValueTreeState& state, const char* id,
-         const char* name)
+         const char* name, int focusOrder)
       : attachment_{state, id, button_} {
     button_.setButtonText(name);
     button_.setTitle(name);
     button_.setDescription(juce::String{name} + " switch");
     button_.setWantsKeyboardFocus(true);
+    button_.setExplicitFocusOrder(focusOrder);
     button_.setColour(juce::ToggleButton::textColourId, juce::Colour{kInk});
     button_.setColour(juce::ToggleButton::tickColourId, juce::Colour{kAccent});
     button_.setColour(juce::ToggleButton::tickDisabledColourId,
@@ -216,16 +218,17 @@ class DensityEditor final : public juce::AudioProcessorEditor {
   explicit DensityEditor(DensityAudioProcessor& processor)
       : AudioProcessorEditor{processor},
         meter_{processor},
-        density_{processor.state(), "density", "DENSITY", " %", 50.0},
-        drive_{processor.state(), "drive", "DRIVE", " dB", 0.0},
-        crush_{processor.state(), "crush", "CRUSH", " %", 65.0},
-        attack_{processor.state(), "attack", "ATTACK", " ms", 1.0},
-        release_{processor.state(), "release", "RELEASE", " ms", 180.0},
-        blend_{processor.state(), "blend", "BLEND", " %", 50.0},
-        stereo_{processor.state(), "stereo", "STEREO", " %", 100.0},
-        hpf_{processor.state(), "detector_hpf", "DETECTOR HPF", " Hz", 90.0},
-        output_{processor.state(), "output", "OUTPUT", " dB", 0.0},
-        protection_{processor.state(), "protection", "PROTECTION"} {
+        density_{processor.state(), "density", "DENSITY", " %", 50.0, 1},
+        drive_{processor.state(), "drive", "DRIVE", " dB", 0.0, 2},
+        crush_{processor.state(), "crush", "CRUSH", " %", 65.0, 3},
+        attack_{processor.state(), "attack", "ATTACK", " ms", 1.0, 4},
+        release_{processor.state(), "release", "RELEASE", " ms", 180.0, 5},
+        blend_{processor.state(), "blend", "BLEND", " %", 50.0, 6},
+        stereo_{processor.state(), "stereo", "STEREO", " %", 100.0, 7},
+        hpf_{processor.state(), "detector_hpf", "DETECTOR HPF", " Hz", 90.0,
+             8},
+        output_{processor.state(), "output", "OUTPUT", " dB", 0.0, 9},
+        protection_{processor.state(), "protection", "PROTECTION", 10} {
     setLookAndFeel(&lookAndFeel_);
     for (auto* component : std::array<juce::Component*, 11>{
              &meter_, &density_, &drive_, &crush_, &attack_, &release_, &blend_,

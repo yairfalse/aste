@@ -29,3 +29,99 @@ software 120 times per run. Across five Release runs, median paint time was
 30 Hz would therefore occupy about 1.50% of one core; production invalidates
 only the smaller meter panel. This is a conservative local baseline, not a
 cross-machine release threshold or a measurement of native host compositing.
+
+On 2026-08-07, the first streaming 4x crush-path prototype measured about 3.60%
+of one M4 Pro core for stereo at 48 kHz / 127 samples across repeated five-run
+medians. Its state is 2,336 bytes per channel. It passes the memory budget but
+fails the provisional 1.0% default-quality CPU budget, so it is not integrated
+into the production processor.
+
+Cycle 22 measured the same scalar 4x topology at four filter lengths in isolated
+Release runs on the M4 Pro at 48 kHz / 127 samples:
+
+| Taps per phase | Stereo CPU range |
+|---:|---:|
+| 16 | 1.054–1.061% |
+| 32 | 1.956–1.973% |
+| 48 | 2.801–2.827% |
+| 64 | 3.692–3.705% |
+
+The shortest candidate narrowly misses the CPU budget and has unacceptable
+transition-band aliasing, so reducing tap count alone is not a viable path.
+
+Cycle 23 replaced the direct 4x FIR with two sparse 2x half-band stages. Three
+isolated five-run medians at 48 kHz / 127 samples measured:
+
+| First/second-stage taps | Latency | Stereo CPU range |
+|---:|---:|---:|
+| 33/33 | 24 samples | 0.753–0.757% |
+| 65/33 | 40 samples | 0.901–0.910% |
+| 97/33 | 56 samples | 1.152–1.164% |
+| 113/33 | 64 samples | 1.293–1.303% |
+| 129/33 | 72 samples | 1.399–1.402% |
+| 97/65 | 64 samples | 1.531–1.537% |
+
+The topology roughly halves CPU at comparable alias suppression, but no tested
+configuration simultaneously meets the 1.0% CPU target and the stronger
+transition-band suppression demonstrated by the longer filters.
+
+Cycle 28 measured β5 at the 65–113 tap crossover using three isolated Release
+runs on the same M4 Pro:
+
+| First/second-stage taps | Stereo CPU range |
+|---:|---:|
+| 65/33 | 0.923–0.929% |
+| 73/33 | 0.958–0.961% |
+| 81/33 | 0.986–0.998% |
+| 89/33 | 1.111–1.121% |
+| 97/33 | 1.170–1.177% |
+| 113/33 | 1.288–1.294% |
+
+The 81/33 topology is the longest local result below 1%, but its margin is too
+small to establish the release budget on older supported machines. The 73/33
+topology retains about four percent local margin. Neither result is a release
+gate measurement.
+
+Cycle 29 retains 73/33 as the sole integration candidate because 81/33's
+six-rate quality improvement is small relative to its lost CPU margin. The
+0.958–0.961% figure is the oversampler alone, not the entire plugin; adding the
+current roughly 0.208% processor baseline would exceed the 1% default-quality
+budget. The candidate therefore requires an end-to-end measurement and is not
+approved as the default path.
+
+Cycle 30 measured the complete lab-only 73/33 processor path over three
+isolated five-run medians:
+
+| Path | Stereo CPU range | Reported latency |
+|---|---:|---:|
+| Production 1x | 0.231–0.231% | 0 samples |
+| 73/33 integration prototype | 1.042–1.043% | 44 samples |
+
+The prototype consistently misses the 1% default-quality budget by roughly
+0.042 percentage points. Its incremental cost is 0.810–0.812 percentage
+points, lower than adding the two isolated figures because it replaces the
+production nonlinear calls. It is not approved as the default path.
+
+ADR 0002 therefore fixes the first external build to the measured 1x path.
+The Render-quality budget remains a future target, not an implemented mode.
+
+Cycle 36 added one second 3 ms smoother stage to Output. Five Release runs on
+the same M4 Pro measured 0.231669–0.246683% of one core, with a 0.233320%
+median at 48 kHz / 128 samples under the established automation benchmark.
+This remains far below the local 1% default budget; it does not replace the
+required oldest-supported-hardware measurement.
+
+Cycle 38 made the same 3+3 ms cascade production behavior for Drive. Five
+Release runs measure 0.236635–0.241537% of one core, with a 0.239551% median
+under the same 48 kHz / 128-sample automation benchmark. The additional stage
+therefore preserves wide local margin beneath the 1% default budget.
+
+Cycle 40 added one 5 ms logarithmic Attack smoother and derives the detector
+coefficient per sample. Five Release runs measure 0.262370–0.274137% of one
+M4 Pro core, with a 0.265705% median under the same benchmark. This remains
+below the local 1% default budget; older supported hardware is still required.
+
+Cycle 42 made a 3+3 ms cascade production behavior for Blend. Five Release
+runs measure 0.262276–0.286155% of one M4 Pro core, with a 0.266210% median
+under the same benchmark. The additional stage is locally negligible and the
+oldest supported Apple Silicon and Intel measurements remain outstanding.

@@ -7,6 +7,41 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(ASTE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 option(ASTE_BUILD_VST3 "Build the internal Density VST3 prototype" OFF)
+set(ASTE_JUCE_COMMIT "7c9d3783b127263d72bb65fe0a7e2dc8a02a7ac2")
+
+find_package(Git QUIET)
+set(ASTE_GIT_COMMIT "unknown")
+set(ASTE_SOURCE_DIRTY "unknown")
+if(Git_FOUND)
+  execute_process(
+    COMMAND "${GIT_EXECUTABLE}" rev-parse --verify HEAD
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    RESULT_VARIABLE ASTE_GIT_RESULT
+    OUTPUT_VARIABLE ASTE_GIT_COMMIT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET)
+  if(NOT ASTE_GIT_RESULT EQUAL 0)
+    set(ASTE_GIT_COMMIT "unknown")
+  endif()
+  execute_process(
+    COMMAND "${GIT_EXECUTABLE}" status --porcelain
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    OUTPUT_VARIABLE ASTE_GIT_STATUS
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET)
+  if(ASTE_GIT_STATUS STREQUAL "")
+    set(ASTE_SOURCE_DIRTY "false")
+  else()
+    set(ASTE_SOURCE_DIRTY "true")
+  endif()
+endif()
+if(CMAKE_OSX_ARCHITECTURES)
+  set(ASTE_BUILD_ARCHITECTURE "${CMAKE_OSX_ARCHITECTURES}")
+else()
+  set(ASTE_BUILD_ARCHITECTURE "${CMAKE_SYSTEM_PROCESSOR}")
+endif()
+configure_file(cmake/build-metadata.json.in
+               "${CMAKE_CURRENT_BINARY_DIR}/build-metadata.json" @ONLY)
 
 if(ASTE_SANITIZERS AND CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
   add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
@@ -25,6 +60,16 @@ target_link_libraries(density_lab PRIVATE density_dsp)
 target_compile_options(density_lab PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
 enable_testing()
+find_package(Python3 COMPONENTS Interpreter)
+if(Python3_Interpreter_FOUND)
+  add_test(NAME documentation_links
+    COMMAND Python3::Interpreter "${CMAKE_CURRENT_SOURCE_DIR}/tools/check_docs.py"
+            "${CMAKE_CURRENT_SOURCE_DIR}")
+  add_test(NAME build_metadata
+    COMMAND Python3::Interpreter
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/check_build_metadata.py"
+            "${CMAKE_CURRENT_BINARY_DIR}/build-metadata.json")
+endif()
 add_executable(density_tests tests/density_tests.cpp)
 target_link_libraries(density_tests PRIVATE density_dsp)
 target_compile_options(density_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
@@ -38,6 +83,89 @@ add_test(NAME density_detector_auditions
 add_test(NAME density_detector_blind
   COMMAND density_lab --detector-blind
           "${CMAKE_CURRENT_BINARY_DIR}/density_detector_blind")
+add_test(NAME density_production_golden
+  COMMAND density_lab --golden
+          "${CMAKE_CURRENT_BINARY_DIR}/density_golden"
+          "${CMAKE_CURRENT_SOURCE_DIR}/tests/golden/density-production-v1.csv")
+add_test(NAME density_production_consistency
+  COMMAND density_lab --production-consistency
+          "${CMAKE_CURRENT_BINARY_DIR}/density-production-consistency.csv")
+add_test(NAME density_nonlinear_alias
+  COMMAND density_lab --alias-report
+          "${CMAKE_CURRENT_BINARY_DIR}/density-nonlinear-alias.csv")
+add_test(NAME density_oversampling_reference
+  COMMAND density_lab --oversampling-report
+          "${CMAKE_CURRENT_BINARY_DIR}/density-oversampling-reference.csv")
+add_test(NAME density_oversampling_prototype
+  COMMAND density_lab --oversampling-prototype
+          "${CMAKE_CURRENT_BINARY_DIR}/density-oversampling-prototype.csv")
+add_test(NAME density_halfband_prototype
+  COMMAND density_lab --halfband-prototype
+          "${CMAKE_CURRENT_BINARY_DIR}/density-halfband-prototype.csv")
+add_test(NAME density_kaiser_prototype
+  COMMAND density_lab --kaiser-prototype
+          "${CMAKE_CURRENT_BINARY_DIR}/density-kaiser-prototype.csv")
+add_test(NAME density_kaiser_sweep
+  COMMAND density_lab --kaiser-sweep
+          "${CMAKE_CURRENT_BINARY_DIR}/density-kaiser-sweep.csv")
+add_test(NAME density_kaiser_rate_sweep
+  COMMAND density_lab --kaiser-rate-sweep
+          "${CMAKE_CURRENT_BINARY_DIR}/density-kaiser-rate-sweep.csv")
+add_test(NAME density_kaiser_linear
+  COMMAND density_lab --kaiser-linear-report
+          "${CMAKE_CURRENT_BINARY_DIR}/density-kaiser-linear.csv")
+add_test(NAME density_kaiser_length
+  COMMAND density_lab --kaiser-length-report
+          "${CMAKE_CURRENT_BINARY_DIR}/density-kaiser-length.csv")
+add_test(NAME density_kaiser_finalists
+  COMMAND density_lab --kaiser-finalist-report
+          "${CMAKE_CURRENT_BINARY_DIR}/density-kaiser-finalists.csv")
+add_test(NAME density_oversampled_chain
+  COMMAND density_lab --oversampled-chain-report
+          "${CMAKE_CURRENT_BINARY_DIR}/density-oversampled-chain.csv")
+add_test(NAME density_oversampling_auditions
+  COMMAND density_lab --oversampling-auditions
+          "${CMAKE_CURRENT_BINARY_DIR}/density-oversampling-auditions")
+add_test(NAME density_automation
+  COMMAND density_lab --automation-report
+          "${CMAKE_CURRENT_BINARY_DIR}/density-automation.csv")
+add_test(NAME density_output_smoothing
+  COMMAND density_lab --output-smoothing-report
+          "${CMAKE_CURRENT_BINARY_DIR}/density-output-smoothing.csv")
+add_test(NAME density_drive_smoothing
+  COMMAND density_lab --drive-smoothing-report
+          "${CMAKE_CURRENT_BINARY_DIR}/density-drive-smoothing.csv")
+add_test(NAME density_attack_smoothing
+  COMMAND density_lab --attack-smoothing-report
+          "${CMAKE_CURRENT_BINARY_DIR}/density-attack-smoothing.csv")
+add_test(NAME density_blend_smoothing
+  COMMAND density_lab --blend-smoothing-report
+          "${CMAKE_CURRENT_BINARY_DIR}/density-blend-smoothing.csv")
+add_test(NAME density_automation_auditions
+  COMMAND density_lab --automation-auditions
+          "${CMAKE_CURRENT_BINARY_DIR}/density-automation-auditions")
+add_test(NAME density_stereo_stability
+  COMMAND density_lab --stereo-stability-report
+          "${CMAKE_CURRENT_BINARY_DIR}/density-stereo-stability.csv")
+add_test(NAME density_stereo_stability_auditions
+  COMMAND density_lab --stereo-stability-auditions
+          "${CMAKE_CURRENT_BINARY_DIR}/density-stereo-stability-auditions")
+add_test(NAME density_macro_auditions
+  COMMAND density_lab --density-macro-auditions
+          "${CMAKE_CURRENT_BINARY_DIR}/density-macro-auditions")
+if(ASTE_SANITIZERS)
+  set_tests_properties(
+    density_oversampling_prototype density_halfband_prototype PROPERTIES
+    ENVIRONMENT "ASTE_SKIP_BENCHMARK=1")
+  set_tests_properties(
+    density_kaiser_sweep density_kaiser_rate_sweep density_kaiser_linear
+    density_kaiser_finalists PROPERTIES
+    ENVIRONMENT "ASTE_FAST_RESEARCH=1")
+  set_tests_properties(density_kaiser_length PROPERTIES
+    ENVIRONMENT "ASTE_FAST_RESEARCH=1;ASTE_SKIP_BENCHMARK=1")
+  set_tests_properties(density_oversampled_chain PROPERTIES
+    ENVIRONMENT "ASTE_SKIP_BENCHMARK=1")
+endif()
 
 if(ASTE_BUILD_VST3)
   include(FetchContent)
@@ -46,7 +174,7 @@ if(ASTE_BUILD_VST3)
   FetchContent_Declare(
     JUCE
     GIT_REPOSITORY https://github.com/juce-framework/JUCE.git
-    GIT_TAG 7c9d3783b127263d72bb65fe0a7e2dc8a02a7ac2 # JUCE 8.0.13
+    GIT_TAG ${ASTE_JUCE_COMMIT} # JUCE 8.0.13
     GIT_SHALLOW TRUE
   )
   FetchContent_MakeAvailable(JUCE)
@@ -85,6 +213,12 @@ if(ASTE_BUILD_VST3)
   endif()
 
   juce_add_console_app(density_plugin_tests PRODUCT_NAME "Density plugin tests")
+  if(APPLE)
+    add_library(density_realtime_audit SHARED tests/realtime_audit_mac.cpp)
+    target_compile_options(density_realtime_audit PRIVATE
+      -Wall -Wextra -Wpedantic -Werror)
+    target_link_libraries(density_plugin_tests PRIVATE density_realtime_audit)
+  endif()
   target_sources(density_plugin_tests PRIVATE
     apps/density/density_plugin.cpp
     tests/density_plugin_tests.cpp
@@ -101,4 +235,23 @@ if(ASTE_BUILD_VST3)
   add_test(NAME density_editor_artifacts
     COMMAND density_plugin_tests --editor-artifacts
             "${CMAKE_CURRENT_BINARY_DIR}/density_editor_artifacts")
+
+  juce_add_console_app(density_vst3_host PRODUCT_NAME "Density VST3 smoke host")
+  target_sources(density_vst3_host PRIVATE apps/standalone-host/main.cpp)
+  target_link_libraries(density_vst3_host PRIVATE
+    juce::juce_audio_processors_headless)
+  target_compile_definitions(density_vst3_host PRIVATE
+    JUCE_PLUGINHOST_VST3=1
+    JUCE_USE_CURL=0
+    JUCE_WEB_BROWSER=0
+  )
+  target_compile_options(density_vst3_host PRIVATE
+    -Wall -Wextra -Wpedantic -Werror)
+  if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang")
+    target_compile_options(density_vst3_host PRIVATE
+      -Wno-unnecessary-virtual-specifier)
+  endif()
+  add_dependencies(density_vst3_host DensityD01_VST3)
+  add_test(NAME density_vst3_host
+    COMMAND density_vst3_host "$<TARGET_BUNDLE_DIR:DensityD01_VST3>")
 endif()

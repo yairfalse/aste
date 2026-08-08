@@ -1,5 +1,6 @@
 #include "density_processor.hpp"
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <cmath>
@@ -74,6 +75,62 @@ void testDensityMapping() {
   }
 }
 
+void testNonlinearNumericalSafety() {
+  const float nan = std::numeric_limits<float>::quiet_NaN();
+  const float infinity = std::numeric_limits<float>::infinity();
+  require(aste::density::saturateSample(nan, 0.0F) == 0.0F,
+          "Saturation handles invalid sample and drive");
+  require(std::isfinite(aste::density::saturateSample(infinity, infinity)),
+          "Saturation output remains finite for infinity");
+  require(aste::density::controlledClipSample(nan) == 0.0F,
+          "Controlled clip handles NaN");
+}
+
+void testOversamplerRealtimeBoundary() {
+  aste::density::CrushOversampler4x oversampler;
+  const auto before = allocations.load(std::memory_order_relaxed);
+  for (const std::size_t tapsPerPhase :
+       std::array<std::size_t, 4>{16U, 32U, 48U, 64U}) {
+    oversampler.prepare(tapsPerPhase);
+    std::array<float, 127> samples{};
+    samples[0] = 0.1F;
+    oversampler.process(samples.data(), samples.size(), 3.88F);
+    require(oversampler.latencySamples() == tapsPerPhase,
+            "4x oversampler latency follows prepare-time filter length");
+    require(std::all_of(samples.begin(), samples.end(),
+                        [](float sample) { return std::isfinite(sample); }),
+            "4x oversampler output remains finite");
+  }
+  aste::density::CrushOversampler4xHalfBand halfBand;
+  for (const auto configuration :
+       std::array<std::array<std::size_t, 2>, 4>{
+           {{{33U, 33U}}, {{65U, 33U}}, {{97U, 33U}}, {{129U, 33U}}}}) {
+    halfBand.prepare(configuration[0], configuration[1]);
+    std::array<float, 127> samples{};
+    samples[0] = 0.1F;
+    halfBand.process(samples.data(), samples.size(), 3.88F);
+    require(std::all_of(samples.begin(), samples.end(),
+                        [](float sample) { return std::isfinite(sample); }),
+            "Half-band oversampler output remains finite");
+  }
+  for (const float beta : std::array<float, 7>{
+           -1.0F, 3.0F, 5.0F, 7.0F, 9.0F, 11.0F,
+           std::numeric_limits<float>::quiet_NaN()}) {
+    halfBand.prepare(113U, 33U, beta);
+    std::array<float, 16> samples{};
+    samples[0] = 0.1F;
+    require(std::isfinite(halfBand.processLinearSample(0.1F)),
+            "Kaiser linear half-band path remains finite");
+    halfBand.reset();
+    halfBand.process(samples.data(), samples.size(), 3.88F);
+    require(std::all_of(samples.begin(), samples.end(),
+                        [](float sample) { return std::isfinite(sample); }),
+            "Kaiser half-band preparation remains finite");
+  }
+  const auto after = allocations.load(std::memory_order_relaxed);
+  require(after == before, "4x oversampler processes perform no allocation");
+}
+
 void testDryAndLatency() {
   aste::density::Parameters parameters;
   parameters.blend = 0.0F;
@@ -102,6 +159,27 @@ void testCrushHasNoSampleDelay() {
   for (std::size_t i = 0; i < impulse.size(); ++i) {
     if (i != 3) {
       require(impulse[i] == 0.0F, "Crush path adds no delayed impulse energy");
+    }
+  }
+}
+
+void testOversamplingPrototypeAlignment() {
+  aste::density::Parameters parameters;
+  parameters.blend = 0.0F;
+  parameters.protection = false;
+  aste::density::Processor processor;
+  processor.prepareOversamplingPrototype(48000.0, parameters);
+  std::array<float, 64> impulse{};
+  impulse[3] = 0.1F;
+  processor.process(impulse.data(), nullptr, impulse.size(), parameters);
+  require(processor.latencySamples() == 44U,
+          "Oversampling prototype reports 44 samples latency");
+  require(impulse[47] == 0.1F,
+          "Oversampling prototype delays dry path by 44 samples");
+  for (std::size_t sample = 0; sample < impulse.size(); ++sample) {
+    if (sample != 47U) {
+      require(impulse[sample] == 0.0F,
+              "Oversampling prototype dry delay adds no extra energy");
     }
   }
 }
@@ -185,11 +263,14 @@ void testStereoLinkEndpoints() {
 void testNoProcessAllocation() {
   aste::density::Parameters parameters;
   aste::density::Processor processor;
+  aste::density::Processor prototype;
   processor.prepare(48000.0, parameters);
+  prototype.prepareOversamplingPrototype(48000.0, parameters);
   std::array<float, 127> left{};
   std::array<float, 127> right{};
   const auto before = allocations.load(std::memory_order_relaxed);
   processor.process(left.data(), right.data(), left.size(), parameters);
+  prototype.process(left.data(), right.data(), left.size(), parameters);
   const auto after = allocations.load(std::memory_order_relaxed);
   require(after == before, "Process performs no heap allocation");
 }
@@ -198,8 +279,11 @@ void testNoProcessAllocation() {
 
 int main() {
   testDensityMapping();
+  testNonlinearNumericalSafety();
+  testOversamplerRealtimeBoundary();
   testDryAndLatency();
   testCrushHasNoSampleDelay();
+  testOversamplingPrototypeAlignment();
   testRatesBlocksFiniteAndStereoStable();
   testDeterministicReset();
   testStereoLinkEndpoints();
