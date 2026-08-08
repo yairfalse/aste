@@ -180,6 +180,22 @@ ctest --test-dir build-universal --output-on-failure
 The internal bundle receives an ad-hoc signature so its completed manifest and
 binary can be validated locally. It is not Developer ID signed or notarized.
 
+### Internal packaging rehearsal
+
+After building the universal tree, create and inspect the deterministic internal
+archive with:
+
+```sh
+cmake --build build-universal --target density_package
+python3 tools/package_density.py verify \
+  --archive build-universal/packages/Density-D01-0.1.0-internal-macos-universal.zip
+```
+
+The archive is explicitly marked `internal-development-only`. It is ad-hoc
+signed, uses the placeholder bundle identity, is not notarized, and must not be
+distributed. The format decision is
+[ADR 0004](docs/adr/0004-internal-package-format.md).
+
 ## DSP laboratory
 
 `density_lab` generates its own deterministic signals, renders WAV/CSV output,
@@ -306,7 +322,8 @@ serialized state does not depend on widget layouts. The accepted framework
 decision is [ADR 0001](docs/adr/0001-plugin-framework.md); the fixed zero-latency
 quality decision is [ADR 0002](docs/adr/0002-density-quality-latency.md); and the
 independent validation boundary is
-[ADR 0003](docs/adr/0003-independent-vst3-validator.md).
+[ADR 0003](docs/adr/0003-independent-vst3-validator.md); and the internal-only
+package boundary is [ADR 0004](docs/adr/0004-internal-package-format.md).
 
 ## Repository map
 

@@ -77,6 +77,13 @@ jobs:
         run: cmake --build ci-validator --target validator --parallel 3
       - name: Steinberg extensive validation
         run: ci-validator/bin/Release/validator -e "ci-vst3/DensityD01_artefacts/Release/VST3/Density D-01.vst3"
+      - name: Build deterministic internal package
+        run: cmake --build ci-vst3 --target density_package
+      - name: Inspect internal package
+        run: >-
+          python3 tools/package_density.py verify
+          --archive ci-vst3/packages/Density-D01-0.1.0-internal-macos-universal.zip
+          --require-clean
 
   sanitizers:
     name: ASan + UBSan / arm64

@@ -3,8 +3,9 @@
 ## Now — Density D-01 validation
 
 The first working VST3, DSP lab, state model, industrial editor, and automated
-foundation exist. Do not add new production DSP until the current blind packs
-have been reviewed.
+foundation exist. A deterministic internal package rehearsal now checks bundle
+contents and provenance without publishing an artifact. Do not add new
+production DSP until the current blind packs have been reviewed.
 
 Remaining release work:
 
@@ -22,9 +23,9 @@ Remaining release work:
   concrete failure.
 - Select oversampling only if blind results justify its measured 44-sample
   latency and CPU cost; otherwise retain the documented 1x graph.
-- Add signed universal packaging, final company identity, licence material,
-  presets, and release notes only after the company and distribution terms are
-  decided.
+- Convert the internal package rehearsal into signed, notarized distribution
+  packaging only after the company identity, distribution terms, licence
+  material, presets, and release notes are decided.
 
 ## Later — product family
 

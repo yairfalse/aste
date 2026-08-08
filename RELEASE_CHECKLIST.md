@@ -1,8 +1,12 @@
 # Density D-01 release checklist
 
-Status as of 2026-08-08 for the internal universal VST3: **16 passed, 9 pending**.
+Status as of 2026-08-09 for the internal universal VST3: **16 passed, 9 pending**.
 `Pass` means repository evidence exists; it does not widen the supported-host
 or hardware claim.
+
+The deterministic internal package rehearsal is CI-inspected but deliberately
+not published. It does not satisfy final identity, licensing, Developer ID
+signing, notarization, or distribution approval.
 
 ## Gate ledger
 

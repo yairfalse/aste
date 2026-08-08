@@ -258,4 +258,22 @@ if(ASTE_BUILD_VST3)
   add_dependencies(density_vst3_host DensityD01_VST3)
   add_test(NAME density_vst3_host
     COMMAND density_vst3_host "$<TARGET_BUNDLE_DIR:DensityD01_VST3>")
+
+  if(Python3_Interpreter_FOUND AND APPLE)
+    set(ASTE_DENSITY_PACKAGE
+        "${CMAKE_CURRENT_BINARY_DIR}/packages/Density-D01-${PROJECT_VERSION}-internal-macos-universal.zip")
+    add_custom_target(density_package
+      COMMAND Python3::Interpreter
+              "${CMAKE_CURRENT_SOURCE_DIR}/tools/package_density.py" create
+              --bundle "$<TARGET_BUNDLE_DIR:DensityD01_VST3>"
+              --metadata "${CMAKE_CURRENT_BINARY_DIR}/build-metadata.json"
+              --notices "${CMAKE_CURRENT_SOURCE_DIR}/THIRD_PARTY_NOTICES.md"
+              --output "${ASTE_DENSITY_PACKAGE}"
+      BYPRODUCTS "${ASTE_DENSITY_PACKAGE}"
+      DEPENDS DensityD01_VST3
+              "${CMAKE_CURRENT_SOURCE_DIR}/tools/package_density.py"
+              "${CMAKE_CURRENT_SOURCE_DIR}/THIRD_PARTY_NOTICES.md"
+      COMMENT "Creating deterministic internal Density development package"
+      VERBATIM)
+  endif()
 endif()

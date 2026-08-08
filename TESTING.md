@@ -43,6 +43,13 @@ The universal VST3 CI job rebuilds that validator from pinned MIT-licensed
 source and requires the extensive suite to pass the signed bundle. The
 validator is test tooling only and is not a product dependency.
 
+After independent validation, CI builds the deterministic internal Density ZIP
+and reopens it with `tools/package_density.py verify --require-clean`. The check
+requires clean immutable provenance, the expected placeholder identity and
+version, actual arm64/x86_64 slices and strict ad-hoc signature verification
+after extraction, fixed ZIP metadata, safe paths, required bundle files, and a
+complete SHA-256 inventory. CI does not upload this development archive.
+
 `density_vst3_host` is the smallest repo-owned standalone host. Unlike the
 linked adapter tests, it discovers and loads the built bundle through VST3,
 then checks component identity, parameter count, latency, deterministic state,
