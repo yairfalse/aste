@@ -15,10 +15,10 @@ Recent sequence:
 - Cycles 36–42: automation measurement and smoothing corrections.
 - Cycles 43–47: blind audition packs, stereo stability, Density monotonicity,
   and deterministic keyboard navigation.
-- Cycles 48–57: repository policies, CI foundation, complete parameter text
+- Cycles 48–58: repository policies, CI foundation, complete parameter text
   contracts, build provenance, x86_64/universal VST3 validation, standalone
   binary-host smoke testing, macOS 15 parser portability, and compiler-aware
-  warning policy and public CI diagnostics.
+  warning policy, public CI diagnostics, and generated-tree policy isolation.
 
 New entries belong in a cycle report with the required What changed, Why,
 Evidence, Risks, and Next step sections. Chat history is not an engineering log.

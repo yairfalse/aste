@@ -39,7 +39,7 @@ def main() -> int:
         tail.append(line)
     result = process.wait()
     if result != 0:
-        message = "".join(tail)[-7000:]
+        message = "".join(tail)[-3800:]
         print(f"::error title=CTest failure::{escape_annotation(message)}")
     return result
 

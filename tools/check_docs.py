@@ -27,13 +27,23 @@ REQUIRED = (
 LINK = re.compile(r"!?\[[^]]*]\(([^)]+)\)")
 
 
+def is_generated_build_file(document: Path, root: Path) -> bool:
+    for parent in document.parents:
+        if parent == root:
+            return False
+        if (parent / "CMakeCache.txt").is_file():
+            return True
+    return False
+
+
 def main() -> int:
     root = Path(sys.argv[1] if len(sys.argv) > 1 else ".").resolve()
     errors = [f"missing required document: {name}" for name in REQUIRED
               if not (root / name).exists()]
     for document in root.rglob("*.md"):
-        if any(part.startswith("build") or part == ".git"
-               for part in document.relative_to(root).parts):
+        if (any(part.startswith("build") or part == ".git"
+                for part in document.relative_to(root).parts)
+                or is_generated_build_file(document, root)):
             continue
         for match in LINK.finditer(document.read_text(encoding="utf-8")):
             target = match.group(1).strip().strip("<>").split()[0]

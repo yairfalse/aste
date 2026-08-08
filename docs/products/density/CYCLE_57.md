@@ -24,7 +24,8 @@ the test name and assertion must not depend on access to private job logs.
 
 ## Risks
 
-The annotation contains only the final 7,000 characters to stay bounded. The
+The annotation contains only the final 3,800 characters to stay below GitHub's
+4,096-character annotation limit. The
 complete stream remains in the normal Actions log and the complete structured
 result remains in JUnit. This cycle improves diagnosis only; it does not change
 test selection, DSP, plugin code, or pass criteria.
