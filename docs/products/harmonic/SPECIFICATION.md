@@ -117,6 +117,28 @@ Numerical thresholds for null depth, gain error, aliasing, and automation are
 research outputs, not invented marketing numbers. They must be frozen before
 the candidate becomes production DSP.
 
+### Candidate 2 advance gate
+
+Before rendering the pre-emphasis candidate, its lab-only advance gate is fixed
+as follows:
+
+- test 80, 400, 1 kHz, 4 kHz, and 12 kHz centers at every supported sample
+  rate;
+- test 0.1, 0.25, 0.5, and 0.9 peak input levels;
+- preserve the requested center gain within 0.5 dB through 0.5 peak input;
+- preserve center phase within 1 degree of the linear reference;
+- increase H3 monotonically at the canonical 1 kHz / 0.5-peak case;
+- keep full-macro canonical H3 between -80 and -20 dBc;
+- leave equal-magnitude cuts below -140 dBc H3;
+- remain finite at 0.9 peak and report, but do not conceal, overload gain loss;
+- report folded-harmonic and SMPTE/CCIF IMD proxies without inventing a quality
+  ceiling before comparison and listening evidence exists.
+
+Passing this gate retains a candidate for broader testing; it does not select a
+production topology or authorize parameter IDs. A harmonic bin that aliases
+exactly onto the test fundamental is marked unobservable and excluded from that
+row's H3 gate; it is not reported as clean or silently treated as a failure.
+
 ## UI direction
 
 Harmonic uses the family matte-black surface, off-white typography, and a warm

@@ -48,7 +48,11 @@ behavior; transport and rhythm foundations wait for Loop or Impulse.
 
 Harmonic's linear reference is established. The first nonlinear residual
 candidate is rejected because full Harmonic collapses a +12 dB contour to about
-+2.16 dB. The next lab cycle is the pre-emphasis/nonlinear/de-emphasis candidate.
++2.16 dB. The pre-emphasis/nonlinear/de-emphasis candidate passes its frozen
+six-rate advance gate while exposing roughly -41.4 dBc worst third-order IMD
+and -50.3 dBc worst folded-harmonic proxy. It remains a lab candidate. The next
+cycle is the stateful nonlinear-filter graph, followed by multi-band interaction
+and level-matched listening comparisons rather than a premature VST3 shell.
 
 ## Explicitly deferred
 

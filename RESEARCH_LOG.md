@@ -7,6 +7,11 @@ historical sources in
 [docs/research/schematics/catalog.yaml](docs/research/schematics/catalog.yaml),
 and architectural decisions in `docs/adr/`.
 
+Harmonic research is recorded under `docs/products/harmonic/`. Its first cycle
+freezes the product boundary, the second establishes the linear reference and
+rejects residual excitation, and the third advances a pre-emphasis candidate
+through a frozen multi-rate gate while retaining its IMD and alias risks.
+
 Recent sequence:
 
 - Cycles 19–32: nonlinear aliasing and oversampling candidates; production 1x
