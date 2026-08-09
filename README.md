@@ -228,6 +228,9 @@ These are ad-hoc-signed, unnotarized internal builds with deliberately invalid
 placeholder bundle identifiers. macOS may require locally allowing the bundle;
 they are for private host and musical validation, not distribution.
 
+For the prebuilt internal ZIP workflow, see
+[INSTALL_MACOS.md](INSTALL_MACOS.md).
+
 An explicit bundle path may be supplied when testing another build:
 
 ```sh
