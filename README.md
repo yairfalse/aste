@@ -12,19 +12,21 @@ real-time testing. It is not a hardware-cloning exercise and does not use
 “analog” as a substitute for describing measurable behaviour.
 
 > **Project status:** Density D-01, Harmonic H-01, Sequence S-01, Loop L-01,
-> and Impulse I-01 are working internal VST3 prototypes. All have product-owned DSP, state,
-> tests, and industrial UIs; none is a supported release. There is no Developer ID signature,
-> notarization, final company identity, or DAW compatibility claim yet.
+> and Impulse I-01 are complete working internal VST3 prototypes. All five have
+> product-owned DSP, state, tests, industrial UIs, and universal macOS bundles.
+> The hosted arm64/Intel, sanitizer, 61-test, signature, architecture, and
+> Steinberg validation gates pass. None is a supported release: Developer ID
+> signing, notarization, final company identity, and DAW compatibility remain open.
 
 ## The instrument family
 
 | Product | Purpose | Status |
 |---|---|---|
-| **Density D-01** | Parallel hard mastering compressor | Working VST3 prototype; active validation |
-| **Harmonic H-01** | Equalizer with nonlinear band behaviour | Working VST3 internal beta; musical/host validation next |
-| **Sequence S-01** | Monophonic programmed-current synthesizer | Working VST3 internal beta; musical/host validation next |
-| **Loop L-01** | Tape-inspired playable memory instrument | Working VST3 prototype; memory-state validation next |
-| **Impulse I-01** | Generative rhythm and transient instrument | Working VST3 prototype; musical/host validation next |
+| **Density D-01** | Parallel hard mastering compressor | Complete internal prototype; DAW validation next |
+| **Harmonic H-01** | Equalizer with nonlinear band behaviour | Complete internal prototype; musical/DAW validation next |
+| **Sequence S-01** | Monophonic programmed-current synthesizer | Complete internal prototype; musical/DAW validation next |
+| **Loop L-01** | Tape-inspired playable memory instrument | Complete internal prototype; captured-memory recall next |
+| **Impulse I-01** | Generative rhythm and transient instrument | Complete internal prototype; musical/DAW validation next |
 
 All five products remain independent. Shared code is extracted only when two
 products genuinely need identical behavior or when correctness requires one
