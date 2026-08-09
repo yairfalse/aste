@@ -30,7 +30,7 @@ void count(std::atomic<std::size_t>& counter) noexcept {
 static_assert(std::atomic<bool>::is_always_lock_free);
 static_assert(std::atomic<std::uintptr_t>::is_always_lock_free);
 static_assert(std::atomic<std::size_t>::is_always_lock_free);
-}
+}  // namespace
 
 extern "C" void asteRealtimeAuditReset() {
   lockCalls.store(0, std::memory_order_relaxed);
@@ -58,15 +58,16 @@ extern "C" std::size_t asteRealtimeAuditWriteCalls() {
   return writeCalls.load(std::memory_order_relaxed);
 }
 
-#define ASTE_INTERPOSE(replacement, replacee)                                  \
-  __attribute__((used)) static const struct {                                  \
-    const void* replacementAddress;                                             \
-    const void* replaceeAddress;                                                \
-  } asteInterpose_##replacement __attribute__((section("__DATA,__interpose"))) = { \
-      reinterpret_cast<const void*>(                                            \
-          reinterpret_cast<std::uintptr_t>(&replacement)),                     \
-      reinterpret_cast<const void*>(                                            \
-          reinterpret_cast<std::uintptr_t>(&replacee))}
+#define ASTE_INTERPOSE(replacement, replacee)                  \
+  __attribute__((used)) static const struct {                  \
+    const void* replacementAddress;                            \
+    const void* replaceeAddress;                               \
+  } asteInterpose_##replacement                                \
+      __attribute__((section("__DATA,__interpose"))) = {       \
+          reinterpret_cast<const void*>(                       \
+              reinterpret_cast<std::uintptr_t>(&replacement)), \
+          reinterpret_cast<const void*>(                       \
+              reinterpret_cast<std::uintptr_t>(&replacee))}
 
 extern "C" int asteMutexLock(pthread_mutex_t* mutex) {
   count(lockCalls);
@@ -89,14 +90,14 @@ extern "C" int asteWriteLock(pthread_rwlock_t* lock) {
 }
 
 extern "C" int asteConditionWait(pthread_cond_t* condition,
-                                  pthread_mutex_t* mutex) {
+                                 pthread_mutex_t* mutex) {
   count(lockCalls);
   return pthread_cond_wait(condition, mutex);
 }
 
 extern "C" int asteConditionTimedWait(pthread_cond_t* condition,
-                                       pthread_mutex_t* mutex,
-                                       const timespec* timeout) {
+                                      pthread_mutex_t* mutex,
+                                      const timespec* timeout) {
   count(lockCalls);
   return pthread_cond_timedwait(condition, mutex, timeout);
 }
@@ -140,7 +141,8 @@ extern "C" int asteOpenAt(int directory, const char* path, int flags, ...) {
   return openat(directory, path, flags);
 }
 
-extern "C" ssize_t asteWrite(int descriptor, const void* data, std::size_t size) {
+extern "C" ssize_t asteWrite(int descriptor, const void* data,
+                             std::size_t size) {
   count(writeCalls);
   return write(descriptor, data, size);
 }

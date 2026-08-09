@@ -17,7 +17,9 @@ float bounded(float value, float low, float high, float fallback) noexcept {
   return std::clamp(finiteOr(value, fallback), low, high);
 }
 
-float dbToGain(float db) noexcept { return std::exp(db * 0.11512925464970229F); }
+float dbToGain(float db) noexcept {
+  return std::exp(db * 0.11512925464970229F);
+}
 
 float gainToDb(float gain) noexcept {
   return 8.6858896380650366F * std::log(std::max(gain, 1.0e-12F));
@@ -81,11 +83,11 @@ void CrushOversampler4x::prepare(std::size_t tapsPerPhase) noexcept {
   double sum{};
   for (std::size_t tap = 0; tap < tapCount_; ++tap) {
     const double offset = static_cast<double>(tap) - centre;
-    const double sinc = offset == 0.0
-                            ? 2.0 * cutoff
-                            : std::sin(2.0 * static_cast<double>(kPi) * cutoff *
-                                       offset) /
-                                  (static_cast<double>(kPi) * offset);
+    const double sinc =
+        offset == 0.0
+            ? 2.0 * cutoff
+            : std::sin(2.0 * static_cast<double>(kPi) * cutoff * offset) /
+                  (static_cast<double>(kPi) * offset);
     const double phase = 2.0 * static_cast<double>(kPi) * tap /
                          static_cast<double>(tapCount_ - 1U);
     const double blackman =
@@ -108,8 +110,7 @@ void CrushOversampler4x::reset() noexcept {
 
 float CrushOversampler4x::processSample(float input,
                                         float saturationDrive) noexcept {
-  inputWrite_ =
-      inputWrite_ + 1U == inputHistoryLength_ ? 0U : inputWrite_ + 1U;
+  inputWrite_ = inputWrite_ + 1U == inputHistoryLength_ ? 0U : inputWrite_ + 1U;
   inputHistory_[inputWrite_] = finiteOr(input, 0.0F);
   float output{};
   for (std::size_t phase = 0; phase < kFactor; ++phase) {
@@ -151,10 +152,8 @@ void CrushOversampler4xHalfBand::Stage::prepare(std::size_t taps,
                                                 float kaiserBeta) noexcept {
   taps = std::clamp(taps, std::size_t{5}, std::size_t{129});
   kaiserBeta = finiteOr(kaiserBeta, -1.0F);
-  const double beta =
-      std::clamp(static_cast<double>(kaiserBeta), 0.0, 16.0);
-  const double kaiserDenominator =
-      kaiserBeta >= 0.0F ? besselI0(beta) : 1.0;
+  const double beta = std::clamp(static_cast<double>(kaiserBeta), 0.0, 16.0);
+  const double kaiserDenominator = kaiserBeta >= 0.0F ? besselI0(beta) : 1.0;
   tapCount = taps - (taps - 1U) % 4U;
   centre = tapCount / 2U;
   oddCount = (tapCount - 1U) / 2U;
@@ -163,18 +162,19 @@ void CrushOversampler4xHalfBand::Stage::prepare(std::size_t taps,
   double sum{};
   for (std::size_t tap = 0; tap < tapCount; ++tap) {
     const double offset = static_cast<double>(tap) - centre;
-    const double sinc = offset == 0.0
-                            ? 2.0 * cutoff
-                            : std::sin(2.0 * static_cast<double>(kPi) * cutoff *
-                                       offset) /
-                                  (static_cast<double>(kPi) * offset);
+    const double sinc =
+        offset == 0.0
+            ? 2.0 * cutoff
+            : std::sin(2.0 * static_cast<double>(kPi) * cutoff * offset) /
+                  (static_cast<double>(kPi) * offset);
     double window{};
     if (kaiserBeta >= 0.0F) {
       const double position =
           2.0 * static_cast<double>(tap) / static_cast<double>(tapCount - 1U) -
           1.0;
-      window = besselI0(beta * std::sqrt(std::max(0.0, 1.0 - position * position))) /
-               kaiserDenominator;
+      window =
+          besselI0(beta * std::sqrt(std::max(0.0, 1.0 - position * position))) /
+          kaiserDenominator;
     } else {
       const double phase = 2.0 * static_cast<double>(kPi) * tap /
                            static_cast<double>(tapCount - 1U);
@@ -203,14 +203,14 @@ void CrushOversampler4xHalfBand::Stage::reset() noexcept {
   outputWrite = tapCount - 1U;
 }
 
-std::array<float, 2>
-CrushOversampler4xHalfBand::Stage::interpolate(float input) noexcept {
+std::array<float, 2> CrushOversampler4xHalfBand::Stage::interpolate(
+    float input) noexcept {
   inputWrite = inputWrite + 1U == oddCount ? 0U : inputWrite + 1U;
   inputHistory[inputWrite] = finiteOr(input, 0.0F);
   const std::size_t centreDelay = centre / 2U;
-  const std::size_t centreIndex =
-      inputWrite >= centreDelay ? inputWrite - centreDelay
-                                : inputWrite + oddCount - centreDelay;
+  const std::size_t centreIndex = inputWrite >= centreDelay
+                                      ? inputWrite - centreDelay
+                                      : inputWrite + oddCount - centreDelay;
   double oddOutput{};
   std::size_t history = inputWrite;
   for (std::size_t coefficient = 0; coefficient < oddCount; ++coefficient) {
@@ -228,9 +228,9 @@ float CrushOversampler4xHalfBand::Stage::decimate(
     outputWrite = outputWrite + 1U == tapCount ? 0U : outputWrite + 1U;
     outputHistory[outputWrite] = finiteOr(input[phase], 0.0F);
     if (phase == 0U) {
-      const std::size_t centreIndex =
-          outputWrite >= centre ? outputWrite - centre
-                                : outputWrite + tapCount - centre;
+      const std::size_t centreIndex = outputWrite >= centre
+                                          ? outputWrite - centre
+                                          : outputWrite + tapCount - centre;
       double output = outputHistory[centreIndex] * centreCoefficient;
       std::size_t history =
           outputWrite == 0U ? tapCount - 1U : outputWrite - 1U;
@@ -249,8 +249,8 @@ void CrushOversampler4xHalfBand::prepare(std::size_t firstStageTaps,
                                          float firstStageKaiserBeta) noexcept {
   firstStage_.prepare(firstStageTaps, firstStageKaiserBeta);
   secondStage_.prepare(secondStageTaps);
-  latency_ = (firstStage_.tapCount - 1U) / 2U +
-             (secondStage_.tapCount - 1U) / 4U;
+  latency_ =
+      (firstStage_.tapCount - 1U) / 2U + (secondStage_.tapCount - 1U) / 4U;
 }
 
 void CrushOversampler4xHalfBand::reset() noexcept {
@@ -276,8 +276,8 @@ float CrushOversampler4xHalfBand::processSample(
   for (std::size_t sample = 0; sample < firstHigh.size(); ++sample) {
     auto secondHigh = secondStage_.interpolate(firstHigh[sample]);
     for (float& highSample : secondHigh) {
-      highSample = controlledClipSample(
-          saturateSample(highSample, saturationDrive));
+      highSample =
+          controlledClipSample(saturateSample(highSample, saturationDrive));
     }
     secondLow[sample] = secondStage_.decimate(secondHigh);
   }
@@ -323,7 +323,8 @@ float Processor::Smoother::next() noexcept {
 float Processor::HighPass::process(float input, float coefficient) noexcept {
   float output = coefficient * (previousOutput_ + input - previousInput_);
   previousInput_ = input;
-  if (!std::isfinite(output) || std::abs(output) < std::numeric_limits<float>::min()) {
+  if (!std::isfinite(output) ||
+      std::abs(output) < std::numeric_limits<float>::min()) {
     output = 0.0F;
   }
   previousOutput_ = output;
@@ -338,22 +339,20 @@ void Processor::prepare(double sampleRate, const Parameters& initial) noexcept {
   blendCascade_ = true;
   sampleRate_ = std::clamp(finiteOr(static_cast<float>(sampleRate), 48000.0F),
                            8000.0F, 384000.0F);
-  const float initialDrive =
-      bounded(initial.driveDb, -12.0F, 24.0F, 0.0F);
+  const float initialDrive = bounded(initial.driveDb, -12.0F, 24.0F, 0.0F);
   drive_.prepare(sampleRate_, 0.003, initialDrive);
   driveStage2_.prepare(sampleRate_, 0.003, initialDrive);
-  const float initialAttack =
-      bounded(initial.attackMs, 0.02F, 30.0F, 1.0F);
+  const float initialAttack = bounded(initial.attackMs, 0.02F, 30.0F, 1.0F);
   attackLog_.prepare(sampleRate_, 0.005, std::log(initialAttack));
   crush_.prepare(sampleRate_, 0.010, bounded(initial.crush, 0.0F, 1.0F, 0.65F));
-  density_.prepare(sampleRate_, 0.010, bounded(initial.density, 0.0F, 1.0F, 0.5F));
+  density_.prepare(sampleRate_, 0.010,
+                   bounded(initial.density, 0.0F, 1.0F, 0.5F));
   const float initialBlend = bounded(initial.blend, 0.0F, 1.0F, 0.5F);
   blend_.prepare(sampleRate_, 0.003, initialBlend);
   blendStage2_.prepare(sampleRate_, 0.003, initialBlend);
   stereoLink_.prepare(sampleRate_, 0.010,
                       bounded(initial.stereoLink, 0.0F, 1.0F, 1.0F));
-  const float initialOutput =
-      bounded(initial.outputDb, -24.0F, 12.0F, 0.0F);
+  const float initialOutput = bounded(initial.outputDb, -24.0F, 12.0F, 0.0F);
   output_.prepare(sampleRate_, 0.003, initialOutput);
   outputStage2_.prepare(sampleRate_, 0.003, initialOutput);
   reset();
@@ -373,8 +372,7 @@ void Processor::prepareDriveSmoothingPrototype(
     double sampleRate, double stageSeconds, bool cascade,
     const Parameters& initial) noexcept {
   prepare(sampleRate, initial);
-  const float initialDrive =
-      bounded(initial.driveDb, -12.0F, 24.0F, 0.0F);
+  const float initialDrive = bounded(initial.driveDb, -12.0F, 24.0F, 0.0F);
   const double seconds = std::clamp(
       static_cast<double>(finiteOr(static_cast<float>(stageSeconds), 0.005F)),
       0.0001, 1.0);
@@ -393,8 +391,7 @@ void Processor::prepareAttackSmoothingPrototype(
     reset();
     return;
   }
-  const float initialAttack =
-      bounded(initial.attackMs, 0.02F, 30.0F, 1.0F);
+  const float initialAttack = bounded(initial.attackMs, 0.02F, 30.0F, 1.0F);
   const double seconds = std::clamp(
       static_cast<double>(finiteOr(static_cast<float>(stageSeconds), 0.005F)),
       0.0001, 1.0);
@@ -545,16 +542,13 @@ void Processor::process(float* left, float* right, std::size_t frames,
       alignedDryRight = dryDelay_[1][dryDelayWrite_];
       dryDelay_[0][dryDelayWrite_] = dryLeft;
       dryDelay_[1][dryDelayWrite_] = dryRight;
-      dryDelayWrite_ = dryDelayWrite_ + 1U == dryDelay_[0].size()
-                           ? 0U
-                           : dryDelayWrite_ + 1U;
+      dryDelayWrite_ =
+          dryDelayWrite_ + 1U == dryDelay_[0].size() ? 0U : dryDelayWrite_ + 1U;
     } else {
-      crushedLeft =
-          controlledClipSample(saturateSample(crushedLeft,
-                                              mapping.saturationDrive));
-      crushedRight =
-          controlledClipSample(saturateSample(crushedRight,
-                                              mapping.saturationDrive));
+      crushedLeft = controlledClipSample(
+          saturateSample(crushedLeft, mapping.saturationDrive));
+      crushedRight = controlledClipSample(
+          saturateSample(crushedRight, mapping.saturationDrive));
     }
 
     float blend = blend_.next();
@@ -577,12 +571,12 @@ void Processor::process(float* left, float* right, std::size_t frames,
       right[i] = cleanSample(outputRight);
     }
 
-    meters_.inputPeak = std::max(meters_.inputPeak, std::max(std::abs(dryLeft),
-                                                             std::abs(dryRight)));
-    meters_.outputPeak = std::max(meters_.outputPeak, std::max(std::abs(left[i]),
-                                                               std::abs(outputRight)));
-    meters_.gainReductionDb =
-        std::max(meters_.gainReductionDb, std::max(reductionDb[0], reductionDb[1]));
+    meters_.inputPeak = std::max(
+        meters_.inputPeak, std::max(std::abs(dryLeft), std::abs(dryRight)));
+    meters_.outputPeak = std::max(
+        meters_.outputPeak, std::max(std::abs(left[i]), std::abs(outputRight)));
+    meters_.gainReductionDb = std::max(
+        meters_.gainReductionDb, std::max(reductionDb[0], reductionDb[1]));
   }
 }
 

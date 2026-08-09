@@ -97,8 +97,8 @@ Status meanings:
 | Framework decision before integration | Done | [ADR 0001](docs/adr/0001-plugin-framework.md). |
 | Independent VST3 binary | Done | Universal Density D-01 VST3 bundle. |
 | arm64 and x86_64 universal artifact | Done | CI slice and signature inspection. |
-| Formatting gate | Open | Define a repository style, normalize tracked C/C++, and enforce check-only CI. |
-| Static-analysis gate | Open | Add a reproducible analyzer pass over production code. |
+| Formatting gate | Done | Tracked C++ is normalized by `.clang-format`; CI runs check-only verification. |
+| Static-analysis gate | Done | Apple Clang path-sensitive analysis covers production DSP with warnings as errors. |
 | Unit, property, differential, regression, fuzz, real-time tests | Done | 33 CTest gates plus validator matrices; properties are expressed directly without a speculative framework. |
 | Sanitizer build | Done | ASan/UBSan VST3 CI job. |
 | Plugin validation | Done | pluginval strictness 10 locally and pinned Steinberg extensive validation in CI. |

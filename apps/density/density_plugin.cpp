@@ -18,8 +18,8 @@ constexpr auto kInk = 0xffe8e5dcU;
 constexpr auto kMuted = 0xff85827bU;
 constexpr auto kAccent = 0xff812d3dU;
 constexpr std::array<const char*, 11> kParameterIds{
-    "drive", "crush", "attack", "release", "density", "blend", "output",
-    "stereo", "detector_hpf", "protection", "bypass"};
+    "drive",  "crush",  "attack",       "release",    "density", "blend",
+    "output", "stereo", "detector_hpf", "protection", "bypass"};
 
 bool parseFiniteFloat(const juce::var& value, float& result) {
   const std::string text = value.toString().toStdString();
@@ -66,18 +66,19 @@ class DensityLookAndFeel final : public juce::LookAndFeel_V4 {
   DensityLookAndFeel() {
     setColour(juce::Slider::textBoxTextColourId, juce::Colour{kInk});
     setColour(juce::Slider::textBoxBackgroundColourId, juce::Colour{kSurface});
-    setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+    setColour(juce::Slider::textBoxOutlineColourId,
+              juce::Colours::transparentBlack);
     setColour(juce::Label::textColourId, juce::Colour{kInk});
   }
 
   void drawRotarySlider(juce::Graphics& graphics, int x, int y, int width,
                         int height, float position, float startAngle,
                         float endAngle, juce::Slider&) override {
-    const auto bounds = juce::Rectangle<float>{static_cast<float>(x),
-                                                static_cast<float>(y),
-                                                static_cast<float>(width),
-                                                static_cast<float>(height)}
-                            .reduced(8.0F);
+    const auto bounds =
+        juce::Rectangle<float>{static_cast<float>(x), static_cast<float>(y),
+                               static_cast<float>(width),
+                               static_cast<float>(height)}
+            .reduced(8.0F);
     const float radius = std::min(bounds.getWidth(), bounds.getHeight()) * 0.5F;
     const auto centre = bounds.getCentre();
     juce::Path track;
@@ -96,8 +97,9 @@ class DensityLookAndFeel final : public juce::LookAndFeel_V4 {
     juce::Path pointer;
     pointer.addRectangle(-1.5F, -radius + 4.0F, 3.0F, radius * 0.38F);
     graphics.setColour(juce::Colour{kInk});
-    graphics.fillPath(pointer, juce::AffineTransform::rotation(angle).translated(
-                                   centre.x, centre.y));
+    graphics.fillPath(
+        pointer,
+        juce::AffineTransform::rotation(angle).translated(centre.x, centre.y));
   }
 };
 
@@ -110,7 +112,8 @@ class Knob final : public juce::Component {
     slider_.textFromValueFunction = [this](double value) {
       const int decimals = slider_.getNumDecimalPlacesToDisplay();
       const double displayZero = 0.5 * std::pow(10.0, -decimals);
-      return juce::String{std::abs(value) < displayZero ? 0.0 : value, decimals};
+      return juce::String{std::abs(value) < displayZero ? 0.0 : value,
+                          decimals};
     };
     slider_.setTextValueSuffix(suffix);
     slider_.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 82, 22);
@@ -164,7 +167,8 @@ class Switch final : public juce::Component {
 
 class MeterPanel final : public juce::Component, private juce::Timer {
  public:
-  explicit MeterPanel(DensityAudioProcessor& processor) : processor_{processor} {
+  explicit MeterPanel(DensityAudioProcessor& processor)
+      : processor_{processor} {
     startTimerHz(30);
   }
 
@@ -189,9 +193,11 @@ class MeterPanel final : public juce::Component, private juce::Timer {
     graphics.fillRect(reductionArea);
     const float proportion = juce::jlimit(0.0F, 1.0F, reduction_ / 30.0F);
     graphics.setColour(juce::Colour{kAccent});
-    graphics.fillRect(reductionArea.withWidth(reductionArea.getWidth() * proportion));
+    graphics.fillRect(
+        reductionArea.withWidth(reductionArea.getWidth() * proportion));
     graphics.setColour(juce::Colour{kInk});
-    graphics.drawText(juce::String{reduction_, 1} + " dB", area.removeFromTop(24.0F),
+    graphics.drawText(juce::String{reduction_, 1} + " dB",
+                      area.removeFromTop(24.0F),
                       juce::Justification::centredRight);
   }
 
@@ -237,8 +243,7 @@ class DensityEditor final : public juce::AudioProcessorEditor {
         release_{processor.state(), "release", "RELEASE", " ms", 180.0, 5},
         blend_{processor.state(), "blend", "BLEND", " %", 50.0, 6},
         stereo_{processor.state(), "stereo", "STEREO", " %", 100.0, 7},
-        hpf_{processor.state(), "detector_hpf", "DETECTOR HPF", " Hz", 90.0,
-             8},
+        hpf_{processor.state(), "detector_hpf", "DETECTOR HPF", " Hz", 90.0, 8},
         output_{processor.state(), "output", "OUTPUT", " dB", 0.0, 9},
         protection_{processor.state(), "protection", "PROTECTION", 10} {
     setLookAndFeel(&lookAndFeel_);
@@ -281,13 +286,14 @@ class DensityEditor final : public juce::AudioProcessorEditor {
 
     const int columnWidth = std::max(1, area.getWidth() / 4);
     const int rowHeight = std::max(1, area.getHeight() / 2);
-    const std::array<Knob*, 8> controls{&drive_, &crush_, &attack_, &release_,
-                                         &blend_, &stereo_, &hpf_, &output_};
+    const std::array<Knob*, 8> controls{&drive_, &crush_,  &attack_, &release_,
+                                        &blend_, &stereo_, &hpf_,    &output_};
     for (std::size_t i = 0; i < controls.size(); ++i) {
       const int column = static_cast<int>(i % 4);
       const int row = static_cast<int>(i / 4);
       controls[i]->setBounds(area.getX() + column * columnWidth,
-                             area.getY() + row * rowHeight, columnWidth, rowHeight);
+                             area.getY() + row * rowHeight, columnWidth,
+                             rowHeight);
     }
   }
 
@@ -313,8 +319,8 @@ DensityAudioProcessor::createParameterLayout() {
   juce::AudioProcessorValueTreeState::ParameterLayout layout;
   addFloat(layout, "drive", "Drive", {-12.0F, 24.0F, 0.01F}, 0.0F, "dB");
   addFloat(layout, "crush", "Crush", {0.0F, 100.0F, 0.01F}, 65.0F, "%");
-  addFloat(layout, "attack", "Attack", skewed(0.02F, 30.0F, 1.0F, 0.001F),
-           1.0F, "ms");
+  addFloat(layout, "attack", "Attack", skewed(0.02F, 30.0F, 1.0F, 0.001F), 1.0F,
+           "ms");
   addFloat(layout, "release", "Release", skewed(20.0F, 1200.0F, 180.0F, 0.1F),
            180.0F, "ms");
   addFloat(layout, "density", "Density", {0.0F, 100.0F, 0.01F}, 50.0F, "%");
@@ -332,8 +338,10 @@ DensityAudioProcessor::createParameterLayout() {
 
 DensityAudioProcessor::DensityAudioProcessor()
     : AudioProcessor{BusesProperties{}
-                         .withInput("Input", juce::AudioChannelSet::stereo(), true)
-                         .withOutput("Output", juce::AudioChannelSet::stereo(), true)},
+                         .withInput("Input", juce::AudioChannelSet::stereo(),
+                                    true)
+                         .withOutput("Output", juce::AudioChannelSet::stereo(),
+                                     true)},
       state_{*this, nullptr, kStateType, createParameterLayout()} {
   for (std::size_t i = 0; i < kParameterIds.size(); ++i) {
     parameterValues_[i] = state_.getRawParameterValue(kParameterIds[i]);
@@ -347,13 +355,16 @@ Parameters DensityAudioProcessor::currentParameters() const noexcept {
       .crush = parameterValues_[crush]->load(std::memory_order_relaxed) * 0.01F,
       .attackMs = parameterValues_[attack]->load(std::memory_order_relaxed),
       .releaseMs = parameterValues_[release]->load(std::memory_order_relaxed),
-      .density = parameterValues_[density]->load(std::memory_order_relaxed) * 0.01F,
+      .density =
+          parameterValues_[density]->load(std::memory_order_relaxed) * 0.01F,
       .blend = parameterValues_[blend]->load(std::memory_order_relaxed) * 0.01F,
-      .stereoLink = parameterValues_[stereo]->load(std::memory_order_relaxed) * 0.01F,
+      .stereoLink =
+          parameterValues_[stereo]->load(std::memory_order_relaxed) * 0.01F,
       .outputDb = parameterValues_[output]->load(std::memory_order_relaxed),
-      .detectorHpfHz = parameterValues_[detectorHpf]->load(std::memory_order_relaxed),
-      .protection = parameterValues_[protection]->load(std::memory_order_relaxed) >=
-                    0.5F,
+      .detectorHpfHz =
+          parameterValues_[detectorHpf]->load(std::memory_order_relaxed),
+      .protection =
+          parameterValues_[protection]->load(std::memory_order_relaxed) >= 0.5F,
   };
 }
 
@@ -365,7 +376,8 @@ void DensityAudioProcessor::prepareToPlay(double sampleRate, int) {
 
 void DensityAudioProcessor::releaseResources() { processor_.reset(); }
 
-bool DensityAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
+bool DensityAudioProcessor::isBusesLayoutSupported(
+    const BusesLayout& layouts) const {
   const auto input = layouts.getMainInputChannelSet();
   return input == layouts.getMainOutputChannelSet() &&
          (input == juce::AudioChannelSet::mono() ||
@@ -391,16 +403,18 @@ void DensityAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
   publishMeters(processor_.meters());
 }
 
-void DensityAudioProcessor::processBlockBypassed(juce::AudioBuffer<float>& buffer,
-                                                 juce::MidiBuffer&) {
+void DensityAudioProcessor::processBlockBypassed(
+    juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) {
   float peak = 0.0F;
   for (int channel = 0; channel < buffer.getNumChannels(); ++channel) {
-    peak = std::max(peak, buffer.getMagnitude(channel, 0, buffer.getNumSamples()));
+    peak =
+        std::max(peak, buffer.getMagnitude(channel, 0, buffer.getNumSamples()));
   }
   publishMeters({peak, peak, 0.0F});
 }
 
-void DensityAudioProcessor::publishMeters(const MeterSnapshot& meters) noexcept {
+void DensityAudioProcessor::publishMeters(
+    const MeterSnapshot& meters) noexcept {
   inputPeak_.store(meters.inputPeak, std::memory_order_relaxed);
   outputPeak_.store(meters.outputPeak, std::memory_order_relaxed);
   gainReduction_.store(meters.gainReductionDb, std::memory_order_relaxed);
@@ -418,11 +432,13 @@ float DensityAudioProcessor::gainReductionDb() const noexcept {
   return gainReduction_.load(std::memory_order_relaxed);
 }
 
-juce::AudioProcessorParameter* DensityAudioProcessor::getBypassParameter() const {
+juce::AudioProcessorParameter* DensityAudioProcessor::getBypassParameter()
+    const {
   return state_.getParameter("bypass");
 }
 
-void DensityAudioProcessor::getStateInformation(juce::MemoryBlock& destination) {
+void DensityAudioProcessor::getStateInformation(
+    juce::MemoryBlock& destination) {
   auto state = state_.copyState();
   state.setProperty("schema", kStateSchema, nullptr);
   state.setProperty("product", kStateType, nullptr);
@@ -446,9 +462,9 @@ void DensityAudioProcessor::setStateInformation(const void* data, int size) {
     auto child = validated.getChild(index);
     if (auto* parameter =
             state_.getParameter(child.getProperty("id").toString())) {
-      child.setProperty("value",
-                        parameter->convertFrom0to1(parameter->getDefaultValue()),
-                        nullptr);
+      child.setProperty(
+          "value", parameter->convertFrom0to1(parameter->getDefaultValue()),
+          nullptr);
     }
   }
 
@@ -474,8 +490,8 @@ void DensityAudioProcessor::setStateInformation(const void* data, int size) {
     if (!destination.isValid()) {
       return;
     }
-    destination.setProperty("value", juce::jlimit(range.start, range.end, value),
-                            nullptr);
+    destination.setProperty(
+        "value", juce::jlimit(range.start, range.end, value), nullptr);
   }
   validated.setProperty("schema", kStateSchema, nullptr);
   validated.setProperty("product", kStateType, nullptr);

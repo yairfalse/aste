@@ -40,7 +40,8 @@ class CrushOversampler4x {
  public:
   void prepare(std::size_t tapsPerPhase = 64U) noexcept;
   void reset() noexcept;
-  [[nodiscard]] float processSample(float input, float saturationDrive) noexcept;
+  [[nodiscard]] float processSample(float input,
+                                    float saturationDrive) noexcept;
   void process(float* samples, std::size_t frames,
                float saturationDrive) noexcept;
 
@@ -68,7 +69,8 @@ class CrushOversampler4xHalfBand {
                float firstStageKaiserBeta = -1.0F) noexcept;
   void reset() noexcept;
   [[nodiscard]] float processLinearSample(float input) noexcept;
-  [[nodiscard]] float processSample(float input, float saturationDrive) noexcept;
+  [[nodiscard]] float processSample(float input,
+                                    float saturationDrive) noexcept;
   void process(float* samples, std::size_t frames,
                float saturationDrive) noexcept;
 
@@ -102,15 +104,15 @@ class Processor {
   void prepare(double sampleRate, const Parameters& initial = {}) noexcept;
   void prepareOversamplingPrototype(double sampleRate,
                                     const Parameters& initial = {}) noexcept;
-  void prepareDriveSmoothingPrototype(
-      double sampleRate, double stageSeconds, bool cascade,
-      const Parameters& initial = {}) noexcept;
-  void prepareAttackSmoothingPrototype(
-      double sampleRate, double stageSeconds, bool cascade,
-      const Parameters& initial = {}) noexcept;
-  void prepareBlendSmoothingPrototype(
-      double sampleRate, double stageSeconds, bool cascade,
-      const Parameters& initial = {}) noexcept;
+  void prepareDriveSmoothingPrototype(double sampleRate, double stageSeconds,
+                                      bool cascade,
+                                      const Parameters& initial = {}) noexcept;
+  void prepareAttackSmoothingPrototype(double sampleRate, double stageSeconds,
+                                       bool cascade,
+                                       const Parameters& initial = {}) noexcept;
+  void prepareBlendSmoothingPrototype(double sampleRate, double stageSeconds,
+                                      bool cascade,
+                                      const Parameters& initial = {}) noexcept;
   void prepareAutomationReferencePrototype(
       double sampleRate, const Parameters& initial = {}) noexcept;
   void reset() noexcept;

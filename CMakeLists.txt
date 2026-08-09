@@ -62,6 +62,17 @@ endif()
 add_library(density_dsp apps/density/density_processor.cpp)
 target_include_directories(density_dsp PUBLIC apps/density)
 
+if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang")
+  add_custom_target(density_static_analysis
+    COMMAND "${CMAKE_CXX_COMPILER}" --analyze
+            -Xanalyzer -analyzer-output=text
+            -std=c++20 -Wall -Wextra -Wpedantic -Werror
+            -I"${CMAKE_CURRENT_SOURCE_DIR}/apps/density"
+            "${CMAKE_CURRENT_SOURCE_DIR}/apps/density/density_processor.cpp"
+    COMMENT "Running Clang static analysis on Density DSP"
+    VERBATIM)
+endif()
+
 foreach(target density_dsp)
   target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endforeach()

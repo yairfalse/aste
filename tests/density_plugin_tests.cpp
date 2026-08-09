@@ -34,8 +34,9 @@ bool shouldCountAllocation() noexcept {
 
 void setAllocationAuditActive(bool active) noexcept {
   if (active) {
-    allocationAuditThread.store(reinterpret_cast<std::uintptr_t>(pthread_self()),
-                                std::memory_order_relaxed);
+    allocationAuditThread.store(
+        reinterpret_cast<std::uintptr_t>(pthread_self()),
+        std::memory_order_relaxed);
   }
   allocationAuditActive.store(active, std::memory_order_relaxed);
 }
@@ -46,7 +47,7 @@ static_assert(std::atomic<std::uintptr_t>::is_always_lock_free);
 bool shouldCountAllocation() noexcept { return true; }
 void setAllocationAuditActive(bool) noexcept {}
 #endif
-}
+}  // namespace
 
 #if JUCE_MAC
 extern "C" void asteRealtimeAuditReset();
@@ -70,8 +71,12 @@ void* operator new[](std::size_t size) { return ::operator new(size); }
 
 void operator delete(void* pointer) noexcept { std::free(pointer); }
 void operator delete[](void* pointer) noexcept { std::free(pointer); }
-void operator delete(void* pointer, std::size_t) noexcept { std::free(pointer); }
-void operator delete[](void* pointer, std::size_t) noexcept { std::free(pointer); }
+void operator delete(void* pointer, std::size_t) noexcept {
+  std::free(pointer);
+}
+void operator delete[](void* pointer, std::size_t) noexcept {
+  std::free(pointer);
+}
 
 namespace {
 
@@ -152,12 +157,12 @@ void testParameterTextContract() {
             "Every continuous parameter has a stable visible name");
     require(parameter->getLabel() == contract.unit,
             "Every continuous parameter has a stable unit");
-    const float parsed = parameter->convertFrom0to1(
-        parameter->getValueForText(contract.input));
+    const float parsed =
+        parameter->convertFrom0to1(parameter->getValueForText(contract.input));
     require(std::abs(parsed - contract.value) <= contract.tolerance,
             "Every continuous parameter accepts exact host text input");
-    const auto text = parameter->getText(
-        parameter->convertTo0to1(contract.value), 64);
+    const auto text =
+        parameter->getText(parameter->convertTo0to1(contract.value), 64);
     const float roundTrip =
         parameter->convertFrom0to1(parameter->getValueForText(text));
     require(!text.isEmpty() &&
@@ -194,13 +199,13 @@ void reportFuzzFailure(std::size_t index, const char* reason,
 bool verifyFuzzedState(
     aste::density::plugin::DensityAudioProcessor& processor) {
   constexpr std::array<const char*, 11> ids{
-      "drive",  "crush",   "attack",       "release",
-      "density", "blend",   "stereo",       "output",
-      "detector_hpf", "protection", "bypass"};
+      "drive",  "crush",  "attack",       "release",    "density", "blend",
+      "stereo", "output", "detector_hpf", "protection", "bypass"};
   for (const char* id : ids) {
     const auto* parameter = processor.state().getParameter(id);
     const auto* value = processor.state().getRawParameterValue(id);
-    if (parameter == nullptr || value == nullptr || !std::isfinite(value->load())) {
+    if (parameter == nullptr || value == nullptr ||
+        !std::isfinite(value->load())) {
       return false;
     }
     const auto& range = parameter->getNormalisableRange();
@@ -226,9 +231,9 @@ bool verifyFuzzedState(
   float* firstChannel[]{first.data()};
   float* secondChannel[]{second.data()};
   juce::AudioBuffer<float> firstAudio{firstChannel, 1,
-                                       static_cast<int>(first.size())};
+                                      static_cast<int>(first.size())};
   juce::AudioBuffer<float> secondAudio{secondChannel, 1,
-                                        static_cast<int>(second.size())};
+                                       static_cast<int>(second.size())};
   juce::MidiBuffer midi;
   processor.prepareToPlay(48000.0, static_cast<int>(first.size()));
   processor.processBlock(firstAudio, midi);
@@ -256,7 +261,8 @@ void testStateRoundTrip() {
   require(!state.isEmpty(), "State serialization produces data");
 
   aste::density::plugin::DensityAudioProcessor restored;
-  restored.setStateInformation(state.getData(), static_cast<int>(state.getSize()));
+  restored.setStateInformation(state.getData(),
+                               static_cast<int>(state.getSize()));
   require(std::abs(rawValue(restored, "density") - 83.25F) < 0.011F,
           "Density restores exactly within parameter interval");
   require(std::abs(rawValue(restored, "drive") - 7.5F) < 0.011F,
@@ -303,8 +309,9 @@ void testStateRoundTrip() {
   auto duplicate = source.state().copyState();
   duplicate.setProperty("schema", 1, nullptr);
   duplicate.setProperty("product", "density-d01", nullptr);
-  duplicate.addChild(duplicate.getChildWithProperty("id", "density").createCopy(),
-                     -1, nullptr);
+  duplicate.addChild(
+      duplicate.getChildWithProperty("id", "density").createCopy(), -1,
+      nullptr);
   const auto duplicateBinary = binaryState(duplicate);
   restored.setStateInformation(duplicateBinary.getData(),
                                static_cast<int>(duplicateBinary.getSize()));
@@ -376,8 +383,8 @@ void testStateFuzz() {
         const std::size_t flips = 1U + fuzzNext(randomState) % 8U;
         for (std::size_t flip = 0; flip < flips; ++flip) {
           const std::size_t position = fuzzNext(randomState) % input.size();
-          const auto mask = static_cast<std::byte>(
-              1U << (fuzzNext(randomState) % 8U));
+          const auto mask =
+              static_cast<std::byte>(1U << (fuzzNext(randomState) % 8U));
           input[position] ^= mask;
         }
         break;
@@ -400,8 +407,8 @@ void testStateFuzz() {
   auto templateState = templateProcessor.state().copyState();
   templateState.setProperty("schema", 1, nullptr);
   templateState.setProperty("product", "density-d01", nullptr);
-  constexpr std::array<const char*, 5> invalidValues{
-      "nan", "inf", "-inf", "1e999", "not-a-number"};
+  constexpr std::array<const char*, 5> invalidValues{"nan", "inf", "-inf",
+                                                     "1e999", "not-a-number"};
   for (std::size_t index = 0; index < treeCases; ++index) {
     auto tree = templateState.createCopy();
     const int childIndex =
@@ -429,23 +436,22 @@ void testStateFuzz() {
         tree.removeChild(childIndex, nullptr);
         break;
       case 6:
-        child.setProperty("value",
-                          invalidValues[fuzzNext(randomState) %
-                                        invalidValues.size()],
-                          nullptr);
+        child.setProperty(
+            "value",
+            invalidValues[fuzzNext(randomState) % invalidValues.size()],
+            nullptr);
         break;
       case 7:
-        child.setProperty("value", fuzzNext(randomState) % 2U == 0
-                                       ? 1.0e30
-                                       : -1.0e30,
+        child.setProperty("value",
+                          fuzzNext(randomState) % 2U == 0 ? 1.0e30 : -1.0e30,
                           nullptr);
         break;
       case 8:
-        child.setProperty(
-            "value",
-            static_cast<double>(static_cast<std::int32_t>(fuzzNext(randomState))) /
-                1000.0,
-            nullptr);
+        child.setProperty("value",
+                          static_cast<double>(static_cast<std::int32_t>(
+                              fuzzNext(randomState))) /
+                              1000.0,
+                          nullptr);
         break;
       default: {
         juce::ValueTree wrongRoot{"wrong-root"};
@@ -508,10 +514,10 @@ void testLifecycleAndAudio() {
 }
 
 void testProcessingBoundary() {
-  constexpr std::array<double, 6> rates{44100.0, 48000.0, 88200.0,
-                                         96000.0, 176400.0, 192000.0};
-  constexpr std::array<int, 14> blocks{0,   1,   2,   7,   16,  32,  64,
-                                        127, 128, 256, 511, 512, 1024, 2048};
+  constexpr std::array<double, 6> rates{44100.0, 48000.0,  88200.0,
+                                        96000.0, 176400.0, 192000.0};
+  constexpr std::array<int, 14> blocks{0,   1,   2,   7,   16,  32,   64,
+                                       127, 128, 256, 511, 512, 1024, 2048};
   std::array<float, 2048> left{};
   std::array<float, 2048> right{};
   float* channels[]{left.data(), right.data()};
@@ -582,7 +588,8 @@ void testProcessingBoundary() {
       processAllocations += after - before;
       if (after != before && !allocationReported) {
         std::cerr << "first adapter allocation: cycle=" << cycle
-                  << " frames=" << frames << " count=" << after - before << '\n';
+                  << " frames=" << frames << " count=" << after - before
+                  << '\n';
         allocationReported = true;
       }
 
@@ -667,13 +674,14 @@ void testEditorContract() {
           "Protection is keyboard and accessibility reachable");
 
   constexpr std::array<const char*, 10> focusTitles{
-      "DENSITY", "DRIVE",  "CRUSH",  "ATTACK", "RELEASE",
+      "DENSITY", "DRIVE",  "CRUSH",        "ATTACK", "RELEASE",
       "BLEND",   "STEREO", "DETECTOR HPF", "OUTPUT", "PROTECTION"};
   for (std::size_t index = 0; index < focusTitles.size(); ++index) {
     auto* control = findTitled(*editor, focusTitles[index]);
-    require(control != nullptr && control->getWantsKeyboardFocus() &&
-                control->getExplicitFocusOrder() == static_cast<int>(index + 1U),
-            "Every essential control has deterministic keyboard focus order");
+    require(
+        control != nullptr && control->getWantsKeyboardFocus() &&
+            control->getExplicitFocusOrder() == static_cast<int>(index + 1U),
+        "Every essential control has deterministic keyboard focus order");
   }
 
   auto* output = dynamic_cast<juce::Slider*>(findTitled(*editor, "OUTPUT"));
@@ -745,8 +753,10 @@ int createEditorArtifacts(const char* directoryPath) {
   if (directory.createDirectory().failed()) {
     return 2;
   }
-  juce::FileOutputStream output{directory.getChildFile("density-d01-editor-2x.png")};
-  if (!output.openedOk() || !output.setPosition(0) || output.truncate().failed() ||
+  juce::FileOutputStream output{
+      directory.getChildFile("density-d01-editor-2x.png")};
+  if (!output.openedOk() || !output.setPosition(0) ||
+      output.truncate().failed() ||
       !juce::PNGImageFormat{}.writeImageToStream(snapshot, output)) {
     return 2;
   }

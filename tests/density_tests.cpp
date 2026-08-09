@@ -26,14 +26,16 @@ void* operator new(std::size_t size) {
   throw std::bad_alloc{};
 }
 
-void* operator new[](std::size_t size) {
-  return ::operator new(size);
-}
+void* operator new[](std::size_t size) { return ::operator new(size); }
 
 void operator delete(void* pointer) noexcept { std::free(pointer); }
 void operator delete[](void* pointer) noexcept { std::free(pointer); }
-void operator delete(void* pointer, std::size_t) noexcept { std::free(pointer); }
-void operator delete[](void* pointer, std::size_t) noexcept { std::free(pointer); }
+void operator delete(void* pointer, std::size_t) noexcept {
+  std::free(pointer);
+}
+void operator delete[](void* pointer, std::size_t) noexcept {
+  std::free(pointer);
+}
 
 namespace {
 
@@ -60,7 +62,8 @@ float rms(const std::vector<float>& values) {
   for (float value : values) {
     sum += static_cast<double>(value) * value;
   }
-  return static_cast<float>(std::sqrt(sum / static_cast<double>(values.size())));
+  return static_cast<float>(
+      std::sqrt(sum / static_cast<double>(values.size())));
 }
 
 void testStrictDecimalParsing() {
@@ -78,13 +81,17 @@ void testStrictDecimalParsing() {
 void testDensityMapping() {
   auto previous = aste::density::mapDensity(0.0F);
   for (int step = 1; step <= 100; ++step) {
-    const auto current = aste::density::mapDensity(static_cast<float>(step) / 100.0F);
-    require(current.thresholdDb <= previous.thresholdDb, "Density threshold is monotonic");
+    const auto current =
+        aste::density::mapDensity(static_cast<float>(step) / 100.0F);
+    require(current.thresholdDb <= previous.thresholdDb,
+            "Density threshold is monotonic");
     require(current.ratio >= previous.ratio, "Density ratio is monotonic");
     require(current.saturationDrive >= previous.saturationDrive,
             "Density saturation is monotonic");
-    require(current.releaseCurve >= previous.releaseCurve, "Density release is monotonic");
-    require(current.crushMakeupDb >= previous.crushMakeupDb, "Density makeup is monotonic");
+    require(current.releaseCurve >= previous.releaseCurve,
+            "Density release is monotonic");
+    require(current.crushMakeupDb >= previous.crushMakeupDb,
+            "Density makeup is monotonic");
     previous = current;
   }
 }
@@ -116,8 +123,7 @@ void testOversamplerRealtimeBoundary() {
             "4x oversampler output remains finite");
   }
   aste::density::CrushOversampler4xHalfBand halfBand;
-  for (const auto configuration :
-       std::array<std::array<std::size_t, 2>, 4>{
+  for (const auto configuration : std::array<std::array<std::size_t, 2>, 4>{
            {{{33U, 33U}}, {{65U, 33U}}, {{97U, 33U}}, {{129U, 33U}}}}) {
     halfBand.prepare(configuration[0], configuration[1]);
     std::array<float, 127> samples{};
@@ -127,9 +133,9 @@ void testOversamplerRealtimeBoundary() {
                         [](float sample) { return std::isfinite(sample); }),
             "Half-band oversampler output remains finite");
   }
-  for (const float beta : std::array<float, 7>{
-           -1.0F, 3.0F, 5.0F, 7.0F, 9.0F, 11.0F,
-           std::numeric_limits<float>::quiet_NaN()}) {
+  for (const float beta :
+       std::array<float, 7>{-1.0F, 3.0F, 5.0F, 7.0F, 9.0F, 11.0F,
+                            std::numeric_limits<float>::quiet_NaN()}) {
     halfBand.prepare(113U, 33U, beta);
     std::array<float, 16> samples{};
     samples[0] = 0.1F;
@@ -169,7 +175,8 @@ void testCrushHasNoSampleDelay() {
   std::array<float, 9> impulse{};
   impulse[3] = 0.1F;
   processor.process(impulse.data(), nullptr, impulse.size(), parameters);
-  require(impulse[3] != 0.0F, "Crush path emits the impulse at the input sample");
+  require(impulse[3] != 0.0F,
+          "Crush path emits the impulse at the input sample");
   for (std::size_t i = 0; i < impulse.size(); ++i) {
     if (i != 3) {
       require(impulse[i] == 0.0F, "Crush path adds no delayed impulse energy");
@@ -199,10 +206,10 @@ void testOversamplingPrototypeAlignment() {
 }
 
 void testRatesBlocksFiniteAndStereoStable() {
-  constexpr std::array<double, 6> rates{44100.0, 48000.0, 88200.0,
-                                         96000.0, 176400.0, 192000.0};
-  constexpr std::array<std::size_t, 14> blocks{1, 2, 7, 16, 32, 64, 127,
-                                                128, 256, 511, 512, 1024, 2048, 0};
+  constexpr std::array<double, 6> rates{44100.0, 48000.0,  88200.0,
+                                        96000.0, 176400.0, 192000.0};
+  constexpr std::array<std::size_t, 14> blocks{
+      1, 2, 7, 16, 32, 64, 127, 128, 256, 511, 512, 1024, 2048, 0};
   std::mt19937 generator{0xD01U};
   std::uniform_real_distribution<float> sample{-8.0F, 8.0F};
   aste::density::Parameters parameters;
@@ -223,8 +230,10 @@ void testRatesBlocksFiniteAndStereoStable() {
       }
       auto right = left;
       processor.process(left.data(), right.data(), frames, parameters);
-      require(allFinite(left) && allFinite(right), "All tested rate/block outputs are finite");
-      require(left == right, "Linked processing preserves identical stereo channels");
+      require(allFinite(left) && allFinite(right),
+              "All tested rate/block outputs are finite");
+      require(left == right,
+              "Linked processing preserves identical stereo channels");
     }
   }
 }
@@ -265,13 +274,15 @@ void testStereoLinkEndpoints() {
     parameters.protection = false;
     aste::density::Processor processor;
     processor.prepare(48000.0, parameters);
-    processor.process(strong[mode].data(), weak[mode].data(), frames, parameters);
+    processor.process(strong[mode].data(), weak[mode].data(), frames,
+                      parameters);
   }
 
   require(strong[0] == strong[1] && strong[1] == strong[2],
           "Stereo linking does not change the dominant channel");
   require(rms(weak[0]) > rms(weak[1]) && rms(weak[1]) > rms(weak[2]),
-          "Stereo linking continuously increases gain reduction on the weak channel");
+          "Stereo linking continuously increases gain reduction on the weak "
+          "channel");
 }
 
 void testNoProcessAllocation() {

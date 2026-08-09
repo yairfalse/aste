@@ -30,6 +30,12 @@ Sanitizers are enabled with `-DASTE_SANITIZERS=ON` for non-real-time builds.
 CTest also checks the required-document set, local Markdown links, and configured
 build provenance. CI records the same results as JUnit XML.
 
+CI checks every tracked C++ source against the repository `.clang-format` file.
+Apple Clang's path-sensitive static analyzer runs separately over the
+framework-independent production Density DSP with warnings treated as errors.
+The JUCE adapter retains strict compiler warnings and the independent runtime,
+fuzz, sanitizer, pluginval, and Steinberg validator boundaries described below.
+
 The VST3 adapter adds deterministic state round-trip, malformed-state,
 mono/stereo layout, latency, finite audio, meter, exact-entry, reset,
 accessibility exposure, explicit ten-control keyboard focus order,

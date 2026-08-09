@@ -28,8 +28,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Repository policy
         run: python3 tools/check_docs.py .
+      - name: Formatting
+        run: xcrun clang-format --dry-run --Werror $(git ls-files '*.cpp' '*.hpp')
       - name: Configure
         run: cmake -S . -B ci-core -DCMAKE_BUILD_TYPE=Release
+      - name: Static analysis
+        run: cmake --build ci-core --target density_static_analysis
       - name: Build
         run: cmake --build ci-core --parallel 3
       - name: Test

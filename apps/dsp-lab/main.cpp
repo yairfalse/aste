@@ -72,44 +72,47 @@ struct DetectorResearch {
     meanSquare = instantaneous * instantaneous +
                  rmsCoefficient * (meanSquare - instantaneous * instantaneous);
     constexpr float peakInfluence = 0.15F;
-    const float detector = std::sqrt((1.0F - peakInfluence) * 2.0F * meanSquare +
-                                     peakInfluence * instantaneous * instantaneous);
+    const float detector =
+        std::sqrt((1.0F - peakInfluence) * 2.0F * meanSquare +
+                  peakInfluence * instantaneous * instantaneous);
     if (detector > rmsEnvelope) {
-      rmsEnvelope =
-          detector + attackCoefficient * (rmsEnvelope - detector);
+      rmsEnvelope = detector + attackCoefficient * (rmsEnvelope - detector);
     } else {
       const float programme = 1.0F + (mapping.releaseCurve - 1.0F) *
                                          std::clamp(rmsEnvelope, 0.0F, 1.0F);
       const float releaseCoefficient =
           coefficient(parameters.releaseMs * programme * 0.001, sampleRate);
-      rmsEnvelope =
-          detector + releaseCoefficient * (rmsEnvelope - detector);
+      rmsEnvelope = detector + releaseCoefficient * (rmsEnvelope - detector);
     }
 
-    dualFast = instantaneous > dualFast
-                   ? instantaneous + attackCoefficient * (dualFast - instantaneous)
-                   : instantaneous +
-                         fastReleaseCoefficient * (dualFast - instantaneous);
-    dualSlow = instantaneous > dualSlow
-                   ? instantaneous +
-                         slowAttackCoefficient * (dualSlow - instantaneous)
-                   : instantaneous +
-                         slowReleaseCoefficient * (dualSlow - instantaneous);
+    dualFast =
+        instantaneous > dualFast
+            ? instantaneous + attackCoefficient * (dualFast - instantaneous)
+            : instantaneous +
+                  fastReleaseCoefficient * (dualFast - instantaneous);
+    dualSlow =
+        instantaneous > dualSlow
+            ? instantaneous + slowAttackCoefficient * (dualSlow - instantaneous)
+            : instantaneous +
+                  slowReleaseCoefficient * (dualSlow - instantaneous);
 
-    programmeMemory = instantaneous > programmeMemory
-                          ? instantaneous + programmeAttackCoefficient *
-                                                (programmeMemory - instantaneous)
-                          : instantaneous + programmeReleaseCoefficient *
-                                                (programmeMemory - instantaneous);
+    programmeMemory =
+        instantaneous > programmeMemory
+            ? instantaneous +
+                  programmeAttackCoefficient * (programmeMemory - instantaneous)
+            : instantaneous + programmeReleaseCoefficient *
+                                  (programmeMemory - instantaneous);
     if (instantaneous > programmeEnvelope) {
-      programmeEnvelope = instantaneous +
-                          attackCoefficient * (programmeEnvelope - instantaneous);
+      programmeEnvelope =
+          instantaneous +
+          attackCoefficient * (programmeEnvelope - instantaneous);
     } else {
       const float releaseSeconds =
           0.060F + 0.540F * std::clamp(programmeMemory * 2.0F, 0.0F, 1.0F);
       const float releaseCoefficient = coefficient(releaseSeconds, sampleRate);
-      programmeEnvelope = instantaneous +
-                          releaseCoefficient * (programmeEnvelope - instantaneous);
+      programmeEnvelope =
+          instantaneous +
+          releaseCoefficient * (programmeEnvelope - instantaneous);
     }
     const float hybridBodyReduction =
         reduction(std::sqrt(2.0F * meanSquare), mapping, parameters.crush);
@@ -129,17 +132,18 @@ struct DetectorResearch {
       const float feedbackDetector =
           instantaneous * feedbackCalibration * solvedGain;
       if (feedbackDetector > feedbackEnvelope) {
-        solvedEnvelope = feedbackDetector +
-                         attackCoefficient *
-                             (feedbackEnvelope - feedbackDetector);
+        solvedEnvelope =
+            feedbackDetector +
+            attackCoefficient * (feedbackEnvelope - feedbackDetector);
       } else {
-        const float programme = 1.0F + (mapping.releaseCurve - 1.0F) *
-                                           std::clamp(feedbackEnvelope, 0.0F, 1.0F);
+        const float programme =
+            1.0F + (mapping.releaseCurve - 1.0F) *
+                       std::clamp(feedbackEnvelope, 0.0F, 1.0F);
         const float releaseCoefficient =
             coefficient(parameters.releaseMs * programme * 0.001, sampleRate);
-        solvedEnvelope = feedbackDetector +
-                         releaseCoefficient *
-                             (feedbackEnvelope - feedbackDetector);
+        solvedEnvelope =
+            feedbackDetector +
+            releaseCoefficient * (feedbackEnvelope - feedbackDetector);
       }
       feedbackReduction = reduction(solvedEnvelope, mapping, parameters.crush);
       const float targetGain =
@@ -223,9 +227,9 @@ int detectorComparison(const std::string& outputPath) {
   std::size_t programmeReleaseSample = totalFrames;
   std::size_t hybridReleaseSample = totalFrames;
   std::size_t feedbackReleaseSample = totalFrames;
-  std::array<std::size_t, 6> sustainReleaseSamples{
-      totalFrames, totalFrames, totalFrames,
-      totalFrames, totalFrames, totalFrames};
+  std::array<std::size_t, 6> sustainReleaseSamples{totalFrames, totalFrames,
+                                                   totalFrames, totalFrames,
+                                                   totalFrames, totalFrames};
   std::array<float, 6> beforeImpulse{};
   std::array<float, 6> beforeBurst{};
   float maxFeedbackResidual{};
@@ -238,13 +242,13 @@ int detectorComparison(const std::string& outputPath) {
     }
     float input{};
     if (i >= sustainStart && i < sustainEnd) {
-      input = 0.5F * static_cast<float>(
-                         std::sin(2.0 * kPi * 997.0 * i / sampleRate));
+      input = 0.5F *
+              static_cast<float>(std::sin(2.0 * kPi * 997.0 * i / sampleRate));
     } else if (i == impulseSample) {
       input = 1.0F;
     } else if (i >= burstStart && i < burstEnd) {
-      input = 0.8F * static_cast<float>(
-                         std::sin(2.0 * kPi * 997.0 * i / sampleRate));
+      input = 0.8F *
+              static_cast<float>(std::sin(2.0 * kPi * 997.0 * i / sampleRate));
     }
 
     const auto [currentReduction, candidateReduction, dualReduction,
@@ -252,21 +256,22 @@ int detectorComparison(const std::string& outputPath) {
         detectors.process(input);
     maxFeedbackResidual =
         std::max(maxFeedbackResidual, detectors.maxFeedbackResidual);
-    const std::array<float, 6> reductions{
-        currentReduction, candidateReduction, dualReduction,
-        programmeReduction, hybridReduction, feedbackReduction};
+    const std::array<float, 6> reductions{currentReduction, candidateReduction,
+                                          dualReduction,    programmeReduction,
+                                          hybridReduction,  feedbackReduction};
     output << i << ',' << input << ',' << currentReduction << ','
            << candidateReduction << ',' << dualReduction << ','
            << programmeReduction << ',' << hybridReduction << ','
            << feedbackReduction << '\n';
 
     if (i + 1 == impulseSample) {
-      beforeImpulse = {currentReduction, candidateReduction, dualReduction,
-                       programmeReduction, hybridReduction, feedbackReduction};
+      beforeImpulse = {currentReduction, candidateReduction,
+                       dualReduction,    programmeReduction,
+                       hybridReduction,  feedbackReduction};
     }
     if (i + 1 == burstStart) {
-      beforeBurst = {currentReduction, candidateReduction, dualReduction,
-                     programmeReduction, hybridReduction, feedbackReduction};
+      beforeBurst = {currentReduction,   candidateReduction, dualReduction,
+                     programmeReduction, hybridReduction,    feedbackReduction};
     }
     if (i >= sustainEnd && i < impulseSample) {
       for (std::size_t detector = 0; detector < reductions.size(); ++detector) {
@@ -290,8 +295,7 @@ int detectorComparison(const std::string& outputPath) {
       currentImpulseMax = std::max(currentImpulseMax, currentReduction);
       candidateImpulseMax = std::max(candidateImpulseMax, candidateReduction);
       dualImpulseMax = std::max(dualImpulseMax, dualReduction);
-      programmeImpulseMax =
-          std::max(programmeImpulseMax, programmeReduction);
+      programmeImpulseMax = std::max(programmeImpulseMax, programmeReduction);
       hybridImpulseMax = std::max(hybridImpulseMax, hybridReduction);
       feedbackImpulseMax = std::max(feedbackImpulseMax, feedbackReduction);
     }
@@ -311,7 +315,8 @@ int detectorComparison(const std::string& outputPath) {
         candidateReduction < 1.0F) {
       candidateReleaseSample = i;
     }
-    if (i >= burstEnd && dualReleaseSample == totalFrames && dualReduction < 1.0F) {
+    if (i >= burstEnd && dualReleaseSample == totalFrames &&
+        dualReduction < 1.0F) {
       dualReleaseSample = i;
     }
     if (i >= burstEnd && programmeReleaseSample == totalFrames &&
@@ -340,17 +345,21 @@ int detectorComparison(const std::string& outputPath) {
   const double hybridSustain = hybridSustainSum / sustainCount;
   const double feedbackSustain = feedbackSustainSum / sustainCount;
   const double currentReleaseMs =
-      1000.0 * static_cast<double>(currentReleaseSample - burstEnd) / sampleRate;
+      1000.0 * static_cast<double>(currentReleaseSample - burstEnd) /
+      sampleRate;
   const double candidateReleaseMs =
-      1000.0 * static_cast<double>(candidateReleaseSample - burstEnd) / sampleRate;
+      1000.0 * static_cast<double>(candidateReleaseSample - burstEnd) /
+      sampleRate;
   const double dualReleaseMs =
       1000.0 * static_cast<double>(dualReleaseSample - burstEnd) / sampleRate;
   const double programmeReleaseMs =
-      1000.0 * static_cast<double>(programmeReleaseSample - burstEnd) / sampleRate;
+      1000.0 * static_cast<double>(programmeReleaseSample - burstEnd) /
+      sampleRate;
   const double hybridReleaseMs =
       1000.0 * static_cast<double>(hybridReleaseSample - burstEnd) / sampleRate;
   const double feedbackReleaseMs =
-      1000.0 * static_cast<double>(feedbackReleaseSample - burstEnd) / sampleRate;
+      1000.0 * static_cast<double>(feedbackReleaseSample - burstEnd) /
+      sampleRate;
   const std::array<double, 6> sustainReleaseMs{
       1000.0 * static_cast<double>(sustainReleaseSamples[0] - sustainEnd) /
           sampleRate,
@@ -391,8 +400,10 @@ int detectorComparison(const std::string& outputPath) {
             << ",\"feedback_release_to_1db_ms\":" << feedbackReleaseMs
             << ",\"current_sustain_release_to_1db_ms\":" << sustainReleaseMs[0]
             << ",\"rms_peak_sustain_release_to_1db_ms\":" << sustainReleaseMs[1]
-            << ",\"dual_time_sustain_release_to_1db_ms\":" << sustainReleaseMs[2]
-            << ",\"programme_sustain_release_to_1db_ms\":" << sustainReleaseMs[3]
+            << ",\"dual_time_sustain_release_to_1db_ms\":"
+            << sustainReleaseMs[2]
+            << ",\"programme_sustain_release_to_1db_ms\":"
+            << sustainReleaseMs[3]
             << ",\"hybrid_sustain_release_to_1db_ms\":" << sustainReleaseMs[4]
             << ",\"feedback_sustain_release_to_1db_ms\":" << sustainReleaseMs[5]
             << ",\"max_pre_impulse_gr_db\":"
@@ -402,52 +413,47 @@ int detectorComparison(const std::string& outputPath) {
             << ",\"max_feedback_gain_residual\":" << maxFeedbackResidual
             << "}\n";
 
-  const bool valid = std::isfinite(currentSustain) &&
-                     std::isfinite(candidateSustain) && currentSustain > 0.0 &&
-                     candidateSustain > 0.0 &&
-                     std::abs(currentSustain - candidateSustain) < 0.1 &&
-                     currentImpulseMax > candidateImpulseMax &&
-                     std::isfinite(dualSustain) && dualSustain > 0.0 &&
-                     std::isfinite(programmeSustain) && programmeSustain > 0.0 &&
-                     std::isfinite(hybridSustain) && hybridSustain > 0.0 &&
-                     std::isfinite(feedbackSustain) && feedbackSustain > 0.0 &&
-                     std::abs(currentSustain - dualSustain) < 0.5 &&
-                     std::abs(currentImpulseMax - dualImpulseMax) < 0.001 &&
-                     std::abs(currentBurstMax - dualBurstMax) < 0.1 &&
-                     std::abs(currentSustain - programmeSustain) < 0.1 &&
-                     std::abs(currentImpulseMax - programmeImpulseMax) < 0.001 &&
-                     std::abs(currentBurstMax - programmeBurstMax) < 0.1 &&
-                     std::abs(currentSustain - hybridSustain) < 0.1 &&
-                     hybridImpulseMax > candidateImpulseMax &&
-                     hybridImpulseMax < currentImpulseMax &&
-                     hybridBurstMax > candidateBurstMax &&
-                     hybridBurstMax < currentBurstMax &&
-                     std::abs(currentSustain - feedbackSustain) < 0.01 &&
-                     feedbackImpulseMax > currentImpulseMax &&
-                     feedbackBurstMax < candidateBurstMax &&
-                     currentReleaseSample < totalFrames &&
-                     candidateReleaseSample < totalFrames &&
-                     dualReleaseSample < totalFrames &&
-                     programmeReleaseSample < totalFrames &&
-                     hybridReleaseSample < totalFrames &&
-                     feedbackReleaseSample < totalFrames &&
-                     *std::max_element(sustainReleaseSamples.begin(),
-                                       sustainReleaseSamples.end()) < totalFrames &&
-                     dualReleaseSample < currentReleaseSample &&
-                     sustainReleaseSamples[2] > sustainReleaseSamples[0] &&
-                     programmeReleaseSample < currentReleaseSample &&
-                     sustainReleaseSamples[3] - sustainEnd >
-                         programmeReleaseSample - burstEnd &&
-                     hybridReleaseSample < programmeReleaseSample &&
-                     sustainReleaseSamples[4] < sustainReleaseSamples[0] &&
-                     feedbackReleaseSample < currentReleaseSample &&
-                     sustainReleaseSamples[5] >= sustainReleaseSamples[0] &&
-                     sustainReleaseSamples[5] - sustainReleaseSamples[0] < 10 &&
-                     maxFeedbackResidual < 0.001F &&
-                     *std::max_element(beforeImpulse.begin(), beforeImpulse.end()) <
-                         0.01F &&
-                     *std::max_element(beforeBurst.begin(), beforeBurst.end()) <
-                         0.01F;
+  const bool valid =
+      std::isfinite(currentSustain) && std::isfinite(candidateSustain) &&
+      currentSustain > 0.0 && candidateSustain > 0.0 &&
+      std::abs(currentSustain - candidateSustain) < 0.1 &&
+      currentImpulseMax > candidateImpulseMax && std::isfinite(dualSustain) &&
+      dualSustain > 0.0 && std::isfinite(programmeSustain) &&
+      programmeSustain > 0.0 && std::isfinite(hybridSustain) &&
+      hybridSustain > 0.0 && std::isfinite(feedbackSustain) &&
+      feedbackSustain > 0.0 && std::abs(currentSustain - dualSustain) < 0.5 &&
+      std::abs(currentImpulseMax - dualImpulseMax) < 0.001 &&
+      std::abs(currentBurstMax - dualBurstMax) < 0.1 &&
+      std::abs(currentSustain - programmeSustain) < 0.1 &&
+      std::abs(currentImpulseMax - programmeImpulseMax) < 0.001 &&
+      std::abs(currentBurstMax - programmeBurstMax) < 0.1 &&
+      std::abs(currentSustain - hybridSustain) < 0.1 &&
+      hybridImpulseMax > candidateImpulseMax &&
+      hybridImpulseMax < currentImpulseMax &&
+      hybridBurstMax > candidateBurstMax && hybridBurstMax < currentBurstMax &&
+      std::abs(currentSustain - feedbackSustain) < 0.01 &&
+      feedbackImpulseMax > currentImpulseMax &&
+      feedbackBurstMax < candidateBurstMax &&
+      currentReleaseSample < totalFrames &&
+      candidateReleaseSample < totalFrames && dualReleaseSample < totalFrames &&
+      programmeReleaseSample < totalFrames &&
+      hybridReleaseSample < totalFrames &&
+      feedbackReleaseSample < totalFrames &&
+      *std::max_element(sustainReleaseSamples.begin(),
+                        sustainReleaseSamples.end()) < totalFrames &&
+      dualReleaseSample < currentReleaseSample &&
+      sustainReleaseSamples[2] > sustainReleaseSamples[0] &&
+      programmeReleaseSample < currentReleaseSample &&
+      sustainReleaseSamples[3] - sustainEnd >
+          programmeReleaseSample - burstEnd &&
+      hybridReleaseSample < programmeReleaseSample &&
+      sustainReleaseSamples[4] < sustainReleaseSamples[0] &&
+      feedbackReleaseSample < currentReleaseSample &&
+      sustainReleaseSamples[5] >= sustainReleaseSamples[0] &&
+      sustainReleaseSamples[5] - sustainReleaseSamples[0] < 10 &&
+      maxFeedbackResidual < 0.001F &&
+      *std::max_element(beforeImpulse.begin(), beforeImpulse.end()) < 0.01F &&
+      *std::max_element(beforeBurst.begin(), beforeBurst.end()) < 0.01F;
   return valid ? 0 : 2;
 }
 
@@ -481,7 +487,8 @@ void writeU32(std::ofstream& output, std::uint32_t value) {
 }
 
 bool writeFloatWave(const std::filesystem::path& path,
-                    const std::vector<float>& signal, std::uint32_t sampleRate) {
+                    const std::vector<float>& signal,
+                    std::uint32_t sampleRate) {
   if (signal.size() >
       (std::numeric_limits<std::uint32_t>::max() - 48U) / sizeof(float)) {
     return false;
@@ -490,7 +497,8 @@ bool writeFloatWave(const std::filesystem::path& path,
   if (!output) {
     return false;
   }
-  const auto dataSize = static_cast<std::uint32_t>(signal.size() * sizeof(float));
+  const auto dataSize =
+      static_cast<std::uint32_t>(signal.size() * sizeof(float));
   output.write("RIFF", 4);
   writeU32(output, 48U + dataSize);
   output.write("WAVEfmt ", 8);
@@ -519,9 +527,8 @@ bool writeStereoFloatWave(const std::filesystem::path& path,
                           const std::vector<float>& right,
                           std::uint32_t sampleRate) {
   if (left.size() != right.size() ||
-      left.size() >
-          (std::numeric_limits<std::uint32_t>::max() - 48U) /
-              (2U * sizeof(float))) {
+      left.size() > (std::numeric_limits<std::uint32_t>::max() - 48U) /
+                        (2U * sizeof(float))) {
     return false;
   }
   std::ofstream output(path, std::ios::binary);
@@ -566,26 +573,27 @@ std::vector<float> makeFixture(std::string_view name) {
       const std::size_t phase = i % 12000;
       if (phase < 2400) {
         const double hitTime = static_cast<double>(phase) / sampleRate;
-        const float body = 0.75F * static_cast<float>(
-                                       std::exp(-25.0 * hitTime) *
+        const float body =
+            0.75F * static_cast<float>(std::exp(-25.0 * hitTime) *
                                        std::sin(2.0 * kPi * 68.0 * hitTime));
         const float click = phase < 24 ? 0.7F * (1.0F - phase / 24.0F) : 0.0F;
         signal[i] = std::clamp(body + click, -1.0F, 1.0F);
       }
     } else if (name == "bass") {
       const double movement = 0.8 + 0.2 * std::sin(2.0 * kPi * 0.5 * time);
-      signal[i] = static_cast<float>(movement *
-                                     (0.55 * std::sin(2.0 * kPi * 43.0 * time) +
-                                      0.12 * std::sin(2.0 * kPi * 86.0 * time)));
+      signal[i] = static_cast<float>(
+          movement * (0.55 * std::sin(2.0 * kPi * 43.0 * time) +
+                      0.12 * std::sin(2.0 * kPi * 86.0 * time)));
     } else if (name == "dense") {
       noiseState = noiseState * 1664525U + 1013904223U;
       const float noise =
           static_cast<float>(noiseState >> 8U) / 8388607.5F - 1.0F;
-      signal[i] = 0.24F * static_cast<float>(std::sin(2.0 * kPi * 110.0 * time)) +
-                  0.20F * static_cast<float>(std::sin(2.0 * kPi * 277.0 * time)) +
-                  0.16F * static_cast<float>(std::sin(2.0 * kPi * 997.0 * time)) +
-                  0.12F * static_cast<float>(std::sin(2.0 * kPi * 4003.0 * time)) +
-                  0.08F * noise;
+      signal[i] =
+          0.24F * static_cast<float>(std::sin(2.0 * kPi * 110.0 * time)) +
+          0.20F * static_cast<float>(std::sin(2.0 * kPi * 277.0 * time)) +
+          0.16F * static_cast<float>(std::sin(2.0 * kPi * 997.0 * time)) +
+          0.12F * static_cast<float>(std::sin(2.0 * kPi * 4003.0 * time)) +
+          0.08F * noise;
     } else {
       const double drift = 0.75 + 0.25 * std::sin(2.0 * kPi * 0.11 * time);
       signal[i] = static_cast<float>(
@@ -594,9 +602,10 @@ std::vector<float> makeFixture(std::string_view name) {
                    0.09 * std::sin(2.0 * kPi * 220.0 * time)));
       const std::size_t phase = i % 48000;
       if (phase < 4800) {
-        signal[i] += 0.18F * static_cast<float>(
-                                 std::exp(-8.0 * phase / sampleRate) *
-                                 std::sin(2.0 * kPi * 880.0 * phase / sampleRate));
+        signal[i] +=
+            0.18F * static_cast<float>(
+                        std::exp(-8.0 * phase / sampleRate) *
+                        std::sin(2.0 * kPi * 880.0 * phase / sampleRate));
       }
     }
   }
@@ -745,8 +754,7 @@ bool parseGoldenLine(std::string_view line, GoldenMetrics& metrics) {
   std::uint64_t latency{};
   metrics.fixture = fields[1];
   if (!parseInteger(fields[2], sampleRate) ||
-      !parseInteger(fields[3], frames) ||
-      !parseInteger(fields[4], blockSize) ||
+      !parseInteger(fields[3], frames) || !parseInteger(fields[4], blockSize) ||
       !aste::density::parseFiniteDecimal(fields[5], metrics.rmsDb) ||
       !aste::density::parseFiniteDecimal(fields[6], metrics.peakDb) ||
       !aste::density::parseFiniteDecimal(fields[7], metrics.crestDb) ||
@@ -812,8 +820,7 @@ bool compareGolden(const std::filesystem::path& baselinePath,
   }
   std::cout << "{\"golden_fixtures\":" << actual.size()
             << ",\"fingerprints_changed\":" << fingerprintsChanged
-            << ",\"within_tolerance\":" << (valid ? "true" : "false")
-            << "}\n";
+            << ",\"within_tolerance\":" << (valid ? "true" : "false") << "}\n";
   return valid;
 }
 
@@ -835,8 +842,8 @@ int productionGolden(const std::filesystem::path& directory,
 
   std::vector<GoldenMetrics> results;
   bool valid = true;
-  for (std::string_view fixture :
-       std::array<std::string_view, 4>{"transient", "bass", "dense", "ambient"}) {
+  for (std::string_view fixture : std::array<std::string_view, 4>{
+           "transient", "bass", "dense", "ambient"}) {
     auto left = makeFixture(fixture);
     std::vector<float> right(left.size());
     const std::size_t shift = fixture == "transient" ? 23U
@@ -884,11 +891,11 @@ int productionGolden(const std::filesystem::path& directory,
             std::isfinite(metrics.rmsDb) && std::isfinite(metrics.peakDb) &&
             std::isfinite(metrics.correlation);
     manifest << "1," << metrics.fixture << ',' << metrics.sampleRate << ','
-             << metrics.frames << ',' << metrics.blockSize << ',' << metrics.rmsDb
-             << ',' << metrics.peakDb << ',' << metrics.crestDb << ','
-             << metrics.gainChangeDb << ',' << metrics.correlation << ','
-             << metrics.maximumReductionDb << ',' << metrics.latencySamples << ','
-             << std::hex << std::setw(16) << std::setfill('0')
+             << metrics.frames << ',' << metrics.blockSize << ','
+             << metrics.rmsDb << ',' << metrics.peakDb << ',' << metrics.crestDb
+             << ',' << metrics.gainChangeDb << ',' << metrics.correlation << ','
+             << metrics.maximumReductionDb << ',' << metrics.latencySamples
+             << ',' << std::hex << std::setw(16) << std::setfill('0')
              << metrics.fingerprint << std::dec << std::setfill(' ') << '\n';
     results.push_back(metrics);
   }
@@ -903,17 +910,16 @@ int productionGolden(const std::filesystem::path& directory,
 std::array<std::vector<float>, 2> makeConsistencyFixture(
     std::uint32_t sampleRate) {
   const std::size_t frames = 2U * sampleRate;
-  std::array<std::vector<float>, 2> channels{
-      std::vector<float>(frames), std::vector<float>(frames)};
+  std::array<std::vector<float>, 2> channels{std::vector<float>(frames),
+                                             std::vector<float>(frames)};
   auto signal = [](double time) {
     if (time < 0.0) {
       return 0.0F;
     }
     const double movement = 0.82 + 0.18 * std::sin(2.0 * kPi * 0.7 * time);
-    double sample = movement *
-                    (0.38 * std::sin(2.0 * kPi * 43.0 * time) +
-                     0.24 * std::sin(2.0 * kPi * 277.0 * time) +
-                     0.11 * std::sin(2.0 * kPi * 4003.0 * time));
+    double sample = movement * (0.38 * std::sin(2.0 * kPi * 43.0 * time) +
+                                0.24 * std::sin(2.0 * kPi * 277.0 * time) +
+                                0.11 * std::sin(2.0 * kPi * 4003.0 * time));
     const double hitTime = std::fmod(time, 0.25);
     if (hitTime < 0.05) {
       sample += 0.55 * std::exp(-35.0 * hitTime) *
@@ -935,19 +941,19 @@ std::array<std::vector<float>, 2> makeConsistencyFixture(
 }
 
 int productionConsistency(const std::filesystem::path& outputPath) {
-  constexpr std::array<std::uint32_t, 6> sampleRates{
-      44100U, 48000U, 88200U, 96000U, 176400U, 192000U};
+  constexpr std::array<std::uint32_t, 6> sampleRates{44100U, 48000U,  88200U,
+                                                     96000U, 176400U, 192000U};
   constexpr std::array<std::size_t, 1> referenceSchedule{127U};
   constexpr std::array<std::size_t, 13> variableSchedule{
-      1U, 2U, 7U, 16U, 32U, 64U, 127U,
-      128U, 256U, 511U, 512U, 1024U, 2048U};
+      1U, 2U, 7U, 16U, 32U, 64U, 127U, 128U, 256U, 511U, 512U, 1024U, 2048U};
   std::ofstream output{outputPath};
   if (!output) {
     std::cerr << "cannot create consistency report: " << outputPath << '\n';
     return 1;
   }
   output << "sample_rate,frames,schedule_blocks,max_block_delta,rms_gain_db,"
-            "peak_dbfs,crest_db,correlation,max_gain_reduction_db,latency_samples\n"
+            "peak_dbfs,crest_db,correlation,max_gain_reduction_db,latency_"
+            "samples\n"
          << std::fixed << std::setprecision(9);
 
   const auto parameters = productionParameters();
@@ -972,24 +978,24 @@ int productionConsistency(const std::filesystem::path& outputPath) {
     aste::density::Processor variableProcessor;
     referenceProcessor.prepare(sampleRate, parameters);
     variableProcessor.prepare(sampleRate, parameters);
-    const double reduction = processInBlocks(
-        referenceProcessor, reference[0], reference[1], referenceSchedule,
-        parameters);
+    const double reduction =
+        processInBlocks(referenceProcessor, reference[0], reference[1],
+                        referenceSchedule, parameters);
     processInBlocks(variableProcessor, variable[0], variable[1],
                     variableSchedule, parameters);
 
     double blockDelta{};
     for (std::size_t sample = 0; sample < reference[0].size(); ++sample) {
-      blockDelta =
-          std::max({blockDelta,
-                    static_cast<double>(
-                        std::abs(reference[0][sample] - variable[0][sample])),
-                    static_cast<double>(
-                        std::abs(reference[1][sample] - variable[1][sample]))});
+      blockDelta = std::max({blockDelta,
+                             static_cast<double>(std::abs(reference[0][sample] -
+                                                          variable[0][sample])),
+                             static_cast<double>(std::abs(
+                                 reference[1][sample] - variable[1][sample]))});
     }
     const double rms = stereoRms(reference[0], reference[1]);
     const double rmsDb = 20.0 * std::log10(rms);
-    const double peakDb = 20.0 * std::log10(stereoPeak(reference[0], reference[1]));
+    const double peakDb =
+        20.0 * std::log10(stereoPeak(reference[0], reference[1]));
     const double gainDb = 20.0 * std::log10(rms / inputRms);
     const double crestDb = peakDb - rmsDb;
     const double correlation = stereoCorrelation(reference[0], reference[1]);
@@ -1009,9 +1015,9 @@ int productionConsistency(const std::filesystem::path& outputPath) {
             std::isfinite(reduction) && blockDelta == 0.0 &&
             referenceProcessor.latencySamples() == 0U;
     output << sampleRate << ',' << reference[0].size() << ','
-           << variableSchedule.size() << ',' << blockDelta << ',' << gainDb << ','
-           << peakDb << ',' << crestDb << ',' << correlation << ',' << reduction
-           << ',' << referenceProcessor.latencySamples() << '\n';
+           << variableSchedule.size() << ',' << blockDelta << ',' << gainDb
+           << ',' << peakDb << ',' << crestDb << ',' << correlation << ','
+           << reduction << ',' << referenceProcessor.latencySamples() << '\n';
   }
 
   const double gainRange = maximumGain - minimumGain;
@@ -1037,8 +1043,8 @@ int productionConsistency(const std::filesystem::path& outputPath) {
 
 std::array<double, 2> coherentBin(const std::vector<float>& signal,
                                   std::size_t bin) {
-  const double step = 2.0 * kPi * static_cast<double>(bin) /
-                      static_cast<double>(signal.size());
+  const double step =
+      2.0 * kPi * static_cast<double>(bin) / static_cast<double>(signal.size());
   const double rotationReal = std::cos(step);
   const double rotationImaginary = std::sin(step);
   double oscillatorReal = 1.0;
@@ -1048,17 +1054,16 @@ std::array<double, 2> coherentBin(const std::vector<float>& signal,
   for (float sample : signal) {
     real += sample * oscillatorReal;
     imaginary -= sample * oscillatorImaginary;
-    const double nextReal = oscillatorReal * rotationReal -
-                            oscillatorImaginary * rotationImaginary;
-    oscillatorImaginary = oscillatorReal * rotationImaginary +
-                           oscillatorImaginary * rotationReal;
+    const double nextReal =
+        oscillatorReal * rotationReal - oscillatorImaginary * rotationImaginary;
+    oscillatorImaginary =
+        oscillatorReal * rotationImaginary + oscillatorImaginary * rotationReal;
     oscillatorReal = nextReal;
   }
   return {real, imaginary};
 }
 
-double coherentBinAmplitude(const std::vector<float>& signal,
-                            std::size_t bin) {
+double coherentBinAmplitude(const std::vector<float>& signal, std::size_t bin) {
   const auto value = coherentBin(signal, bin);
   return 2.0 * std::hypot(value[0], value[1]) /
          static_cast<double>(signal.size());
@@ -1100,10 +1105,9 @@ std::vector<double> referenceLowPass(std::size_t factor) {
   double sum{};
   for (std::size_t tap = 0; tap < taps; ++tap) {
     const double offset = static_cast<double>(tap) - centre;
-    const double sinc = offset == 0.0
-                            ? 2.0 * cutoff
-                            : std::sin(2.0 * kPi * cutoff * offset) /
-                                  (kPi * offset);
+    const double sinc =
+        offset == 0.0 ? 2.0 * cutoff
+                      : std::sin(2.0 * kPi * cutoff * offset) / (kPi * offset);
     const double phase = 2.0 * kPi * tap / static_cast<double>(taps - 1U);
     const double blackman =
         0.42 - 0.5 * std::cos(phase) + 0.08 * std::cos(2.0 * phase);
@@ -1134,9 +1138,9 @@ double circularFirSample(const std::vector<float>& signal,
   return output;
 }
 
-std::vector<float> interpolateReference(const std::vector<float>& input,
-                                        std::size_t factor,
-                                        const std::vector<double>& coefficients) {
+std::vector<float> interpolateReference(
+    const std::vector<float>& input, std::size_t factor,
+    const std::vector<double>& coefficients) {
   std::vector<float> zeroStuffed(input.size() * factor);
   for (std::size_t sample = 0; sample < input.size(); ++sample) {
     zeroStuffed[sample * factor] = input[sample] * static_cast<float>(factor);
@@ -1161,8 +1165,8 @@ std::vector<float> decimateReference(const std::vector<float>& input,
 }
 
 int nonlinearAliasReport(const std::filesystem::path& outputPath) {
-  constexpr std::array<std::uint32_t, 6> sampleRates{
-      44100U, 48000U, 88200U, 96000U, 176400U, 192000U};
+  constexpr std::array<std::uint32_t, 6> sampleRates{44100U, 48000U,  88200U,
+                                                     96000U, 176400U, 192000U};
   constexpr std::size_t frames = 32768U;
   constexpr double targetFrequency = 7000.0;
   const float saturationDrive =
@@ -1183,13 +1187,14 @@ int nonlinearAliasReport(const std::filesystem::path& outputPath) {
     const auto sampleRate = sampleRates[rateIndex];
     const auto inputBin = static_cast<std::size_t>(std::llround(
         targetFrequency * static_cast<double>(frames) / sampleRate));
-    const double frequency = static_cast<double>(inputBin) * sampleRate / frames;
-    std::array<std::vector<float>, 3> stages{
-        std::vector<float>(frames), std::vector<float>(frames),
-        std::vector<float>(frames)};
+    const double frequency =
+        static_cast<double>(inputBin) * sampleRate / frames;
+    std::array<std::vector<float>, 3> stages{std::vector<float>(frames),
+                                             std::vector<float>(frames),
+                                             std::vector<float>(frames)};
     for (std::size_t sample = 0; sample < frames; ++sample) {
-      const float sine = static_cast<float>(
-          std::sin(2.0 * kPi * inputBin * sample / frames));
+      const float sine =
+          static_cast<float>(std::sin(2.0 * kPi * inputBin * sample / frames));
       const float saturated =
           aste::density::saturateSample(0.9F * sine, saturationDrive);
       stages[0][sample] = saturated;
@@ -1220,14 +1225,13 @@ int nonlinearAliasReport(const std::filesystem::path& outputPath) {
   }
   std::cout << std::fixed << std::setprecision(6)
             << "{\"rates\":" << sampleRates.size()
-            << ",\"stages\":3,\"saturation_44100_dbc\":"
-            << lowestRateAlias[0] << ",\"saturation_192000_dbc\":"
-            << highestRateAlias[0] << ",\"crush_clip_44100_dbc\":"
-            << lowestRateAlias[1] << ",\"crush_clip_192000_dbc\":"
-            << highestRateAlias[1] << ",\"protection_clip_44100_dbc\":"
-            << lowestRateAlias[2] << ",\"protection_clip_192000_dbc\":"
-            << highestRateAlias[2] << ",\"measurement_valid\":"
-            << (valid ? "true" : "false") << "}\n";
+            << ",\"stages\":3,\"saturation_44100_dbc\":" << lowestRateAlias[0]
+            << ",\"saturation_192000_dbc\":" << highestRateAlias[0]
+            << ",\"crush_clip_44100_dbc\":" << lowestRateAlias[1]
+            << ",\"crush_clip_192000_dbc\":" << highestRateAlias[1]
+            << ",\"protection_clip_44100_dbc\":" << lowestRateAlias[2]
+            << ",\"protection_clip_192000_dbc\":" << highestRateAlias[2]
+            << ",\"measurement_valid\":" << (valid ? "true" : "false") << "}\n";
   return valid ? 0 : 2;
 }
 
@@ -1236,17 +1240,17 @@ int oversamplingReferenceReport(const std::filesystem::path& outputPath) {
   constexpr std::size_t frames = 32768U;
   constexpr double targetFrequency = 7000.0;
   constexpr std::array<std::size_t, 3> factors{1U, 2U, 4U};
-  constexpr std::array<std::string_view, 3> names{
-      "saturation", "crush_clip", "protection_clip"};
-  const auto inputBin = static_cast<std::size_t>(std::llround(
-      targetFrequency * static_cast<double>(frames) / sampleRate));
+  constexpr std::array<std::string_view, 3> names{"saturation", "crush_clip",
+                                                  "protection_clip"};
+  const auto inputBin = static_cast<std::size_t>(
+      std::llround(targetFrequency * static_cast<double>(frames) / sampleRate));
   const double frequency = static_cast<double>(inputBin) * sampleRate / frames;
   const float saturationDrive =
       aste::density::mapDensity(productionParameters().density).saturationDrive;
   std::vector<float> sine(frames);
   for (std::size_t sample = 0; sample < frames; ++sample) {
-    sine[sample] = static_cast<float>(
-        std::sin(2.0 * kPi * inputBin * sample / frames));
+    sine[sample] =
+        static_cast<float>(std::sin(2.0 * kPi * inputBin * sample / frames));
   }
 
   std::ofstream output{outputPath};
@@ -1270,8 +1274,8 @@ int oversamplingReferenceReport(const std::filesystem::path& outputPath) {
     std::size_t latency{};
     if (factor == 1U) {
       for (std::size_t sample = 0; sample < frames; ++sample) {
-        const float saturated = aste::density::saturateSample(
-            0.9F * sine[sample], saturationDrive);
+        const float saturated =
+            aste::density::saturateSample(0.9F * sine[sample], saturationDrive);
         stages[0].push_back(saturated);
         stages[1].push_back(aste::density::controlledClipSample(saturated));
         stages[2].push_back(
@@ -1290,8 +1294,8 @@ int oversamplingReferenceReport(const std::filesystem::path& outputPath) {
         highRateStages[0][sample] = saturated;
         highRateStages[1][sample] =
             aste::density::controlledClipSample(saturated);
-        highRateStages[2][sample] = aste::density::controlledClipSample(
-            1.1F * highRateSine[sample]);
+        highRateStages[2][sample] =
+            aste::density::controlledClipSample(1.1F * highRateSine[sample]);
       }
       for (std::size_t stage = 0; stage < stages.size(); ++stage) {
         stages[stage] =
@@ -1333,12 +1337,10 @@ int oversamplingReferenceReport(const std::filesystem::path& outputPath) {
   std::cout << std::fixed << std::setprecision(6)
             << "{\"base_rate\":" << sampleRate
             << ",\"two_x_latency_samples\":64,\"four_x_latency_samples\":64,"
-            << "\"crush_clip_two_x_improvement_db\":"
-            << twoTimesImprovement[1]
+            << "\"crush_clip_two_x_improvement_db\":" << twoTimesImprovement[1]
             << ",\"crush_clip_four_x_improvement_db\":"
             << fourTimesImprovement[1]
-            << ",\"measurement_valid\":" << (valid ? "true" : "false")
-            << "}\n";
+            << ",\"measurement_valid\":" << (valid ? "true" : "false") << "}\n";
   return valid ? 0 : 2;
 }
 
@@ -1347,24 +1349,22 @@ int oversamplingPrototypeReport(const std::filesystem::path& outputPath) {
   constexpr std::size_t frames = 32768U;
   constexpr std::size_t blockSize = 127U;
   constexpr double renderedSeconds = 5.0;
-  constexpr std::array<double, 4> targetFrequencies{
-      7000.0, 8500.0, 10000.0, 15000.0};
+  constexpr std::array<double, 4> targetFrequencies{7000.0, 8500.0, 10000.0,
+                                                    15000.0};
   constexpr std::array<std::size_t, 4> tapCounts{16U, 32U, 48U, 64U};
   constexpr std::array<std::size_t, 13> schedule{
-      1U, 2U, 7U, 16U, 32U, 64U, 127U,
-      128U, 256U, 511U, 512U, 1024U, 2048U};
+      1U, 2U, 7U, 16U, 32U, 64U, 127U, 128U, 256U, 511U, 512U, 1024U, 2048U};
   const float drive =
       aste::density::mapDensity(productionParameters().density).saturationDrive;
   std::vector<float> blockSource(8192U);
   for (std::size_t sample = 0; sample < blockSource.size(); ++sample) {
-    blockSource[sample] = 0.8F * static_cast<float>(
-                                      std::sin(0.071 * sample));
+    blockSource[sample] = 0.8F * static_cast<float>(std::sin(0.071 * sample));
   }
 
   std::array<float, blockSize> source{};
   for (std::size_t sample = 0; sample < source.size(); ++sample) {
-    source[sample] = 0.7F * static_cast<float>(
-                                std::sin(0.13 * static_cast<double>(sample)));
+    source[sample] =
+        0.7F * static_cast<float>(std::sin(0.13 * static_cast<double>(sample)));
   }
   const std::size_t benchmarkFrames =
       static_cast<std::size_t>(sampleRate * renderedSeconds);
@@ -1396,8 +1396,7 @@ int oversamplingPrototypeReport(const std::filesystem::path& outputPath) {
     for (std::size_t tone = 0; tone < targetFrequencies.size(); ++tone) {
       const auto inputBin = static_cast<std::size_t>(std::llround(
           targetFrequencies[tone] * static_cast<double>(frames) / sampleRate));
-      frequencies[tone] =
-          static_cast<double>(inputBin) * sampleRate / frames;
+      frequencies[tone] = static_cast<double>(inputBin) * sampleRate / frames;
       std::vector<float> direct(frames);
       std::vector<float> streaming(2U * frames);
       for (std::size_t sample = 0; sample < streaming.size(); ++sample) {
@@ -1485,8 +1484,8 @@ int oversamplingPrototypeReport(const std::filesystem::path& outputPath) {
         rightProcessor.process(right.data(), count, drive);
         rendered += count;
       }
-      timing = std::chrono::duration<double>(
-                   std::chrono::steady_clock::now() - start)
+      timing = std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                             start)
                    .count();
       for (std::size_t sample = 0; sample < blockSize; ++sample) {
         checksum += left[sample] + right[sample];
@@ -1497,13 +1496,14 @@ int oversamplingPrototypeReport(const std::filesystem::path& outputPath) {
         benchmarkEnabled ? timings[timings.size() / 2U] : 0.0;
     const double oneCorePercent =
         benchmarkEnabled ? 100.0 * elapsed / renderedSeconds : 0.0;
-    worstAliasResults[candidateIndex] = *std::max_element(
-        aliasResults[candidateIndex].begin(), aliasResults[candidateIndex].end());
-    maximumGainDeltaResults[candidateIndex] = std::abs(*std::max_element(
-        fundamentalDeltas.begin(), fundamentalDeltas.end(),
-        [](double left, double right) {
-          return std::abs(left) < std::abs(right);
-        }));
+    worstAliasResults[candidateIndex] =
+        *std::max_element(aliasResults[candidateIndex].begin(),
+                          aliasResults[candidateIndex].end());
+    maximumGainDeltaResults[candidateIndex] = std::abs(
+        *std::max_element(fundamentalDeltas.begin(), fundamentalDeltas.end(),
+                          [](double left, double right) {
+                            return std::abs(left) < std::abs(right);
+                          }));
     cpuResults[candidateIndex] = oneCorePercent;
     valid = valid && measuredLatency == impulseProcessor.latencySamples() &&
             maximumBlockDelta == 0.0 &&
@@ -1512,8 +1512,8 @@ int oversamplingPrototypeReport(const std::filesystem::path& outputPath) {
     for (std::size_t tone = 0; tone < targetFrequencies.size(); ++tone) {
       output << tapsPerPhase << ',' << 4U * tapsPerPhase + 1U << ','
              << sampleRate << ',' << frequencies[tone] << ',' << measuredLatency
-             << ',' << maximumBlockDelta << ',' << fundamentalDeltas[tone] << ','
-             << aliasResults[candidateIndex][tone] << ','
+             << ',' << maximumBlockDelta << ',' << fundamentalDeltas[tone]
+             << ',' << aliasResults[candidateIndex][tone] << ','
              << aliasImprovements[tone] << ','
              << sizeof(aste::density::CrushOversampler4x) << ','
              << (benchmarkEnabled ? 1 : 0) << ',' << renderedSeconds << ','
@@ -1540,8 +1540,7 @@ int oversamplingPrototypeReport(const std::filesystem::path& outputPath) {
             << ",\"cpu_32_percent\":" << cpuResults[1]
             << ",\"cpu_48_percent\":" << cpuResults[2]
             << ",\"cpu_64_percent\":" << cpuResults[3]
-            << ",\"measurement_valid\":" << (valid ? "true" : "false")
-            << "}\n";
+            << ",\"measurement_valid\":" << (valid ? "true" : "false") << "}\n";
   return valid ? 0 : 2;
 }
 
@@ -1550,14 +1549,16 @@ int halfBandPrototypeReport(const std::filesystem::path& outputPath) {
     std::size_t firstStageTaps;
     std::size_t secondStageTaps;
   };
-  constexpr std::array<Configuration, 6> configurations{{
-      {33U, 33U}, {65U, 33U}, {97U, 33U},
-      {113U, 33U}, {129U, 33U}, {97U, 65U}}};
-  constexpr std::array<double, 4> targetFrequencies{
-      7000.0, 8500.0, 10000.0, 15000.0};
+  constexpr std::array<Configuration, 6> configurations{{{33U, 33U},
+                                                         {65U, 33U},
+                                                         {97U, 33U},
+                                                         {113U, 33U},
+                                                         {129U, 33U},
+                                                         {97U, 65U}}};
+  constexpr std::array<double, 4> targetFrequencies{7000.0, 8500.0, 10000.0,
+                                                    15000.0};
   constexpr std::array<std::size_t, 13> schedule{
-      1U, 2U, 7U, 16U, 32U, 64U, 127U,
-      128U, 256U, 511U, 512U, 1024U, 2048U};
+      1U, 2U, 7U, 16U, 32U, 64U, 127U, 128U, 256U, 511U, 512U, 1024U, 2048U};
   constexpr std::uint32_t sampleRate = 48000U;
   constexpr std::size_t frames = 32768U;
   constexpr std::size_t blockSize = 127U;
@@ -1568,13 +1569,12 @@ int halfBandPrototypeReport(const std::filesystem::path& outputPath) {
 
   std::vector<float> blockSource(8192U);
   for (std::size_t sample = 0; sample < blockSource.size(); ++sample) {
-    blockSource[sample] = 0.8F * static_cast<float>(
-                                      std::sin(0.071 * sample));
+    blockSource[sample] = 0.8F * static_cast<float>(std::sin(0.071 * sample));
   }
   std::array<float, blockSize> benchmarkSource{};
   for (std::size_t sample = 0; sample < benchmarkSource.size(); ++sample) {
-    benchmarkSource[sample] = 0.7F * static_cast<float>(
-                                         std::sin(0.13 * sample));
+    benchmarkSource[sample] =
+        0.7F * static_cast<float>(std::sin(0.13 * sample));
   }
 
   std::ofstream output{outputPath};
@@ -1600,10 +1600,9 @@ int halfBandPrototypeReport(const std::filesystem::path& outputPath) {
     std::array<double, targetFrequencies.size()> aliases{};
     std::array<double, targetFrequencies.size()> improvements{};
     for (std::size_t tone = 0; tone < targetFrequencies.size(); ++tone) {
-      const auto inputBin = static_cast<std::size_t>(std::llround(
-          targetFrequencies[tone] * frames / sampleRate));
-      frequencies[tone] =
-          static_cast<double>(inputBin) * sampleRate / frames;
+      const auto inputBin = static_cast<std::size_t>(
+          std::llround(targetFrequencies[tone] * frames / sampleRate));
+      frequencies[tone] = static_cast<double>(inputBin) * sampleRate / frames;
       std::vector<float> direct(frames);
       std::vector<float> streaming(2U * frames);
       for (std::size_t sample = 0; sample < streaming.size(); ++sample) {
@@ -1696,8 +1695,8 @@ int halfBandPrototypeReport(const std::filesystem::path& outputPath) {
         rightProcessor.process(right.data(), count, drive);
         rendered += count;
       }
-      timing = std::chrono::duration<double>(
-                   std::chrono::steady_clock::now() - start)
+      timing = std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                             start)
                    .count();
       for (std::size_t sample = 0; sample < blockSize; ++sample) {
         checksum += left[sample] + right[sample];
@@ -1739,8 +1738,7 @@ int halfBandPrototypeReport(const std::filesystem::path& outputPath) {
             << ",\"cpu_129_33_percent\":" << cpuResults[4]
             << ",\"benchmark_enabled\":"
             << (benchmarkEnabled ? "true" : "false")
-            << ",\"measurement_valid\":" << (valid ? "true" : "false")
-            << "}\n";
+            << ",\"measurement_valid\":" << (valid ? "true" : "false") << "}\n";
   return valid ? 0 : 2;
 }
 
@@ -1749,11 +1747,14 @@ int kaiserPrototypeReport(const std::filesystem::path& outputPath) {
     std::string_view name;
     float beta;
   };
-  constexpr std::array<Window, 6> windows{{
-      {"blackman", -1.0F}, {"kaiser-3", 3.0F}, {"kaiser-5", 5.0F},
-      {"kaiser-7", 7.0F}, {"kaiser-9", 9.0F}, {"kaiser-11", 11.0F}}};
-  constexpr std::array<double, 4> targetFrequencies{
-      7000.0, 8500.0, 10000.0, 15000.0};
+  constexpr std::array<Window, 6> windows{{{"blackman", -1.0F},
+                                           {"kaiser-3", 3.0F},
+                                           {"kaiser-5", 5.0F},
+                                           {"kaiser-7", 7.0F},
+                                           {"kaiser-9", 9.0F},
+                                           {"kaiser-11", 11.0F}}};
+  constexpr std::array<double, 4> targetFrequencies{7000.0, 8500.0, 10000.0,
+                                                    15000.0};
   constexpr std::uint32_t sampleRate = 48000U;
   constexpr std::size_t frames = 32768U;
   constexpr std::size_t firstStageTaps = 113U;
@@ -1774,13 +1775,14 @@ int kaiserPrototypeReport(const std::filesystem::path& outputPath) {
   std::array<double, windows.size()> worstAliases{};
   std::array<double, windows.size()> maximumGainDeltas{};
   bool valid = true;
-  for (std::size_t windowIndex = 0; windowIndex < windows.size(); ++windowIndex) {
+  for (std::size_t windowIndex = 0; windowIndex < windows.size();
+       ++windowIndex) {
     const auto window = windows[windowIndex];
     std::array<double, targetFrequencies.size()> aliases{};
     std::array<double, targetFrequencies.size()> gainDeltas{};
     for (std::size_t tone = 0; tone < targetFrequencies.size(); ++tone) {
-      const auto inputBin = static_cast<std::size_t>(std::llround(
-          targetFrequencies[tone] * frames / sampleRate));
+      const auto inputBin = static_cast<std::size_t>(
+          std::llround(targetFrequencies[tone] * frames / sampleRate));
       const double frequency =
           static_cast<double>(inputBin) * sampleRate / frames;
       std::vector<float> direct(frames);
@@ -1809,10 +1811,10 @@ int kaiserPrototypeReport(const std::filesystem::path& outputPath) {
       valid = valid && oversampler.latencySamples() == 64U &&
               std::isfinite(gainDeltas[tone]) && std::isfinite(aliases[tone]) &&
               improvement > 0.0;
-      output << window.name << ',' << window.beta << ',' << firstStageTaps << ','
-             << secondStageTaps << ',' << sampleRate << ',' << frequency << ','
-             << oversampler.latencySamples() << ',' << gainDeltas[tone] << ','
-             << aliases[tone] << ',' << improvement << '\n';
+      output << window.name << ',' << window.beta << ',' << firstStageTaps
+             << ',' << secondStageTaps << ',' << sampleRate << ',' << frequency
+             << ',' << oversampler.latencySamples() << ',' << gainDeltas[tone]
+             << ',' << aliases[tone] << ',' << improvement << '\n';
     }
     worstAliases[windowIndex] =
         *std::max_element(aliases.begin(), aliases.end());
@@ -1835,8 +1837,7 @@ int kaiserPrototypeReport(const std::filesystem::path& outputPath) {
             << ",\"kaiser_11_worst_alias_dbc\":" << worstAliases[5]
             << ",\"best_window\":\"" << windows[bestIndex].name << "\""
             << ",\"best_worst_alias_dbc\":" << *best
-            << ",\"measurement_valid\":" << (valid ? "true" : "false")
-            << "}\n";
+            << ",\"measurement_valid\":" << (valid ? "true" : "false") << "}\n";
   return valid ? 0 : 2;
 }
 
@@ -1859,8 +1860,8 @@ KaiserMeasurement measureKaiser(const std::vector<float>& source,
   const std::vector<float> candidate(streaming.begin() + frames,
                                      streaming.end());
   const double gainDelta =
-      20.0 * std::log10(coherentBinAmplitude(candidate, inputBin) /
-                        directFundamental);
+      20.0 *
+      std::log10(coherentBinAmplitude(candidate, inputBin) / directFundamental);
   const double alias = foldedHarmonicsDbc(candidate, inputBin);
   return {gainDelta, alias, directAlias - alias, oversampler.latencySamples()};
 }
@@ -1870,8 +1871,8 @@ int kaiserSweepReport(const std::filesystem::path& outputPath) {
     std::string_view name;
     float beta;
   };
-  constexpr std::array<Window, 3> windows{{
-      {"blackman", -1.0F}, {"kaiser-3", 3.0F}, {"kaiser-5", 5.0F}}};
+  constexpr std::array<Window, 3> windows{
+      {{"blackman", -1.0F}, {"kaiser-3", 3.0F}, {"kaiser-5", 5.0F}}};
   constexpr std::array<float, 3> levels{0.25F, 0.60F, 0.90F};
   constexpr std::uint32_t sampleRate = 48000U;
   const bool fast = std::getenv("ASTE_FAST_RESEARCH") != nullptr;
@@ -1909,10 +1910,10 @@ int kaiserSweepReport(const std::filesystem::path& outputPath) {
 
   for (const float level : levels) {
     for (const double targetFrequency : targetFrequencies) {
-      const auto inputBin = static_cast<std::size_t>(std::llround(
-                                targetFrequency * static_cast<double>(frames) /
-                                sampleRate)) |
-                            1U;
+      const auto inputBin =
+          static_cast<std::size_t>(std::llround(
+              targetFrequency * static_cast<double>(frames) / sampleRate)) |
+          1U;
       const double frequency =
           static_cast<double>(inputBin) * sampleRate / frames;
       std::vector<float> direct(frames);
@@ -1931,15 +1932,13 @@ int kaiserSweepReport(const std::filesystem::path& outputPath) {
       for (std::size_t windowIndex = 0; windowIndex < windows.size();
            ++windowIndex) {
         const auto window = windows[windowIndex];
-        const auto measurement = measureKaiser(
-            source, frames, inputBin, drive, window.beta, directFundamental,
-            directAlias);
+        const auto measurement =
+            measureKaiser(source, frames, inputBin, drive, window.beta,
+                          directFundamental, directAlias);
         aliasValues[windowIndex].push_back(measurement.alias);
-        maximumGainDeltas[windowIndex] =
-            std::max(maximumGainDeltas[windowIndex],
-                     std::abs(measurement.gainDelta));
-        pointsAboveMinus50[windowIndex] +=
-            measurement.alias > -50.0 ? 1U : 0U;
+        maximumGainDeltas[windowIndex] = std::max(
+            maximumGainDeltas[windowIndex], std::abs(measurement.gainDelta));
+        pointsAboveMinus50[windowIndex] += measurement.alias > -50.0 ? 1U : 0U;
         if (measurement.alias > worstAliases[windowIndex]) {
           worstAliases[windowIndex] = measurement.alias;
           worstFrequencies[windowIndex] = frequency;
@@ -1980,23 +1979,15 @@ int kaiserSweepReport(const std::filesystem::path& outputPath) {
             << ",\"kaiser_3_p95_dbc\":" << percentile95[1]
             << ",\"kaiser_5_p95_dbc\":" << percentile95[2]
             << ",\"best_window\":\"" << windows[bestIndex].name << "\""
-            << ",\"best_worst_frequency_hz\":"
-            << worstFrequencies[bestIndex]
+            << ",\"best_worst_frequency_hz\":" << worstFrequencies[bestIndex]
             << ",\"best_worst_level\":" << worstLevels[bestIndex]
-            << ",\"blackman_points_above_minus_50\":"
-            << pointsAboveMinus50[0]
-            << ",\"kaiser_3_points_above_minus_50\":"
-            << pointsAboveMinus50[1]
-            << ",\"kaiser_5_points_above_minus_50\":"
-            << pointsAboveMinus50[2]
-            << ",\"max_gain_delta_blackman_db\":"
-            << maximumGainDeltas[0]
-            << ",\"max_gain_delta_kaiser_3_db\":"
-            << maximumGainDeltas[1]
-            << ",\"max_gain_delta_kaiser_5_db\":"
-            << maximumGainDeltas[2]
-            << ",\"measurement_valid\":" << (valid ? "true" : "false")
-            << "}\n";
+            << ",\"blackman_points_above_minus_50\":" << pointsAboveMinus50[0]
+            << ",\"kaiser_3_points_above_minus_50\":" << pointsAboveMinus50[1]
+            << ",\"kaiser_5_points_above_minus_50\":" << pointsAboveMinus50[2]
+            << ",\"max_gain_delta_blackman_db\":" << maximumGainDeltas[0]
+            << ",\"max_gain_delta_kaiser_3_db\":" << maximumGainDeltas[1]
+            << ",\"max_gain_delta_kaiser_5_db\":" << maximumGainDeltas[2]
+            << ",\"measurement_valid\":" << (valid ? "true" : "false") << "}\n";
   return valid ? 0 : 2;
 }
 
@@ -2005,10 +1996,10 @@ int kaiserRateSweepReport(const std::filesystem::path& outputPath) {
     std::string_view name;
     float beta;
   };
-  constexpr std::array<Window, 2> windows{{{"kaiser-3", 3.0F},
-                                           {"kaiser-5", 5.0F}}};
-  constexpr std::array<std::uint32_t, 6> sampleRates{
-      44100U, 48000U, 88200U, 96000U, 176400U, 192000U};
+  constexpr std::array<Window, 2> windows{
+      {{"kaiser-3", 3.0F}, {"kaiser-5", 5.0F}}};
+  constexpr std::array<std::uint32_t, 6> sampleRates{44100U, 48000U,  88200U,
+                                                     96000U, 176400U, 192000U};
   constexpr std::array<float, 3> levels{0.25F, 0.60F, 0.90F};
   const bool fast = std::getenv("ASTE_FAST_RESEARCH") != nullptr;
   const std::size_t frames = fast ? 8192U : 16384U;
@@ -2062,8 +2053,7 @@ int kaiserRateSweepReport(const std::filesystem::path& outputPath) {
                 aste::density::saturateSample(level * sine, drive));
           }
         }
-        const double directFundamental =
-            coherentBinAmplitude(direct, inputBin);
+        const double directFundamental = coherentBinAmplitude(direct, inputBin);
         const double directAlias = foldedHarmonicsDbc(direct, inputBin);
         for (std::size_t window = 0; window < windows.size(); ++window) {
           const auto measurement = measureKaiser(
@@ -2073,11 +2063,9 @@ int kaiserRateSweepReport(const std::filesystem::path& outputPath) {
           rateAliases[window].push_back(measurement.alias);
           worstAliases[window] =
               std::max(worstAliases[window], measurement.alias);
-          maximumGainDeltas[window] =
-              std::max(maximumGainDeltas[window],
-                       std::abs(measurement.gainDelta));
-          pointsAboveMinus50[window] +=
-              measurement.alias > -50.0 ? 1U : 0U;
+          maximumGainDeltas[window] = std::max(maximumGainDeltas[window],
+                                               std::abs(measurement.gainDelta));
+          pointsAboveMinus50[window] += measurement.alias > -50.0 ? 1U : 0U;
           valid = valid && measurement.latency == 64U &&
                   std::isfinite(measurement.gainDelta) &&
                   std::isfinite(measurement.alias) &&
@@ -2119,18 +2107,12 @@ int kaiserRateSweepReport(const std::filesystem::path& outputPath) {
             << ",\"kaiser_5_p95_dbc\":" << percentile95[1]
             << ",\"kaiser_3_rate_wins\":" << percentileWins[0]
             << ",\"kaiser_5_rate_wins\":" << percentileWins[1]
-            << ",\"kaiser_3_points_above_minus_50\":"
-            << pointsAboveMinus50[0]
-            << ",\"kaiser_5_points_above_minus_50\":"
-            << pointsAboveMinus50[1]
-            << ",\"max_gain_delta_kaiser_3_db\":"
-            << maximumGainDeltas[0]
-            << ",\"max_gain_delta_kaiser_5_db\":"
-            << maximumGainDeltas[1]
-            << ",\"within_gain_limit\":"
-            << (withinGainLimit ? "true" : "false")
-            << ",\"measurement_valid\":" << (valid ? "true" : "false")
-            << "}\n";
+            << ",\"kaiser_3_points_above_minus_50\":" << pointsAboveMinus50[0]
+            << ",\"kaiser_5_points_above_minus_50\":" << pointsAboveMinus50[1]
+            << ",\"max_gain_delta_kaiser_3_db\":" << maximumGainDeltas[0]
+            << ",\"max_gain_delta_kaiser_5_db\":" << maximumGainDeltas[1]
+            << ",\"within_gain_limit\":" << (withinGainLimit ? "true" : "false")
+            << ",\"measurement_valid\":" << (valid ? "true" : "false") << "}\n";
   return valid ? 0 : 2;
 }
 
@@ -2149,14 +2131,13 @@ KaiserLinearMeasurement measureKaiserLinear(std::uint32_t sampleRate,
   const auto inputBin = static_cast<std::size_t>(std::llround(
                             targetFrequency * frames / sampleRate)) |
                         1U;
-  const double frequency =
-      static_cast<double>(inputBin) * sampleRate / frames;
+  const double frequency = static_cast<double>(inputBin) * sampleRate / frames;
   std::vector<float> source(2U * frames);
   std::vector<float> input(frames);
   for (std::size_t sample = 0; sample < source.size(); ++sample) {
-    const float sine = 0.25F * static_cast<float>(
-                                 std::sin(2.0 * kPi * inputBin * sample /
-                                          frames));
+    const float sine =
+        0.25F *
+        static_cast<float>(std::sin(2.0 * kPi * inputBin * sample / frames));
     source[sample] = sine;
     if (sample < frames) {
       input[sample] = sine;
@@ -2171,17 +2152,16 @@ KaiserLinearMeasurement measureKaiserLinear(std::uint32_t sampleRate,
   }
   const std::vector<float> candidate(source.begin() + frames, source.end());
   const auto outputValue = coherentBin(candidate, inputBin);
-  const double magnitude = 20.0 * std::log10(
-      coherentBinAmplitude(candidate, inputBin) / inputAmplitude);
+  const double magnitude =
+      20.0 *
+      std::log10(coherentBinAmplitude(candidate, inputBin) / inputAmplitude);
   const double expectedPhase =
       -2.0 * kPi * frequency * oversampler.latencySamples() / sampleRate;
   double phase = std::atan2(outputValue[1], outputValue[0]) -
                  std::atan2(inputValue[1], inputValue[0]);
-  phase +=
-      2.0 * kPi * std::round((expectedPhase - phase) / (2.0 * kPi));
+  phase += 2.0 * kPi * std::round((expectedPhase - phase) / (2.0 * kPi));
   return {frequency, magnitude, phase * 180.0 / kPi,
-          (phase - expectedPhase) * 180.0 / kPi,
-          oversampler.latencySamples()};
+          (phase - expectedPhase) * 180.0 / kPi, oversampler.latencySamples()};
 }
 
 int kaiserLinearReport(const std::filesystem::path& outputPath) {
@@ -2189,10 +2169,10 @@ int kaiserLinearReport(const std::filesystem::path& outputPath) {
     std::string_view name;
     float beta;
   };
-  constexpr std::array<Window, 2> windows{{{"kaiser-3", 3.0F},
-                                           {"kaiser-5", 5.0F}}};
-  constexpr std::array<std::uint32_t, 6> sampleRates{
-      44100U, 48000U, 88200U, 96000U, 176400U, 192000U};
+  constexpr std::array<Window, 2> windows{
+      {{"kaiser-3", 3.0F}, {"kaiser-5", 5.0F}}};
+  constexpr std::array<std::uint32_t, 6> sampleRates{44100U, 48000U,  88200U,
+                                                     96000U, 176400U, 192000U};
   const bool fast = std::getenv("ASTE_FAST_RESEARCH") != nullptr;
   const std::size_t frames = fast ? 8192U : 16384U;
   const double frequencyStep = fast ? 4000.0 : 250.0;
@@ -2225,16 +2205,14 @@ int kaiserLinearReport(const std::filesystem::path& outputPath) {
         const auto measurement = measureKaiserLinear(
             sampleRate, frames, targetFrequency, windows[window].beta);
         maximumMagnitude[window] =
-            std::max(maximumMagnitude[window],
-                     std::abs(measurement.magnitude));
+            std::max(maximumMagnitude[window], std::abs(measurement.magnitude));
         if (sampleRate == 44100U && targetFrequency >= 18000.0) {
           maximumHighBandMagnitude[window] =
               std::max(maximumHighBandMagnitude[window],
                        std::abs(measurement.magnitude));
         }
         maximumPhaseResidual[window] = std::max(
-            maximumPhaseResidual[window],
-            std::abs(measurement.phaseResidual));
+            maximumPhaseResidual[window], std::abs(measurement.phaseResidual));
         valid = valid && measurement.latency == 64U &&
                 std::isfinite(measurement.magnitude) &&
                 std::isfinite(measurement.phaseDegrees) &&
@@ -2249,32 +2227,27 @@ int kaiserLinearReport(const std::filesystem::path& outputPath) {
   }
   const bool withinMagnitudeLimit =
       maximumMagnitude[0] < 0.1 && maximumMagnitude[1] < 0.1;
-  std::cout << std::fixed << std::setprecision(6)
-            << "{\"fast\":" << (fast ? "true" : "false")
-            << ",\"sample_rates\":" << sampleRates.size()
-            << ",\"frequencies\":" << targetFrequencies.size()
-            << ",\"points_per_window\":"
-            << sampleRates.size() * targetFrequencies.size()
-            << ",\"max_magnitude_kaiser_3_db\":" << maximumMagnitude[0]
-            << ",\"max_magnitude_kaiser_5_db\":" << maximumMagnitude[1]
-            << ",\"max_44k_highband_kaiser_3_db\":"
-            << maximumHighBandMagnitude[0]
-            << ",\"max_44k_highband_kaiser_5_db\":"
-            << maximumHighBandMagnitude[1]
-            << ",\"max_phase_residual_kaiser_3_degrees\":"
-            << maximumPhaseResidual[0]
-            << ",\"max_phase_residual_kaiser_5_degrees\":"
-            << maximumPhaseResidual[1]
-            << ",\"within_magnitude_limit\":"
-            << (withinMagnitudeLimit ? "true" : "false")
-            << ",\"measurement_valid\":" << (valid ? "true" : "false")
-            << "}\n";
+  std::cout
+      << std::fixed << std::setprecision(6)
+      << "{\"fast\":" << (fast ? "true" : "false")
+      << ",\"sample_rates\":" << sampleRates.size()
+      << ",\"frequencies\":" << targetFrequencies.size()
+      << ",\"points_per_window\":"
+      << sampleRates.size() * targetFrequencies.size()
+      << ",\"max_magnitude_kaiser_3_db\":" << maximumMagnitude[0]
+      << ",\"max_magnitude_kaiser_5_db\":" << maximumMagnitude[1]
+      << ",\"max_44k_highband_kaiser_3_db\":" << maximumHighBandMagnitude[0]
+      << ",\"max_44k_highband_kaiser_5_db\":" << maximumHighBandMagnitude[1]
+      << ",\"max_phase_residual_kaiser_3_degrees\":" << maximumPhaseResidual[0]
+      << ",\"max_phase_residual_kaiser_5_degrees\":" << maximumPhaseResidual[1]
+      << ",\"within_magnitude_limit\":"
+      << (withinMagnitudeLimit ? "true" : "false")
+      << ",\"measurement_valid\":" << (valid ? "true" : "false") << "}\n";
   return valid ? 0 : 2;
 }
 
 int kaiserLengthReport(const std::filesystem::path& outputPath) {
-  constexpr std::array<std::size_t, 6> tapCounts{
-      65U, 73U, 81U, 89U, 97U, 113U};
+  constexpr std::array<std::size_t, 6> tapCounts{65U, 73U, 81U, 89U, 97U, 113U};
   constexpr std::uint32_t aliasSampleRate = 48000U;
   constexpr std::uint32_t linearSampleRate = 44100U;
   constexpr std::size_t blockSize = 127U;
@@ -2284,8 +2257,7 @@ int kaiserLengthReport(const std::filesystem::path& outputPath) {
   const std::size_t frames = fast ? 8192U : 16384U;
   const auto makeFrequencies = [](double step) {
     std::vector<double> frequencies;
-    for (double frequency = 1000.0; frequency <= 20000.0;
-         frequency += step) {
+    for (double frequency = 1000.0; frequency <= 20000.0; frequency += step) {
       frequencies.push_back(frequency);
     }
     if (frequencies.back() != 20000.0) {
@@ -2330,8 +2302,7 @@ int kaiserLengthReport(const std::filesystem::path& outputPath) {
     for (const float level : levels) {
       for (const double targetFrequency : aliasFrequencies) {
         const auto inputBin = static_cast<std::size_t>(std::llround(
-                                  targetFrequency * frames /
-                                  aliasSampleRate)) |
+                                  targetFrequency * frames / aliasSampleRate)) |
                               1U;
         std::vector<float> direct(frames);
         std::vector<float> source(2U * frames);
@@ -2344,8 +2315,7 @@ int kaiserLengthReport(const std::filesystem::path& outputPath) {
                 aste::density::saturateSample(level * sine, drive));
           }
         }
-        const double directFundamental =
-            coherentBinAmplitude(direct, inputBin);
+        const double directFundamental = coherentBinAmplitude(direct, inputBin);
         const double directAlias = foldedHarmonicsDbc(direct, inputBin);
         const auto measurement =
             measureKaiser(source, frames, inputBin, drive, 5.0F,
@@ -2367,12 +2337,12 @@ int kaiserLengthReport(const std::filesystem::path& outputPath) {
     double maximumMagnitude{};
     double maximumPhaseResidual{};
     for (const double targetFrequency : linearFrequencies) {
-      const auto measurement = measureKaiserLinear(
-          linearSampleRate, frames, targetFrequency, 5.0F, taps);
+      const auto measurement = measureKaiserLinear(linearSampleRate, frames,
+                                                   targetFrequency, 5.0F, taps);
       maximumMagnitude =
           std::max(maximumMagnitude, std::abs(measurement.magnitude));
-      maximumPhaseResidual = std::max(
-          maximumPhaseResidual, std::abs(measurement.phaseResidual));
+      maximumPhaseResidual =
+          std::max(maximumPhaseResidual, std::abs(measurement.phaseResidual));
       valid = valid && std::isfinite(measurement.magnitude) &&
               std::isfinite(measurement.phaseResidual) &&
               measurement.latency == latency;
@@ -2403,8 +2373,8 @@ int kaiserLengthReport(const std::filesystem::path& outputPath) {
         rightProcessor.process(right.data(), count, drive);
         rendered += count;
       }
-      timing = std::chrono::duration<double>(
-                   std::chrono::steady_clock::now() - start)
+      timing = std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                             start)
                    .count();
       for (std::size_t sample = 0; sample < blockSize; ++sample) {
         checksum += left[sample] + right[sample];
@@ -2416,8 +2386,8 @@ int kaiserLengthReport(const std::filesystem::path& outputPath) {
     const double oneCorePercent =
         benchmarkEnabled ? 100.0 * elapsed / renderedSeconds : 0.0;
     cpuResults[configuration] = oneCorePercent;
-    valid = valid && std::isfinite(oneCorePercent) &&
-            maximumPhaseResidual < 0.001;
+    valid =
+        valid && std::isfinite(oneCorePercent) && maximumPhaseResidual < 0.001;
     output << taps << ",33," << latency << ',' << worstAlias << ','
            << aliases95[configuration] << ',' << pointsAboveMinus50 << ','
            << maximumMagnitude << ',' << maximumPhaseResidual << ','
@@ -2444,22 +2414,20 @@ int kaiserLengthReport(const std::filesystem::path& outputPath) {
             << ",\"cpu_73_percent\":" << cpuResults[1]
             << ",\"cpu_81_percent\":" << cpuResults[2]
             << ",\"cpu_113_percent\":" << cpuResults[5]
-            << ",\"measurement_valid\":" << (valid ? "true" : "false")
-            << "}\n";
+            << ",\"measurement_valid\":" << (valid ? "true" : "false") << "}\n";
   return valid ? 0 : 2;
 }
 
 int kaiserFinalistReport(const std::filesystem::path& outputPath) {
   constexpr std::array<std::size_t, 2> tapCounts{73U, 81U};
-  constexpr std::array<std::uint32_t, 6> sampleRates{
-      44100U, 48000U, 88200U, 96000U, 176400U, 192000U};
+  constexpr std::array<std::uint32_t, 6> sampleRates{44100U, 48000U,  88200U,
+                                                     96000U, 176400U, 192000U};
   constexpr std::array<float, 3> levels{0.25F, 0.60F, 0.90F};
   const bool fast = std::getenv("ASTE_FAST_RESEARCH") != nullptr;
   const std::size_t frames = fast ? 8192U : 16384U;
   const auto makeFrequencies = [](double step) {
     std::vector<double> frequencies;
-    for (double frequency = 1000.0; frequency <= 20000.0;
-         frequency += step) {
+    for (double frequency = 1000.0; frequency <= 20000.0; frequency += step) {
       frequencies.push_back(frequency);
     }
     if (frequencies.back() != 20000.0) {
@@ -2540,8 +2508,8 @@ int kaiserFinalistReport(const std::filesystem::path& outputPath) {
             sampleRate, frames, targetFrequency, 5.0F, taps);
         maximumMagnitude =
             std::max(maximumMagnitude, std::abs(measurement.magnitude));
-        maximumPhaseResidual = std::max(
-            maximumPhaseResidual, std::abs(measurement.phaseResidual));
+        maximumPhaseResidual =
+            std::max(maximumPhaseResidual, std::abs(measurement.phaseResidual));
         valid = valid && measurement.latency == latency &&
                 std::isfinite(measurement.magnitude) &&
                 std::isfinite(measurement.phaseResidual);
@@ -2551,9 +2519,8 @@ int kaiserFinalistReport(const std::filesystem::path& outputPath) {
       aggregateMaximumPhaseResidual[configuration] = std::max(
           aggregateMaximumPhaseResidual[configuration], maximumPhaseResidual);
       output << taps << ",33," << sampleRate << ',' << latency << ','
-             << worstAlias << ',' << percentile95 << ','
-             << pointsAboveMinus50 << ',' << maximumMagnitude << ','
-             << maximumPhaseResidual << '\n';
+             << worstAlias << ',' << percentile95 << ',' << pointsAboveMinus50
+             << ',' << maximumMagnitude << ',' << maximumPhaseResidual << '\n';
     }
   }
 
@@ -2582,16 +2549,13 @@ int kaiserFinalistReport(const std::filesystem::path& outputPath) {
             << aggregatePointsAboveMinus50[0]
             << ",\"points_above_minus_50_81\":"
             << aggregatePointsAboveMinus50[1]
-            << ",\"max_magnitude_73_db\":"
-            << aggregateMaximumMagnitude[0]
-            << ",\"max_magnitude_81_db\":"
-            << aggregateMaximumMagnitude[1]
+            << ",\"max_magnitude_73_db\":" << aggregateMaximumMagnitude[0]
+            << ",\"max_magnitude_81_db\":" << aggregateMaximumMagnitude[1]
             << ",\"max_phase_residual_73_degrees\":"
             << aggregateMaximumPhaseResidual[0]
             << ",\"max_phase_residual_81_degrees\":"
             << aggregateMaximumPhaseResidual[1]
-            << ",\"measurement_valid\":" << (valid ? "true" : "false")
-            << "}\n";
+            << ",\"measurement_valid\":" << (valid ? "true" : "false") << "}\n";
   return valid ? 0 : 2;
 }
 
@@ -2627,8 +2591,7 @@ int oversampledChainReport(const std::filesystem::path& outputPath) {
 
   constexpr std::array<std::size_t, 1> referenceSchedule{127U};
   constexpr std::array<std::size_t, 13> variableSchedule{
-      1U, 2U, 7U, 16U, 32U, 64U, 127U,
-      128U, 256U, 511U, 512U, 1024U, 2048U};
+      1U, 2U, 7U, 16U, 32U, 64U, 127U, 128U, 256U, 511U, 512U, 1024U, 2048U};
   auto reference = makeConsistencyFixture(48000U);
   auto variable = reference;
   auto parameters = productionParameters();
@@ -2638,8 +2601,8 @@ int oversampledChainReport(const std::filesystem::path& outputPath) {
   variableProcessor.prepareOversamplingPrototype(sampleRate, parameters);
   processInBlocks(referenceProcessor, reference[0], reference[1],
                   referenceSchedule, parameters);
-  processInBlocks(variableProcessor, variable[0], variable[1],
-                  variableSchedule, parameters);
+  processInBlocks(variableProcessor, variable[0], variable[1], variableSchedule,
+                  parameters);
   double maximumBlockDelta{};
   for (std::size_t sample = 0; sample < reference[0].size(); ++sample) {
     maximumBlockDelta =
@@ -2662,10 +2625,8 @@ int oversampledChainReport(const std::filesystem::path& outputPath) {
       std::array<float, blockSize> left{};
       std::array<float, blockSize> right{};
       for (std::size_t sample = 0; sample < blockSize; ++sample) {
-        left[sample] =
-            0.7F * static_cast<float>(std::sin(0.13 * sample));
-        right[sample] =
-            0.5F * static_cast<float>(std::sin(0.17 * sample));
+        left[sample] = 0.7F * static_cast<float>(std::sin(0.13 * sample));
+        right[sample] = 0.5F * static_cast<float>(std::sin(0.17 * sample));
       }
       auto benchmarkParameters = productionParameters();
       aste::density::Processor processor;
@@ -2681,8 +2642,8 @@ int oversampledChainReport(const std::filesystem::path& outputPath) {
         processor.process(left.data(), right.data(), blockSize,
                           benchmarkParameters);
       }
-      timing = std::chrono::duration<double>(
-                   std::chrono::steady_clock::now() - start)
+      timing = std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                             start)
                    .count();
       for (std::size_t sample = 0; sample < blockSize; ++sample) {
         checksum += left[sample] + right[sample];
@@ -2709,8 +2670,8 @@ int oversampledChainReport(const std::filesystem::path& outputPath) {
             "default_one_core_percent,oversampled_elapsed_seconds,"
             "oversampled_one_core_percent,cpu_delta_percent,default_checksum,"
             "oversampled_checksum\n"
-         << std::fixed << std::setprecision(9) << 44U << ',' << dryLatency << ','
-         << wetLatency << ',' << maximumBlockDelta << ','
+         << std::fixed << std::setprecision(9) << 44U << ',' << dryLatency
+         << ',' << wetLatency << ',' << maximumBlockDelta << ','
          << (benchmarkEnabled ? 1 : 0) << ',' << defaultBenchmark[0] << ','
          << defaultBenchmark[1] << ',' << oversampledBenchmark[0] << ','
          << oversampledBenchmark[1] << ','
@@ -2724,8 +2685,8 @@ int oversampledChainReport(const std::filesystem::path& outputPath) {
                      std::isfinite(defaultBenchmark[1]) &&
                      std::isfinite(oversampledBenchmark[1]);
   std::cout << std::fixed << std::setprecision(6)
-            << "{\"latency_samples\":44,\"dry_latency_samples\":"
-            << dryLatency << ",\"wet_latency_samples\":" << wetLatency
+            << "{\"latency_samples\":44,\"dry_latency_samples\":" << dryLatency
+            << ",\"wet_latency_samples\":" << wetLatency
             << ",\"max_block_delta\":" << maximumBlockDelta
             << ",\"benchmark_enabled\":"
             << (benchmarkEnabled ? "true" : "false")
@@ -2736,8 +2697,7 @@ int oversampledChainReport(const std::filesystem::path& outputPath) {
             << ",\"within_default_budget\":"
             << (benchmarkEnabled && oversampledBenchmark[1] < 1.0 ? "true"
                                                                   : "false")
-            << ",\"measurement_valid\":" << (valid ? "true" : "false")
-            << "}\n";
+            << ",\"measurement_valid\":" << (valid ? "true" : "false") << "}\n";
   return valid ? 0 : 2;
 }
 
@@ -2769,15 +2729,14 @@ int oversamplingAuditions(const std::filesystem::path& directory) {
   double maximumNullDb = -minimumNullDb;
   bool valid = true;
   std::size_t fixtureCount{};
-  for (std::string_view fixture :
-       std::array<std::string_view, 4>{"transient", "bass", "dense",
-                                       "ambient"}) {
+  for (std::string_view fixture : std::array<std::string_view, 4>{
+           "transient", "bass", "dense", "ambient"}) {
     auto inputLeft = makeFixture(fixture);
     std::vector<float> inputRight(inputLeft.size());
     const std::size_t shift = fixture == "transient" ? 23U
                               : fixture == "dense"   ? 113U
                               : fixture == "ambient" ? 509U
-                                                      : 0U;
+                                                     : 0U;
     for (std::size_t sample = 0; sample < inputLeft.size(); ++sample) {
       const float delayed = sample >= shift ? inputLeft[sample - shift] : 0.0F;
       if (fixture == "transient") {
@@ -2815,8 +2774,7 @@ int oversamplingAuditions(const std::filesystem::path& directory) {
               alignedDefaultRight.begin() + latency);
     const double defaultRms =
         stereoRms(alignedDefaultLeft, alignedDefaultRight);
-    const double oversampledRms =
-        stereoRms(oversampledLeft, oversampledRight);
+    const double oversampledRms = stereoRms(oversampledLeft, oversampledRight);
     const double targetRms = std::min(defaultRms, oversampledRms);
     const float defaultMatch = static_cast<float>(targetRms / defaultRms);
     const float oversampledMatch =
@@ -2841,8 +2799,8 @@ int oversamplingAuditions(const std::filesystem::path& directory) {
           alignedDefaultLeft[sample] - oversampledLeft[sample];
       const double rightDifference =
           alignedDefaultRight[sample] - oversampledRight[sample];
-      nullEnergy += leftDifference * leftDifference +
-                    rightDifference * rightDifference;
+      nullEnergy +=
+          leftDifference * leftDifference + rightDifference * rightDifference;
     }
     const double matchedDefaultRms =
         stereoRms(alignedDefaultLeft, alignedDefaultRight);
@@ -2850,9 +2808,10 @@ int oversamplingAuditions(const std::filesystem::path& directory) {
         stereoRms(oversampledLeft, oversampledRight);
     const double matchErrorDb =
         20.0 * std::log10(matchedDefaultRms / matchedOversampledRms);
-    const double peakDb = 20.0 * std::log10(std::max(
-        stereoPeak(alignedDefaultLeft, alignedDefaultRight),
-        stereoPeak(oversampledLeft, oversampledRight)));
+    const double peakDb =
+        20.0 *
+        std::log10(std::max(stereoPeak(alignedDefaultLeft, alignedDefaultRight),
+                            stereoPeak(oversampledLeft, oversampledRight)));
     const double nullRms = std::sqrt(
         nullEnergy / static_cast<double>(2U * oversampledLeft.size()));
     const double nullDb = 20.0 * std::log10(nullRms);
@@ -2875,9 +2834,8 @@ int oversamplingAuditions(const std::filesystem::path& directory) {
     responses << fixture << ",,,\n";
     measurements << fixture << ',' << oversampledLeft.size() << ','
                  << 20.0 * std::log10(defaultMatch) << ','
-                 << 20.0 * std::log10(oversampledMatch) << ','
-                 << matchErrorDb << ',' << peakDb << ',' << nullDb << ','
-                 << latency << '\n';
+                 << 20.0 * std::log10(oversampledMatch) << ',' << matchErrorDb
+                 << ',' << peakDb << ',' << nullDb << ',' << latency << '\n';
     valid = valid && wroteA && wroteB && std::isfinite(matchErrorDb) &&
             std::abs(matchErrorDb) < 0.001 && std::isfinite(nullDb) &&
             std::abs(peakDb + 1.0) < 0.001;
@@ -2886,13 +2844,11 @@ int oversamplingAuditions(const std::filesystem::path& directory) {
   valid = valid && static_cast<bool>(answers) && static_cast<bool>(responses) &&
           static_cast<bool>(measurements) && fixtureCount == 4U;
   std::cout << std::fixed << std::setprecision(6)
-            << "{\"fixtures\":" << fixtureCount
-            << ",\"pairs\":" << fixtureCount
-            << ",\"seed\":852274,\"max_match_error_db\":"
-            << maximumMatchError << ",\"minimum_null_rms_dbfs\":"
-            << minimumNullDb << ",\"maximum_null_rms_dbfs\":"
-            << maximumNullDb << ",\"measurement_valid\":"
-            << (valid ? "true" : "false") << "}\n";
+            << "{\"fixtures\":" << fixtureCount << ",\"pairs\":" << fixtureCount
+            << ",\"seed\":852274,\"max_match_error_db\":" << maximumMatchError
+            << ",\"minimum_null_rms_dbfs\":" << minimumNullDb
+            << ",\"maximum_null_rms_dbfs\":" << maximumNullDb
+            << ",\"measurement_valid\":" << (valid ? "true" : "false") << "}\n";
   return valid ? 0 : 2;
 }
 
@@ -2936,36 +2892,33 @@ BoundaryCurvature measureBoundaryCurvature(const std::vector<float>& left,
   for (std::size_t boundary = blockSize; boundary < left.size();
        boundary += blockSize) {
     const double boundaryCurvature = std::max(
-        std::abs(static_cast<double>(left[boundary] -
-                                     2.0F * left[boundary - 1U] +
-                                     left[boundary - 2U])),
+        std::abs(static_cast<double>(
+            left[boundary] - 2.0F * left[boundary - 1U] + left[boundary - 2U])),
         std::abs(static_cast<double>(right[boundary] -
                                      2.0F * right[boundary - 1U] +
                                      right[boundary - 2U])));
     double localCurvature{};
     const std::size_t first =
         boundary > localRadius ? boundary - localRadius : 2U;
-    const std::size_t last =
-        std::min(left.size() - 1U, boundary + localRadius);
+    const std::size_t last = std::min(left.size() - 1U, boundary + localRadius);
     for (std::size_t sample = first; sample <= last; ++sample) {
       if (sample == boundary) {
         continue;
       }
-      localCurvature =
-          std::max({localCurvature,
-                    std::abs(static_cast<double>(
-                        left[sample] - 2.0F * left[sample - 1U] +
-                        left[sample - 2U])),
-                    std::abs(static_cast<double>(
-                        right[sample] - 2.0F * right[sample - 1U] +
-                        right[sample - 2U]))});
+      localCurvature = std::max(
+          {localCurvature,
+           std::abs(static_cast<double>(
+               left[sample] - 2.0F * left[sample - 1U] + left[sample - 2U])),
+           std::abs(static_cast<double>(right[sample] -
+                                        2.0F * right[sample - 1U] +
+                                        right[sample - 2U]))});
     }
     result.maximumBoundary =
         std::max(result.maximumBoundary, boundaryCurvature);
     result.maximumLocal = std::max(result.maximumLocal, localCurvature);
-    result.maximumExcess = std::max(
-        result.maximumExcess,
-        std::max(0.0, boundaryCurvature - localCurvature));
+    result.maximumExcess =
+        std::max(result.maximumExcess,
+                 std::max(0.0, boundaryCurvature - localCurvature));
     ++result.transitions;
   }
   return result;
@@ -2979,7 +2932,7 @@ int automationReport(const std::filesystem::path& outputPath) {
   constexpr double excessCeiling = 0.001;
   struct Parameter {
     const char* name;
-    float aste::density::Parameters::*value;
+    float aste::density::Parameters::* value;
     float minimum;
     float maximum;
   };
@@ -3037,14 +2990,14 @@ int automationReport(const std::filesystem::path& outputPath) {
       ++block;
     }
 
-    const auto curvature = measureBoundaryCurvature(
-        signal[0], signal[1], blockSize, localRadius);
-    const bool passed = curvature.finite &&
-                        curvature.maximumExcess <= excessCeiling;
+    const auto curvature =
+        measureBoundaryCurvature(signal[0], signal[1], blockSize, localRadius);
+    const bool passed =
+        curvature.finite && curvature.maximumExcess <= excessCeiling;
     const std::string_view name =
         test == parameters.size() ? "all" : parameters[test].name;
-    const double excessDb = 20.0 * std::log10(
-        std::max(curvature.maximumExcess, 1.0e-15));
+    const double excessDb =
+        20.0 * std::log10(std::max(curvature.maximumExcess, 1.0e-15));
     output << name << ',' << curvature.transitions << ','
            << curvature.maximumBoundary << ',' << curvature.maximumLocal << ','
            << curvature.maximumExcess << ',' << excessDb << ','
@@ -3063,10 +3016,8 @@ int automationReport(const std::filesystem::path& outputPath) {
                "\"worst_parameter\":\""
             << worstParameter << "\",\"worst_excess_dbfs\":"
             << 20.0 * std::log10(std::max(worstExcess, 1.0e-15))
-            << ",\"within_ceiling\":"
-            << (withinCeiling ? "true" : "false")
-            << ",\"measurement_valid\":" << (valid ? "true" : "false")
-            << "}\n";
+            << ",\"within_ceiling\":" << (withinCeiling ? "true" : "false")
+            << ",\"measurement_valid\":" << (valid ? "true" : "false") << "}\n";
   return valid ? 0 : 2;
 }
 
@@ -3131,27 +3082,27 @@ int outputSmoothingReport(const std::filesystem::path& outputPath) {
   std::string_view bestProfile;
   for (const auto& profile : profiles) {
     auto rendered = unscaled;
-    const float smoothingCoefficient = static_cast<float>(
-        std::exp(-1.0 / (profile.seconds * sampleRate)));
+    const float smoothingCoefficient =
+        static_cast<float>(std::exp(-1.0 / (profile.seconds * sampleRate)));
     float first = minimumDb;
     float second = minimumDb;
     for (std::size_t sample = 0; sample < frames; ++sample) {
-      const float target = ((sample / blockSize) & 1U) != 0U ? maximumDb
-                                                              : minimumDb;
+      const float target =
+          ((sample / blockSize) & 1U) != 0U ? maximumDb : minimumDb;
       first = target + smoothingCoefficient * (first - target);
       if (profile.stages == 2) {
         second = first + smoothingCoefficient * (second - first);
       }
       const float gain = std::exp((profile.stages == 2 ? second : first) *
                                   0.11512925464970229F);
-      rendered[0][sample] = aste::density::controlledClipSample(
-          rendered[0][sample] * gain);
-      rendered[1][sample] = aste::density::controlledClipSample(
-          rendered[1][sample] * gain);
+      rendered[0][sample] =
+          aste::density::controlledClipSample(rendered[0][sample] * gain);
+      rendered[1][sample] =
+          aste::density::controlledClipSample(rendered[1][sample] * gain);
     }
 
-    const auto curvature = measureBoundaryCurvature(
-        rendered[0], rendered[1], blockSize, localRadius);
+    const auto curvature = measureBoundaryCurvature(rendered[0], rendered[1],
+                                                    blockSize, localRadius);
     double maximumProductionDelta{};
     for (std::size_t sample = 0; sample < frames; ++sample) {
       maximumProductionDelta =
@@ -3186,16 +3137,16 @@ int outputSmoothingReport(const std::filesystem::path& outputPath) {
     }
     const double settleMs =
         1000.0 * static_cast<double>(settleSample + 1U) / sampleRate;
-    const double excessDb = 20.0 * std::log10(
-        std::max(curvature.maximumExcess, 1.0e-15));
+    const double excessDb =
+        20.0 * std::log10(std::max(curvature.maximumExcess, 1.0e-15));
     const bool passed =
         curvature.finite && curvature.maximumExcess <= excessCeiling;
     output << profile.name << ',' << profile.stages << ','
            << 1000.0 * profile.seconds << ',' << curvature.transitions << ','
            << curvature.maximumExcess << ',' << excessDb << ','
            << firstSampleMotion << ',' << responseAtFiveMs << ',' << settleMs
-           << ',' << maximumProductionDelta << ','
-           << (curvature.finite ? 1 : 0) << ',' << (passed ? 1 : 0) << '\n';
+           << ',' << maximumProductionDelta << ',' << (curvature.finite ? 1 : 0)
+           << ',' << (passed ? 1 : 0) << '\n';
     if (curvature.maximumExcess < bestExcess) {
       bestExcess = curvature.maximumExcess;
       bestProfile = profile.name;
@@ -3210,8 +3161,7 @@ int outputSmoothingReport(const std::filesystem::path& outputPath) {
             << ",\"production_model_delta\":0.000000,\"best_profile\":\""
             << bestProfile << "\",\"best_excess_dbfs\":"
             << 20.0 * std::log10(std::max(bestExcess, 1.0e-15))
-            << ",\"measurement_valid\":" << (valid ? "true" : "false")
-            << "}\n";
+            << ",\"measurement_valid\":" << (valid ? "true" : "false") << "}\n";
   return valid ? 0 : 2;
 }
 
@@ -3252,8 +3202,7 @@ int driveSmoothingReport(const std::filesystem::path& outputPath) {
 
   std::ofstream output{outputPath};
   if (!output) {
-    std::cerr << "cannot create drive smoothing report: " << outputPath
-              << '\n';
+    std::cerr << "cannot create drive smoothing report: " << outputPath << '\n';
     return 1;
   }
   output << "profile,stages,time_constant_ms,transitions,max_excess,"
@@ -3269,19 +3218,18 @@ int driveSmoothingReport(const std::filesystem::path& outputPath) {
     auto parameters = productionParameters();
     parameters.driveDb = minimumDb;
     aste::density::Processor processor;
-    processor.prepareDriveSmoothingPrototype(
-        sampleRate, profile.seconds, profile.cascade, parameters);
+    processor.prepareDriveSmoothingPrototype(sampleRate, profile.seconds,
+                                             profile.cascade, parameters);
     for (std::size_t offset = 0, block = 0; offset < frames; ++block) {
-      parameters.driveDb =
-          (block & 1U) != 0U ? maximumDb : minimumDb;
+      parameters.driveDb = (block & 1U) != 0U ? maximumDb : minimumDb;
       const std::size_t count = std::min(blockSize, frames - offset);
       processor.process(rendered[0].data() + offset,
                         rendered[1].data() + offset, count, parameters);
       offset += count;
     }
 
-    const auto curvature = measureBoundaryCurvature(
-        rendered[0], rendered[1], blockSize, localRadius);
+    const auto curvature = measureBoundaryCurvature(rendered[0], rendered[1],
+                                                    blockSize, localRadius);
     double maximumProductionDelta{};
     for (std::size_t sample = 0; sample < frames; ++sample) {
       maximumProductionDelta =
@@ -3292,8 +3240,8 @@ int driveSmoothingReport(const std::filesystem::path& outputPath) {
                                                  production[1][sample]))});
     }
 
-    const float smoothingCoefficient = static_cast<float>(
-        std::exp(-1.0 / (profile.seconds * sampleRate)));
+    const float smoothingCoefficient =
+        static_cast<float>(std::exp(-1.0 / (profile.seconds * sampleRate)));
     float first = minimumDb;
     float second = minimumDb;
     float firstSampleMotion{};
@@ -3318,16 +3266,16 @@ int driveSmoothingReport(const std::filesystem::path& outputPath) {
     }
     const double settleMs =
         1000.0 * static_cast<double>(settleSample + 1U) / sampleRate;
-    const double excessDb = 20.0 * std::log10(
-        std::max(curvature.maximumExcess, 1.0e-15));
+    const double excessDb =
+        20.0 * std::log10(std::max(curvature.maximumExcess, 1.0e-15));
     const bool passed =
         curvature.finite && curvature.maximumExcess <= excessCeiling;
     output << profile.name << ',' << (profile.cascade ? 2 : 1) << ','
            << 1000.0 * profile.seconds << ',' << curvature.transitions << ','
            << curvature.maximumExcess << ',' << excessDb << ','
            << firstSampleMotion << ',' << responseAtFiveMs << ',' << settleMs
-           << ',' << maximumProductionDelta << ','
-           << (curvature.finite ? 1 : 0) << ',' << (passed ? 1 : 0) << '\n';
+           << ',' << maximumProductionDelta << ',' << (curvature.finite ? 1 : 0)
+           << ',' << (passed ? 1 : 0) << '\n';
     if (curvature.maximumExcess < bestExcess) {
       bestExcess = curvature.maximumExcess;
       bestProfile = profile.name;
@@ -3342,8 +3290,7 @@ int driveSmoothingReport(const std::filesystem::path& outputPath) {
             << ",\"production_model_delta\":0.000000,\"best_profile\":\""
             << bestProfile << "\",\"best_excess_dbfs\":"
             << 20.0 * std::log10(std::max(bestExcess, 1.0e-15))
-            << ",\"measurement_valid\":" << (valid ? "true" : "false")
-            << "}\n";
+            << ",\"measurement_valid\":" << (valid ? "true" : "false") << "}\n";
   return valid ? 0 : 2;
 }
 
@@ -3408,20 +3355,19 @@ int attackSmoothingReport(const std::filesystem::path& outputPath) {
     if (profile.production) {
       processor.prepare(sampleRate, parameters);
     } else {
-      processor.prepareAttackSmoothingPrototype(
-          sampleRate, profile.seconds, profile.cascade, parameters);
+      processor.prepareAttackSmoothingPrototype(sampleRate, profile.seconds,
+                                                profile.cascade, parameters);
     }
     for (std::size_t offset = 0, block = 0; offset < frames; ++block) {
-      parameters.attackMs =
-          (block & 1U) != 0U ? maximumMs : minimumMs;
+      parameters.attackMs = (block & 1U) != 0U ? maximumMs : minimumMs;
       const std::size_t count = std::min(blockSize, frames - offset);
       processor.process(rendered[0].data() + offset,
                         rendered[1].data() + offset, count, parameters);
       offset += count;
     }
 
-    const auto curvature = measureBoundaryCurvature(
-        rendered[0], rendered[1], blockSize, localRadius);
+    const auto curvature = measureBoundaryCurvature(rendered[0], rendered[1],
+                                                    blockSize, localRadius);
     double maximumProductionDelta{};
     for (std::size_t sample = 0; sample < frames; ++sample) {
       maximumProductionDelta =
@@ -3433,10 +3379,9 @@ int attackSmoothingReport(const std::filesystem::path& outputPath) {
     }
 
     const float smoothingCoefficient =
-        profile.smoothed
-            ? static_cast<float>(
-                  std::exp(-1.0 / (profile.seconds * sampleRate)))
-            : 0.0F;
+        profile.smoothed ? static_cast<float>(
+                               std::exp(-1.0 / (profile.seconds * sampleRate)))
+                         : 0.0F;
     float first = minimumLog;
     float second = minimumLog;
     float firstSampleMs{};
@@ -3464,17 +3409,17 @@ int attackSmoothingReport(const std::filesystem::path& outputPath) {
     }
     const double settleMs =
         1000.0 * static_cast<double>(settleSample + 1U) / sampleRate;
-    const double excessDb = 20.0 * std::log10(
-        std::max(curvature.maximumExcess, 1.0e-15));
+    const double excessDb =
+        20.0 * std::log10(std::max(curvature.maximumExcess, 1.0e-15));
     const bool passed =
         curvature.finite && curvature.maximumExcess <= excessCeiling;
     output << profile.name << ','
            << (profile.smoothed ? (profile.cascade ? 2 : 1) : 0) << ','
            << 1000.0 * profile.seconds << ',' << curvature.transitions << ','
-           << curvature.maximumExcess << ',' << excessDb << ','
-           << firstSampleMs << ',' << responseAtFiveMs << ',' << settleMs
-           << ',' << maximumProductionDelta << ','
-           << (curvature.finite ? 1 : 0) << ',' << (passed ? 1 : 0) << '\n';
+           << curvature.maximumExcess << ',' << excessDb << ',' << firstSampleMs
+           << ',' << responseAtFiveMs << ',' << settleMs << ','
+           << maximumProductionDelta << ',' << (curvature.finite ? 1 : 0) << ','
+           << (passed ? 1 : 0) << '\n';
     if (curvature.maximumExcess < bestExcess) {
       bestExcess = curvature.maximumExcess;
       bestProfile = profile.name;
@@ -3488,8 +3433,7 @@ int attackSmoothingReport(const std::filesystem::path& outputPath) {
             << ",\"production_model_delta\":0.000000,\"best_profile\":\""
             << bestProfile << "\",\"best_excess_dbfs\":"
             << 20.0 * std::log10(std::max(bestExcess, 1.0e-15))
-            << ",\"measurement_valid\":" << (valid ? "true" : "false")
-            << "}\n";
+            << ",\"measurement_valid\":" << (valid ? "true" : "false") << "}\n";
   return valid ? 0 : 2;
 }
 
@@ -3527,8 +3471,7 @@ int blendSmoothingReport(const std::filesystem::path& outputPath) {
 
   std::ofstream output{outputPath};
   if (!output) {
-    std::cerr << "cannot create blend smoothing report: " << outputPath
-              << '\n';
+    std::cerr << "cannot create blend smoothing report: " << outputPath << '\n';
     return 1;
   }
   output << "profile,stages,time_constant_ms,transitions,max_excess,"
@@ -3544,8 +3487,8 @@ int blendSmoothingReport(const std::filesystem::path& outputPath) {
     auto parameters = productionParameters();
     parameters.blend = 0.0F;
     aste::density::Processor processor;
-    processor.prepareBlendSmoothingPrototype(
-        sampleRate, profile.seconds, profile.cascade, parameters);
+    processor.prepareBlendSmoothingPrototype(sampleRate, profile.seconds,
+                                             profile.cascade, parameters);
     for (std::size_t offset = 0, block = 0; offset < frames; ++block) {
       parameters.blend = (block & 1U) != 0U ? 1.0F : 0.0F;
       const std::size_t count = std::min(blockSize, frames - offset);
@@ -3554,8 +3497,8 @@ int blendSmoothingReport(const std::filesystem::path& outputPath) {
       offset += count;
     }
 
-    const auto curvature = measureBoundaryCurvature(
-        rendered[0], rendered[1], blockSize, localRadius);
+    const auto curvature = measureBoundaryCurvature(rendered[0], rendered[1],
+                                                    blockSize, localRadius);
     double maximumProductionDelta{};
     for (std::size_t sample = 0; sample < frames; ++sample) {
       maximumProductionDelta =
@@ -3566,8 +3509,8 @@ int blendSmoothingReport(const std::filesystem::path& outputPath) {
                                                  production[1][sample]))});
     }
 
-    const float smoothingCoefficient = static_cast<float>(
-        std::exp(-1.0 / (profile.seconds * sampleRate)));
+    const float smoothingCoefficient =
+        static_cast<float>(std::exp(-1.0 / (profile.seconds * sampleRate)));
     float first{};
     float second{};
     float firstSampleMotion{};
@@ -3591,16 +3534,16 @@ int blendSmoothingReport(const std::filesystem::path& outputPath) {
     }
     const double settleMs =
         1000.0 * static_cast<double>(settleSample + 1U) / sampleRate;
-    const double excessDb = 20.0 * std::log10(
-        std::max(curvature.maximumExcess, 1.0e-15));
+    const double excessDb =
+        20.0 * std::log10(std::max(curvature.maximumExcess, 1.0e-15));
     const bool passed =
         curvature.finite && curvature.maximumExcess <= excessCeiling;
     output << profile.name << ',' << (profile.cascade ? 2 : 1) << ','
            << 1000.0 * profile.seconds << ',' << curvature.transitions << ','
            << curvature.maximumExcess << ',' << excessDb << ','
            << firstSampleMotion << ',' << responseAtFiveMs << ',' << settleMs
-           << ',' << maximumProductionDelta << ','
-           << (curvature.finite ? 1 : 0) << ',' << (passed ? 1 : 0) << '\n';
+           << ',' << maximumProductionDelta << ',' << (curvature.finite ? 1 : 0)
+           << ',' << (passed ? 1 : 0) << '\n';
     if (curvature.maximumExcess < bestExcess) {
       bestExcess = curvature.maximumExcess;
       bestProfile = profile.name;
@@ -3615,8 +3558,7 @@ int blendSmoothingReport(const std::filesystem::path& outputPath) {
             << ",\"production_model_delta\":0.000000,\"best_profile\":\""
             << bestProfile << "\",\"best_excess_dbfs\":"
             << 20.0 * std::log10(std::max(bestExcess, 1.0e-15))
-            << ",\"measurement_valid\":" << (valid ? "true" : "false")
-            << "}\n";
+            << ",\"measurement_valid\":" << (valid ? "true" : "false") << "}\n";
   return valid ? 0 : 2;
 }
 
@@ -3647,13 +3589,14 @@ int automationAuditions(const std::filesystem::path& directory) {
          "peak_dbfs,null_rms_dbfs,production_excess_dbfs,"
          "reference_excess_dbfs,improvement_db\n"
       << std::fixed << std::setprecision(9);
-  notes << "# Density automation audition\n\n"
-           "Do not open `answer-key.csv` until `responses.csv` is complete.\n\n"
-           "Each pair applies full-range endpoint automation every 127 samples "
-           "to a deterministic stereo signal. A and B are RMS matched and "
-           "share -1 dBFS peak normalization. Listen on monitors and headphones "
-           "at normal and quiet levels. Record unintended ticks, buzz, or rough "
-           "edges; prefer neither file when the difference is not reliable.\n";
+  notes
+      << "# Density automation audition\n\n"
+         "Do not open `answer-key.csv` until `responses.csv` is complete.\n\n"
+         "Each pair applies full-range endpoint automation every 127 samples "
+         "to a deterministic stereo signal. A and B are RMS matched and "
+         "share -1 dBFS peak normalization. Listen on monitors and headphones "
+         "at normal and quiet levels. Record unintended ticks, buzz, or rough "
+         "edges; prefer neither file when the difference is not reliable.\n";
 
   const auto setCase = [](aste::density::Parameters& parameters,
                           std::string_view name, bool high) {
@@ -3691,7 +3634,7 @@ int automationAuditions(const std::filesystem::path& directory) {
     aste::density::Processor referenceProcessor;
     productionProcessor.prepare(sampleRate, parameters);
     referenceProcessor.prepareAutomationReferencePrototype(sampleRate,
-                                                            parameters);
+                                                           parameters);
     for (std::size_t offset = 0, block = 0; offset < frames; ++block) {
       setCase(parameters, name, (block & 1U) != 0U);
       const std::size_t count = std::min(blockSize, frames - offset);
@@ -3708,18 +3651,17 @@ int automationAuditions(const std::filesystem::path& directory) {
         production[0], production[1], blockSize, localRadius);
     const auto referenceCurvature = measureBoundaryCurvature(
         reference[0], reference[1], blockSize, localRadius);
-    const double productionExcessDb = 20.0 * std::log10(
-        std::max(productionCurvature.maximumExcess, 1.0e-15));
-    const double referenceExcessDb = 20.0 * std::log10(
-        std::max(referenceCurvature.maximumExcess, 1.0e-15));
+    const double productionExcessDb =
+        20.0 * std::log10(std::max(productionCurvature.maximumExcess, 1.0e-15));
+    const double referenceExcessDb =
+        20.0 * std::log10(std::max(referenceCurvature.maximumExcess, 1.0e-15));
     const double improvementDb = referenceExcessDb - productionExcessDb;
     minimumImprovement = std::min(minimumImprovement, improvementDb);
 
     const double productionRms = stereoRms(production[0], production[1]);
     const double referenceRms = stereoRms(reference[0], reference[1]);
     const double targetRms = std::min(productionRms, referenceRms);
-    const float productionMatch =
-        static_cast<float>(targetRms / productionRms);
+    const float productionMatch = static_cast<float>(targetRms / productionRms);
     const float referenceMatch = static_cast<float>(targetRms / referenceRms);
     for (std::size_t sample = 0; sample < frames; ++sample) {
       production[0][sample] *= productionMatch;
@@ -3728,9 +3670,8 @@ int automationAuditions(const std::filesystem::path& directory) {
       reference[1][sample] *= referenceMatch;
     }
     const float commonGain = static_cast<float>(
-        0.8912509381337456 /
-        std::max(stereoPeak(production[0], production[1]),
-                 stereoPeak(reference[0], reference[1])));
+        0.8912509381337456 / std::max(stereoPeak(production[0], production[1]),
+                                      stereoPeak(reference[0], reference[1])));
     double nullEnergy{};
     for (std::size_t sample = 0; sample < frames; ++sample) {
       production[0][sample] *= commonGain;
@@ -3741,19 +3682,19 @@ int automationAuditions(const std::filesystem::path& directory) {
           production[0][sample] - reference[0][sample];
       const double rightDifference =
           production[1][sample] - reference[1][sample];
-      nullEnergy += leftDifference * leftDifference +
-                    rightDifference * rightDifference;
+      nullEnergy +=
+          leftDifference * leftDifference + rightDifference * rightDifference;
     }
-    const double matchedProductionRms =
-        stereoRms(production[0], production[1]);
+    const double matchedProductionRms = stereoRms(production[0], production[1]);
     const double matchedReferenceRms = stereoRms(reference[0], reference[1]);
     const double matchErrorDb =
         20.0 * std::log10(matchedProductionRms / matchedReferenceRms);
-    const double peakDb = 20.0 * std::log10(std::max(
-        stereoPeak(production[0], production[1]),
-        stereoPeak(reference[0], reference[1])));
-    const double nullDb = 20.0 * std::log10(std::sqrt(
-        nullEnergy / static_cast<double>(2U * frames)));
+    const double peakDb =
+        20.0 * std::log10(std::max(stereoPeak(production[0], production[1]),
+                                   stereoPeak(reference[0], reference[1])));
+    const double nullDb =
+        20.0 *
+        std::log10(std::sqrt(nullEnergy / static_cast<double>(2U * frames)));
     maximumMatchError = std::max(maximumMatchError, std::abs(matchErrorDb));
 
     randomState = randomState * 1664525U + 1013904223U;
@@ -3772,9 +3713,8 @@ int automationAuditions(const std::filesystem::path& directory) {
     measurements << name << ',' << frames << ','
                  << 20.0 * std::log10(productionMatch) << ','
                  << 20.0 * std::log10(referenceMatch) << ',' << matchErrorDb
-                 << ',' << peakDb << ',' << nullDb << ','
-                 << productionExcessDb << ',' << referenceExcessDb << ','
-                 << improvementDb << '\n';
+                 << ',' << peakDb << ',' << nullDb << ',' << productionExcessDb
+                 << ',' << referenceExcessDb << ',' << improvementDb << '\n';
     valid = valid && wroteA && wroteB && productionCurvature.finite &&
             referenceCurvature.finite &&
             productionCurvature.maximumExcess <= excessCeiling &&
@@ -3785,11 +3725,10 @@ int automationAuditions(const std::filesystem::path& directory) {
   valid = valid && static_cast<bool>(answers) && static_cast<bool>(responses) &&
           static_cast<bool>(measurements) && static_cast<bool>(notes) &&
           caseCount == 4U;
-  std::cout << std::fixed << std::setprecision(6)
-            << "{\"cases\":" << caseCount << ",\"pairs\":" << caseCount
-            << ",\"seed\":" << seed << ",\"max_match_error_db\":"
-            << maximumMatchError << ",\"minimum_improvement_db\":"
-            << minimumImprovement
+  std::cout << std::fixed << std::setprecision(6) << "{\"cases\":" << caseCount
+            << ",\"pairs\":" << caseCount << ",\"seed\":" << seed
+            << ",\"max_match_error_db\":" << maximumMatchError
+            << ",\"minimum_improvement_db\":" << minimumImprovement
             << ",\"all_production_within_ceiling\":true,"
                "\"measurement_valid\":"
             << (valid ? "true" : "false") << "}\n";
@@ -3895,10 +3834,9 @@ int stereoStabilityReport(const std::filesystem::path& outputPath) {
       std::numeric_limits<double>::infinity();
   bool balancePreservationMonotonic = true;
   std::size_t fixtureCount{};
-  for (std::string_view fixture :
-       std::array<std::string_view, 6>{"centered_kick", "hard_panned",
-                                       "correlated", "decorrelated",
-                                       "mono_stereo", "polarity_inverted"}) {
+  for (std::string_view fixture : std::array<std::string_view, 6>{
+           "centered_kick", "hard_panned", "correlated", "decorrelated",
+           "mono_stereo", "polarity_inverted"}) {
     const auto input = makeStereoStabilityFixture(fixture);
     const auto& inputLeft = input[0];
     const auto& inputRight = input[1];
@@ -3971,8 +3909,8 @@ int stereoStabilityReport(const std::filesystem::path& outputPath) {
       maximumCorrelationShift =
           std::max(maximumCorrelationShift, std::abs(correlationShift));
       if (mode == links.size() - 1U) {
-        maximumFullyLinkedBalanceShift = std::max(
-            maximumFullyLinkedBalanceShift, std::abs(balanceShift));
+        maximumFullyLinkedBalanceShift =
+            std::max(maximumFullyLinkedBalanceShift, std::abs(balanceShift));
         maximumFullyLinkedCorrelationShift = std::max(
             maximumFullyLinkedCorrelationShift, std::abs(correlationShift));
       }
@@ -3984,9 +3922,9 @@ int stereoStabilityReport(const std::filesystem::path& outputPath) {
           balancePreservationMonotonic &&
           std::abs(balanceShifts[0]) >= std::abs(balanceShifts[1]) &&
           std::abs(balanceShifts[1]) >= std::abs(balanceShifts[2]);
-      minimumFullyLinkedBalanceImprovement = std::min(
-          minimumFullyLinkedBalanceImprovement,
-          std::abs(balanceShifts[0]) - std::abs(balanceShifts[2]));
+      minimumFullyLinkedBalanceImprovement =
+          std::min(minimumFullyLinkedBalanceImprovement,
+                   std::abs(balanceShifts[0]) - std::abs(balanceShifts[2]));
     }
     ++fixtureCount;
   }
@@ -3994,13 +3932,13 @@ int stereoStabilityReport(const std::filesystem::path& outputPath) {
           identicalMaximumError == 0.0 && invertedMaximumError == 0.0 &&
           balancePreservationMonotonic;
   std::cout << std::fixed << std::setprecision(9)
-            << "{\"fixtures\":" << fixtureCount << ",\"link_modes\":3,"
+            << "{\"fixtures\":" << fixtureCount
+            << ",\"link_modes\":3,"
                "\"identical_max_error\":"
-            << identicalMaximumError << ",\"inverted_max_error\":"
-            << invertedMaximumError << ",\"max_abs_balance_shift_db\":"
-            << maximumBalanceShift
-            << ",\"max_abs_correlation_shift\":"
-            << maximumCorrelationShift
+            << identicalMaximumError
+            << ",\"inverted_max_error\":" << invertedMaximumError
+            << ",\"max_abs_balance_shift_db\":" << maximumBalanceShift
+            << ",\"max_abs_correlation_shift\":" << maximumCorrelationShift
             << ",\"max_fully_linked_balance_shift_db\":"
             << maximumFullyLinkedBalanceShift
             << ",\"max_fully_linked_correlation_shift\":"
@@ -4009,8 +3947,7 @@ int stereoStabilityReport(const std::filesystem::path& outputPath) {
             << minimumFullyLinkedBalanceImprovement
             << ",\"balance_preservation_monotonic\":"
             << (balancePreservationMonotonic ? "true" : "false")
-            << ",\"measurement_valid\":"
-            << (valid ? "true" : "false") << "}\n";
+            << ",\"measurement_valid\":" << (valid ? "true" : "false") << "}\n";
   return valid ? 0 : 2;
 }
 
@@ -4056,10 +3993,9 @@ int stereoStabilityAuditions(const std::filesystem::path& directory) {
   double maximumControlNull = -std::numeric_limits<double>::infinity();
   bool valid = true;
   std::size_t fixtureCount{};
-  for (std::string_view fixture :
-       std::array<std::string_view, 6>{"centered_kick", "hard_panned",
-                                       "correlated", "decorrelated",
-                                       "mono_stereo", "polarity_inverted"}) {
+  for (std::string_view fixture : std::array<std::string_view, 6>{
+           "centered_kick", "hard_panned", "correlated", "decorrelated",
+           "mono_stereo", "polarity_inverted"}) {
     const auto input = makeStereoStabilityFixture(fixture);
     std::array<std::array<std::vector<float>, 2>, links.size()> renders;
     std::array<double, links.size()> sourceRms{};
@@ -4091,8 +4027,7 @@ int stereoStabilityAuditions(const std::filesystem::path& directory) {
     }
     double largestPeak{};
     for (const auto& render : renders) {
-      largestPeak =
-          std::max(largestPeak, stereoPeak(render[0], render[1]));
+      largestPeak = std::max(largestPeak, stereoPeak(render[0], render[1]));
     }
     const float commonGain =
         static_cast<float>(0.8912509381337456 / largestPeak);
@@ -4107,14 +4042,12 @@ int stereoStabilityAuditions(const std::filesystem::path& directory) {
     for (const auto& render : renders) {
       fixtureMatchError = std::max(
           fixtureMatchError,
-          std::abs(20.0 * std::log10(
-              stereoRms(render[0], render[1]) /
-              stereoRms(renders[0][0], renders[0][1]))));
+          std::abs(20.0 * std::log10(stereoRms(render[0], render[1]) /
+                                     stereoRms(renders[0][0], renders[0][1]))));
     }
     maximumMatchError = std::max(maximumMatchError, fixtureMatchError);
     const double peakDb = 20.0 * std::log10(largestPeak * commonGain);
-    const double independentPartialNull =
-        stereoNullDb(renders[0], renders[1]);
+    const double independentPartialNull = stereoNullDb(renders[0], renders[1]);
     const double partialLinkedNull = stereoNullDb(renders[1], renders[2]);
     const bool control = fixture == "centered_kick" ||
                          fixture == "mono_stereo" ||
@@ -4127,15 +4060,14 @@ int stereoStabilityAuditions(const std::filesystem::path& directory) {
     std::array<std::size_t, links.size()> order{0U, 1U, 2U};
     for (std::size_t remaining = order.size(); remaining > 1U; --remaining) {
       randomState = randomState * 1664525U + 1013904223U;
-      std::swap(order[remaining - 1U],
-                order[(randomState >> 16U) % remaining]);
+      std::swap(order[remaining - 1U], order[(randomState >> 16U) % remaining]);
     }
     answers << fixture;
     bool wrote = true;
     for (std::size_t position = 0; position < order.size(); ++position) {
       const std::size_t mode = order[position];
-      const auto path = audioDirectory /
-                        (std::string{fixture} + '-' + labels[position] + ".wav");
+      const auto path = audioDirectory / (std::string{fixture} + '-' +
+                                          labels[position] + ".wav");
       wrote = writeStereoFloatWave(path, renders[mode][0], renders[mode][1],
                                    sampleRate) &&
               wrote;
@@ -4152,8 +4084,8 @@ int stereoStabilityAuditions(const std::filesystem::path& directory) {
                  << (control ? 1 : 0) << '\n';
     valid = valid && wrote && fixtureMatchError < 0.001 &&
             std::abs(peakDb + 1.0) < 0.001 &&
-            (!control || (independentPartialNull <= -250.0 &&
-                          partialLinkedNull <= -250.0));
+            (!control ||
+             (independentPartialNull <= -250.0 && partialLinkedNull <= -250.0));
     ++fixtureCount;
   }
   valid = valid && static_cast<bool>(answers) && static_cast<bool>(responses) &&
@@ -4164,8 +4096,7 @@ int stereoStabilityAuditions(const std::filesystem::path& directory) {
             << ",\"files\":18,\"seed\":" << seed
             << ",\"max_match_error_db\":" << maximumMatchError
             << ",\"max_control_null_dbfs\":" << maximumControlNull
-            << ",\"measurement_valid\":" << (valid ? "true" : "false")
-            << "}\n";
+            << ",\"measurement_valid\":" << (valid ? "true" : "false") << "}\n";
   return valid ? 0 : 2;
 }
 
@@ -4196,14 +4127,15 @@ int densityMacroAuditions(const std::filesystem::path& directory) {
          "density_100_gr_db,max_match_error_db,peak_dbfs,null_0_33_dbfs,"
          "null_33_67_dbfs,null_67_100_dbfs,control_null\n"
       << std::fixed << std::setprecision(9);
-  notes << "# Density macro audition\n\n"
-           "Do not open `answer-key.csv` until `responses.csv` is complete.\n\n"
-           "Rank A/B/C/D from least to most dense for each trial. The four "
-           "files contain 0%, 33%, 67%, and 100% Density in randomized order, "
-           "are RMS matched, and share -1 dBFS peak normalization. Use monitors "
-           "and headphones at a fixed level. `dry_control` is intentionally "
-           "identical; leave its ranking blank and report no preference when "
-           "you cannot distinguish the files.\n";
+  notes
+      << "# Density macro audition\n\n"
+         "Do not open `answer-key.csv` until `responses.csv` is complete.\n\n"
+         "Rank A/B/C/D from least to most dense for each trial. The four "
+         "files contain 0%, 33%, 67%, and 100% Density in randomized order, "
+         "are RMS matched, and share -1 dBFS peak normalization. Use monitors "
+         "and headphones at a fixed level. `dry_control` is intentionally "
+         "identical; leave its ranking blank and report no preference when "
+         "you cannot distinguish the files.\n";
 
   std::uint32_t randomState = seed;
   double maximumMatchError{};
@@ -4211,9 +4143,8 @@ int densityMacroAuditions(const std::filesystem::path& directory) {
   double minimumAudibleNull = std::numeric_limits<double>::infinity();
   bool valid = true;
   std::size_t trialCount{};
-  for (std::string_view trial :
-       std::array<std::string_view, 5>{"transient", "bass", "dense",
-                                       "ambient", "dry_control"}) {
+  for (std::string_view trial : std::array<std::string_view, 5>{
+           "transient", "bass", "dense", "ambient", "dry_control"}) {
     const bool control = trial == "dry_control";
     const auto mono = makeFixture(control ? "dense" : trial);
     const std::array<std::vector<float>, 2> input{mono, mono};
@@ -4229,9 +4160,9 @@ int densityMacroAuditions(const std::filesystem::path& directory) {
       }
       aste::density::Processor processor;
       processor.prepare(sampleRate, parameters);
-      reductions[level] = processInBlocks(processor, renders[level][0],
-                                          renders[level][1], schedule,
-                                          parameters);
+      reductions[level] =
+          processInBlocks(processor, renders[level][0], renders[level][1],
+                          schedule, parameters);
       sourceRms[level] = stereoRms(renders[level][0], renders[level][1]);
     }
 
@@ -4246,8 +4177,7 @@ int densityMacroAuditions(const std::filesystem::path& directory) {
     }
     double largestPeak{};
     for (const auto& render : renders) {
-      largestPeak =
-          std::max(largestPeak, stereoPeak(render[0], render[1]));
+      largestPeak = std::max(largestPeak, stereoPeak(render[0], render[1]));
     }
     const float commonGain =
         static_cast<float>(0.8912509381337456 / largestPeak);
@@ -4262,9 +4192,8 @@ int densityMacroAuditions(const std::filesystem::path& directory) {
     for (const auto& render : renders) {
       matchError = std::max(
           matchError,
-          std::abs(20.0 * std::log10(
-              stereoRms(render[0], render[1]) /
-              stereoRms(renders[0][0], renders[0][1]))));
+          std::abs(20.0 * std::log10(stereoRms(render[0], render[1]) /
+                                     stereoRms(renders[0][0], renders[0][1]))));
     }
     maximumMatchError = std::max(maximumMatchError, matchError);
     const double peakDb = 20.0 * std::log10(largestPeak * commonGain);
@@ -4281,8 +4210,7 @@ int densityMacroAuditions(const std::filesystem::path& directory) {
     std::array<std::size_t, densities.size()> order{0U, 1U, 2U, 3U};
     for (std::size_t remaining = order.size(); remaining > 1U; --remaining) {
       randomState = randomState * 1664525U + 1013904223U;
-      std::swap(order[remaining - 1U],
-                order[(randomState >> 16U) % remaining]);
+      std::swap(order[remaining - 1U], order[(randomState >> 16U) % remaining]);
     }
     answers << trial;
     bool wrote = true;
@@ -4318,12 +4246,11 @@ int densityMacroAuditions(const std::filesystem::path& directory) {
           static_cast<bool>(measurements) && static_cast<bool>(notes) &&
           trialCount == 5U;
   std::cout << std::fixed << std::setprecision(6)
-            << "{\"trials\":" << trialCount << ",\"files\":20,\"seed\":"
-            << seed << ",\"max_match_error_db\":" << maximumMatchError
+            << "{\"trials\":" << trialCount << ",\"files\":20,\"seed\":" << seed
+            << ",\"max_match_error_db\":" << maximumMatchError
             << ",\"minimum_audible_null_dbfs\":" << minimumAudibleNull
             << ",\"max_control_null_dbfs\":" << maximumControlNull
-            << ",\"measurement_valid\":" << (valid ? "true" : "false")
-            << "}\n";
+            << ",\"measurement_valid\":" << (valid ? "true" : "false") << "}\n";
   return valid ? 0 : 2;
 }
 
@@ -4336,8 +4263,8 @@ int detectorAuditions(const std::filesystem::path& directory) {
   }
 
   bool valid = true;
-  for (std::string_view name :
-       std::array<std::string_view, 4>{"transient", "bass", "dense", "ambient"}) {
+  for (std::string_view name : std::array<std::string_view, 4>{
+           "transient", "bass", "dense", "ambient"}) {
     const auto input = makeFixture(name);
     std::vector<float> current(input.size());
     std::vector<float> candidate(input.size());
@@ -4350,8 +4277,10 @@ int detectorAuditions(const std::filesystem::path& directory) {
       const auto [currentReduction, candidateReduction, dualReduction,
                   programmeReduction, hybridReduction, feedbackReduction] =
           detectors.process(input[i]);
-      current[i] = input[i] * std::exp(-0.11512925464970229F * currentReduction);
-      candidate[i] = input[i] * std::exp(-0.11512925464970229F * candidateReduction);
+      current[i] =
+          input[i] * std::exp(-0.11512925464970229F * currentReduction);
+      candidate[i] =
+          input[i] * std::exp(-0.11512925464970229F * candidateReduction);
       dual[i] = input[i] * std::exp(-0.11512925464970229F * dualReduction);
       programme[i] =
           input[i] * std::exp(-0.11512925464970229F * programmeReduction);
@@ -4383,10 +4312,9 @@ int detectorAuditions(const std::filesystem::path& directory) {
       feedback[i] *= feedbackMatch;
     }
     const float commonGain =
-        0.89125094F /
-        std::max({signalPeak(current), signalPeak(candidate), signalPeak(dual),
-                  signalPeak(programme), signalPeak(hybrid),
-                  signalPeak(feedback)});
+        0.89125094F / std::max({signalPeak(current), signalPeak(candidate),
+                                signalPeak(dual), signalPeak(programme),
+                                signalPeak(hybrid), signalPeak(feedback)});
     for (std::size_t i = 0; i < input.size(); ++i) {
       current[i] *= commonGain;
       candidate[i] *= commonGain;
@@ -4397,7 +4325,8 @@ int detectorAuditions(const std::filesystem::path& directory) {
     }
 
     const auto currentPath = directory / (std::string{name} + "-current.wav");
-    const auto candidatePath = directory / (std::string{name} + "-rms-peak.wav");
+    const auto candidatePath =
+        directory / (std::string{name} + "-rms-peak.wav");
     const auto dualPath = directory / (std::string{name} + "-dual-time.wav");
     const auto programmePath =
         directory / (std::string{name} + "-programme.wav");
@@ -4420,7 +4349,8 @@ int detectorAuditions(const std::filesystem::path& directory) {
     const double feedbackMatchErrorDb =
         20.0 * std::log10(matchedCurrentRms / matchedFeedbackRms);
     const bool currentWritten = writeFloatWave(currentPath, current, 48000U);
-    const bool candidateWritten = writeFloatWave(candidatePath, candidate, 48000U);
+    const bool candidateWritten =
+        writeFloatWave(candidatePath, candidate, 48000U);
     const bool dualWritten = writeFloatWave(dualPath, dual, 48000U);
     const bool programmeWritten =
         writeFloatWave(programmePath, programme, 48000U);
@@ -4430,45 +4360,37 @@ int detectorAuditions(const std::filesystem::path& directory) {
             programmeWritten && hybridWritten && feedbackWritten && valid &&
             std::isfinite(candidateMatchErrorDb) &&
             std::abs(candidateMatchErrorDb) < 0.001 &&
-            std::isfinite(dualMatchErrorDb) && std::abs(dualMatchErrorDb) < 0.001;
+            std::isfinite(dualMatchErrorDb) &&
+            std::abs(dualMatchErrorDb) < 0.001;
     valid = valid && std::isfinite(programmeMatchErrorDb) &&
             std::abs(programmeMatchErrorDb) < 0.001;
     valid = valid && std::isfinite(hybridMatchErrorDb) &&
             std::abs(hybridMatchErrorDb) < 0.001;
     valid = valid && std::isfinite(feedbackMatchErrorDb) &&
             std::abs(feedbackMatchErrorDb) < 0.001;
-    std::cout << std::fixed << std::setprecision(6)
-              << "{\"fixture\":\"" << name << "\",\"rms_dbfs\":"
-              << 20.0 * std::log10(matchedCurrentRms)
-              << ",\"rms_peak_match_error_db\":" << candidateMatchErrorDb
-              << ",\"dual_time_match_error_db\":" << dualMatchErrorDb
-              << ",\"programme_match_error_db\":" << programmeMatchErrorDb
-              << ",\"hybrid_match_error_db\":" << hybridMatchErrorDb
-              << ",\"feedback_match_error_db\":" << feedbackMatchErrorDb
-              << ",\"current_peak_dbfs\":"
-              << 20.0 * std::log10(signalPeak(current))
-              << ",\"rms_peak_peak_dbfs\":"
-              << 20.0 * std::log10(signalPeak(candidate))
-              << ",\"dual_time_peak_dbfs\":"
-              << 20.0 * std::log10(signalPeak(dual))
-              << ",\"programme_peak_dbfs\":"
-              << 20.0 * std::log10(signalPeak(programme))
-              << ",\"hybrid_peak_dbfs\":"
-              << 20.0 * std::log10(signalPeak(hybrid))
-              << ",\"feedback_peak_dbfs\":"
-              << 20.0 * std::log10(signalPeak(feedback))
-              << ",\"current_match_db\":"
-              << 20.0 * std::log10(currentMatch)
-              << ",\"rms_peak_match_db\":"
-              << 20.0 * std::log10(candidateMatch)
-              << ",\"dual_time_match_db\":"
-              << 20.0 * std::log10(dualMatch)
-              << ",\"programme_match_db\":"
-              << 20.0 * std::log10(programmeMatch)
-              << ",\"hybrid_match_db\":"
-              << 20.0 * std::log10(hybridMatch)
-              << ",\"feedback_match_db\":"
-              << 20.0 * std::log10(feedbackMatch) << "}\n";
+    std::cout
+        << std::fixed << std::setprecision(6) << "{\"fixture\":\"" << name
+        << "\",\"rms_dbfs\":" << 20.0 * std::log10(matchedCurrentRms)
+        << ",\"rms_peak_match_error_db\":" << candidateMatchErrorDb
+        << ",\"dual_time_match_error_db\":" << dualMatchErrorDb
+        << ",\"programme_match_error_db\":" << programmeMatchErrorDb
+        << ",\"hybrid_match_error_db\":" << hybridMatchErrorDb
+        << ",\"feedback_match_error_db\":" << feedbackMatchErrorDb
+        << ",\"current_peak_dbfs\":" << 20.0 * std::log10(signalPeak(current))
+        << ",\"rms_peak_peak_dbfs\":"
+        << 20.0 * std::log10(signalPeak(candidate))
+        << ",\"dual_time_peak_dbfs\":" << 20.0 * std::log10(signalPeak(dual))
+        << ",\"programme_peak_dbfs\":"
+        << 20.0 * std::log10(signalPeak(programme))
+        << ",\"hybrid_peak_dbfs\":" << 20.0 * std::log10(signalPeak(hybrid))
+        << ",\"feedback_peak_dbfs\":" << 20.0 * std::log10(signalPeak(feedback))
+        << ",\"current_match_db\":" << 20.0 * std::log10(currentMatch)
+        << ",\"rms_peak_match_db\":" << 20.0 * std::log10(candidateMatch)
+        << ",\"dual_time_match_db\":" << 20.0 * std::log10(dualMatch)
+        << ",\"programme_match_db\":" << 20.0 * std::log10(programmeMatch)
+        << ",\"hybrid_match_db\":" << 20.0 * std::log10(hybridMatch)
+        << ",\"feedback_match_db\":" << 20.0 * std::log10(feedbackMatch)
+        << "}\n";
   }
   return valid ? 0 : 2;
 }
@@ -4489,13 +4411,14 @@ int detectorBlindPack(const std::filesystem::path& directory) {
     return 1;
   }
 
-  responses << "trial,fixture,preferred(A/B/no preference),confidence(0-3),notes\n";
+  responses
+      << "trial,fixture,preferred(A/B/no preference),confidence(0-3),notes\n";
   answerKey << "trial,fixture,A,B\n";
   std::uint32_t randomState = 0xD01B11DU;
   std::size_t trial = 0;
   bool valid = true;
-  for (std::string_view fixture :
-       std::array<std::string_view, 4>{"transient", "bass", "dense", "ambient"}) {
+  for (std::string_view fixture : std::array<std::string_view, 4>{
+           "transient", "bass", "dense", "ambient"}) {
     std::array<std::string_view, 5> candidates{
         "rms-peak", "dual-time", "programme", "hybrid", "feedback"};
     for (std::size_t i = candidates.size(); i > 1; --i) {
@@ -4516,14 +4439,14 @@ int detectorBlindPack(const std::filesystem::path& directory) {
           (std::string{fixture} + "-" + std::string{candidate} + ".wav");
       std::error_code errorA;
       std::error_code errorB;
-      std::filesystem::copy_file(candidateIsA ? candidateSource : currentSource,
-                                 audioDirectory / (prefix + "-A.wav"),
-                                 std::filesystem::copy_options::overwrite_existing,
-                                 errorA);
-      std::filesystem::copy_file(candidateIsA ? currentSource : candidateSource,
-                                 audioDirectory / (prefix + "-B.wav"),
-                                 std::filesystem::copy_options::overwrite_existing,
-                                 errorB);
+      std::filesystem::copy_file(
+          candidateIsA ? candidateSource : currentSource,
+          audioDirectory / (prefix + "-A.wav"),
+          std::filesystem::copy_options::overwrite_existing, errorA);
+      std::filesystem::copy_file(
+          candidateIsA ? currentSource : candidateSource,
+          audioDirectory / (prefix + "-B.wav"),
+          std::filesystem::copy_options::overwrite_existing, errorB);
       valid = !errorA && !errorB && valid;
       responses << prefix.substr(6) << ',' << fixture << ",,,\n";
       answerKey << prefix.substr(6) << ',' << fixture << ','
@@ -4531,8 +4454,8 @@ int detectorBlindPack(const std::filesystem::path& directory) {
                 << (candidateIsA ? "current" : candidate) << '\n';
     }
   }
-  valid = valid && static_cast<bool>(responses) && static_cast<bool>(answerKey) &&
-          trial == 20U;
+  valid = valid && static_cast<bool>(responses) &&
+          static_cast<bool>(answerKey) && trial == 20U;
   if (!valid) {
     std::cerr << "incomplete blind listening pack: " << directory << '\n';
     return 2;
@@ -4580,9 +4503,8 @@ int benchmark() {
             << ",\"block_size\":" << blockSize
             << ",\"rendered_seconds\":" << renderedSeconds
             << ",\"elapsed_seconds\":" << elapsed
-            << ",\"one_core_percent\":"
-            << 100.0 * elapsed / renderedSeconds << ",\"checksum\":"
-            << checksum << "}\n";
+            << ",\"one_core_percent\":" << 100.0 * elapsed / renderedSeconds
+            << ",\"checksum\":" << checksum << "}\n";
   return 0;
 }
 
@@ -4625,72 +4547,70 @@ int main(int argc, char** argv) {
         argc >= 3 ? argv[2] : "density-halfband-prototype.csv");
   }
   if (argc >= 2 && std::string{argv[1]} == "--kaiser-prototype") {
-    return kaiserPrototypeReport(
-        argc >= 3 ? argv[2] : "density-kaiser-prototype.csv");
+    return kaiserPrototypeReport(argc >= 3 ? argv[2]
+                                           : "density-kaiser-prototype.csv");
   }
   if (argc >= 2 && std::string{argv[1]} == "--kaiser-sweep") {
-    return kaiserSweepReport(
-        argc >= 3 ? argv[2] : "density-kaiser-sweep.csv");
+    return kaiserSweepReport(argc >= 3 ? argv[2] : "density-kaiser-sweep.csv");
   }
   if (argc >= 2 && std::string{argv[1]} == "--kaiser-rate-sweep") {
-    return kaiserRateSweepReport(
-        argc >= 3 ? argv[2] : "density-kaiser-rate-sweep.csv");
+    return kaiserRateSweepReport(argc >= 3 ? argv[2]
+                                           : "density-kaiser-rate-sweep.csv");
   }
   if (argc >= 2 && std::string{argv[1]} == "--kaiser-linear-report") {
-    return kaiserLinearReport(
-        argc >= 3 ? argv[2] : "density-kaiser-linear.csv");
+    return kaiserLinearReport(argc >= 3 ? argv[2]
+                                        : "density-kaiser-linear.csv");
   }
   if (argc >= 2 && std::string{argv[1]} == "--kaiser-length-report") {
-    return kaiserLengthReport(
-        argc >= 3 ? argv[2] : "density-kaiser-length.csv");
+    return kaiserLengthReport(argc >= 3 ? argv[2]
+                                        : "density-kaiser-length.csv");
   }
   if (argc >= 2 && std::string{argv[1]} == "--kaiser-finalist-report") {
-    return kaiserFinalistReport(
-        argc >= 3 ? argv[2] : "density-kaiser-finalists.csv");
+    return kaiserFinalistReport(argc >= 3 ? argv[2]
+                                          : "density-kaiser-finalists.csv");
   }
   if (argc >= 2 && std::string{argv[1]} == "--oversampled-chain-report") {
-    return oversampledChainReport(
-        argc >= 3 ? argv[2] : "density-oversampled-chain.csv");
+    return oversampledChainReport(argc >= 3 ? argv[2]
+                                            : "density-oversampled-chain.csv");
   }
   if (argc >= 2 && std::string{argv[1]} == "--oversampling-auditions") {
-    return oversamplingAuditions(
-        argc >= 3 ? argv[2] : "density-oversampling-auditions");
+    return oversamplingAuditions(argc >= 3 ? argv[2]
+                                           : "density-oversampling-auditions");
   }
   if (argc >= 2 && std::string{argv[1]} == "--automation-report") {
-    return automationReport(argc >= 3 ? argv[2]
-                                      : "density-automation.csv");
+    return automationReport(argc >= 3 ? argv[2] : "density-automation.csv");
   }
   if (argc >= 2 && std::string{argv[1]} == "--output-smoothing-report") {
-    return outputSmoothingReport(
-        argc >= 3 ? argv[2] : "density-output-smoothing.csv");
+    return outputSmoothingReport(argc >= 3 ? argv[2]
+                                           : "density-output-smoothing.csv");
   }
   if (argc >= 2 && std::string{argv[1]} == "--drive-smoothing-report") {
-    return driveSmoothingReport(
-        argc >= 3 ? argv[2] : "density-drive-smoothing.csv");
+    return driveSmoothingReport(argc >= 3 ? argv[2]
+                                          : "density-drive-smoothing.csv");
   }
   if (argc >= 2 && std::string{argv[1]} == "--attack-smoothing-report") {
-    return attackSmoothingReport(
-        argc >= 3 ? argv[2] : "density-attack-smoothing.csv");
+    return attackSmoothingReport(argc >= 3 ? argv[2]
+                                           : "density-attack-smoothing.csv");
   }
   if (argc >= 2 && std::string{argv[1]} == "--blend-smoothing-report") {
-    return blendSmoothingReport(
-        argc >= 3 ? argv[2] : "density-blend-smoothing.csv");
+    return blendSmoothingReport(argc >= 3 ? argv[2]
+                                          : "density-blend-smoothing.csv");
   }
   if (argc >= 2 && std::string{argv[1]} == "--automation-auditions") {
-    return automationAuditions(
-        argc >= 3 ? argv[2] : "density-automation-auditions");
+    return automationAuditions(argc >= 3 ? argv[2]
+                                         : "density-automation-auditions");
   }
   if (argc >= 2 && std::string{argv[1]} == "--stereo-stability-report") {
-    return stereoStabilityReport(
-        argc >= 3 ? argv[2] : "density-stereo-stability.csv");
+    return stereoStabilityReport(argc >= 3 ? argv[2]
+                                           : "density-stereo-stability.csv");
   }
   if (argc >= 2 && std::string{argv[1]} == "--stereo-stability-auditions") {
     return stereoStabilityAuditions(
         argc >= 3 ? argv[2] : "density-stereo-stability-auditions");
   }
   if (argc >= 2 && std::string{argv[1]} == "--density-macro-auditions") {
-    return densityMacroAuditions(
-        argc >= 3 ? argv[2] : "density-macro-auditions");
+    return densityMacroAuditions(argc >= 3 ? argv[2]
+                                           : "density-macro-auditions");
   }
   const std::string outputPath = argc > 1 ? argv[1] : "density.csv";
   std::ofstream output(outputPath);
@@ -4723,12 +4643,13 @@ int main(int argc, char** argv) {
     const std::size_t frames = std::min(blockSize, totalFrames - rendered);
     for (std::size_t i = 0; i < frames; ++i) {
       const std::size_t sample = rendered + i;
-      const float amplitude = sample < totalFrames / 3 ? 0.08F
+      const float amplitude = sample < totalFrames / 3       ? 0.08F
                               : sample < 2 * totalFrames / 3 ? 0.35F
-                                                              : 0.9F;
-      const float signal = amplitude * static_cast<float>(
-          std::sin(2.0 * 3.14159265358979323846 * 997.0 *
-                   static_cast<double>(sample) / sampleRate));
+                                                             : 0.9F;
+      const float signal =
+          amplitude * static_cast<float>(
+                          std::sin(2.0 * 3.14159265358979323846 * 997.0 *
+                                   static_cast<double>(sample) / sampleRate));
       input[i] = left[i] = signal;
       right[i] = signal;
     }
@@ -4744,9 +4665,9 @@ int main(int argc, char** argv) {
     rendered += frames;
   }
 
-  std::cout << std::fixed << std::setprecision(6)
-            << "{\"frames\":" << rendered << ",\"sample_rate\":" << sampleRate
-            << ",\"peak\":" << peak << ",\"rms\":"
+  std::cout << std::fixed << std::setprecision(6) << "{\"frames\":" << rendered
+            << ",\"sample_rate\":" << sampleRate << ",\"peak\":" << peak
+            << ",\"rms\":"
             << std::sqrt(sumSquares / static_cast<double>(rendered))
             << ",\"max_gain_reduction_db\":" << maximumReduction
             << ",\"latency_samples\":" << processor.latencySamples() << "}\n";

@@ -17,8 +17,9 @@ int fail(const juce::String& message) {
 
 int main(int argc, char** argv) {
   if (argc != 2 && argc != 4) {
-    return fail("usage: density_vst3_host <Density D-01.vst3> "
-                "[--write-state|--read-state <file>]");
+    return fail(
+        "usage: density_vst3_host <Density D-01.vst3> "
+        "[--write-state|--read-state <file>]");
   }
   const juce::String stateMode = argc == 4 ? argv[2] : "";
   if (argc == 4 && stateMode != "--write-state" &&
@@ -47,7 +48,7 @@ int main(int argc, char** argv) {
   constexpr int maximumBlockSize = 2048;
   juce::String error;
   auto plugin = formats.createPluginInstance(*descriptions[0], sampleRate,
-                                              maximumBlockSize, error);
+                                             maximumBlockSize, error);
   if (plugin == nullptr) {
     return fail("instantiation failed: " + error);
   }
@@ -64,9 +65,8 @@ int main(int argc, char** argv) {
     return fail("unexpected parameter count");
   }
   const auto driveEntry = std::find_if(
-      parameters.begin(), parameters.end(), [](const auto* parameter) {
-        return parameter->getName(64) == "Drive";
-      });
+      parameters.begin(), parameters.end(),
+      [](const auto* parameter) { return parameter->getName(64) == "Drive"; });
   if (driveEntry == parameters.end()) {
     return fail("Drive parameter is unavailable");
   }
@@ -147,9 +147,10 @@ int main(int argc, char** argv) {
   }
 
   std::cout << "{\"component\":\"Density D-01\",\"parameters\":"
-            << parameters.size() << ",\"latency_samples\":"
-            << plugin->getLatencySamples() << ",\"blocks\":"
-            << blockSizes.size() << ",\"state_bytes\":"
-            << initialState.getSize() << ",\"finite\":true}\n";
+            << parameters.size()
+            << ",\"latency_samples\":" << plugin->getLatencySamples()
+            << ",\"blocks\":" << blockSizes.size()
+            << ",\"state_bytes\":" << initialState.getSize()
+            << ",\"finite\":true}\n";
   return 0;
 }
