@@ -68,12 +68,12 @@ float rms(const std::vector<float>& values) {
 
 void testStrictDecimalParsing() {
   double value{};
-  require(aste::density::parseFiniteDecimal("-123.5e-2", value) &&
+  require(aste::parameters::parseFiniteDecimal("-123.5e-2", value) &&
               std::abs(value + 1.235) < 1.0e-12,
           "Decimal parsing accepts finite classic-locale values");
   for (const auto invalid : std::array<std::string_view, 8>{
            "", " 1", "1 ", "1x", "1,5", "nan", "inf", "1e9999"}) {
-    require(!aste::density::parseFiniteDecimal(invalid, value),
+    require(!aste::parameters::parseFiniteDecimal(invalid, value),
             "Decimal parsing rejects malformed or non-finite values");
   }
 }

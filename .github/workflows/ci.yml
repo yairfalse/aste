@@ -33,7 +33,7 @@ jobs:
       - name: Configure
         run: cmake -S . -B ci-core -DCMAKE_BUILD_TYPE=Release
       - name: Static analysis
-        run: cmake --build ci-core --target density_static_analysis
+        run: cmake --build ci-core --target density_static_analysis harmonic_static_analysis
       - name: Build
         run: cmake --build ci-core --parallel 3
       - name: Test
@@ -54,9 +54,13 @@ jobs:
       - name: Test
         run: python3 tools/ci_ctest.py ci-vst3
       - name: Verify bundle signature
-        run: codesign --verify --strict --deep "ci-vst3/DensityD01_artefacts/Release/VST3/Density D-01.vst3"
+        run: |
+          codesign --verify --strict --deep "ci-vst3/DensityD01_artefacts/Release/VST3/Density D-01.vst3"
+          codesign --verify --strict --deep "ci-vst3/HarmonicH01_artefacts/Release/VST3/Harmonic H-01.vst3"
       - name: Verify universal binary
-        run: lipo "ci-vst3/DensityD01_artefacts/Release/VST3/Density D-01.vst3/Contents/MacOS/Density D-01" -verify_arch arm64 x86_64
+        run: |
+          lipo "ci-vst3/DensityD01_artefacts/Release/VST3/Density D-01.vst3/Contents/MacOS/Density D-01" -verify_arch arm64 x86_64
+          lipo "ci-vst3/HarmonicH01_artefacts/Release/VST3/Harmonic H-01.vst3/Contents/MacOS/Harmonic H-01" -verify_arch arm64 x86_64
       - name: Checkout Steinberg VST3 SDK validator source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -80,7 +84,9 @@ jobs:
       - name: Build Steinberg validator
         run: cmake --build ci-validator --target validator --parallel 3
       - name: Steinberg extensive validation
-        run: ci-validator/bin/Release/validator -e "ci-vst3/DensityD01_artefacts/Release/VST3/Density D-01.vst3"
+        run: |
+          ci-validator/bin/Release/validator -e "ci-vst3/DensityD01_artefacts/Release/VST3/Density D-01.vst3"
+          ci-validator/bin/Release/validator -e "ci-vst3/HarmonicH01_artefacts/Release/VST3/Harmonic H-01.vst3"
       - name: Build deterministic internal package
         run: cmake --build ci-vst3 --target density_package
       - name: Inspect internal package

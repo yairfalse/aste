@@ -11,22 +11,23 @@ engineering research, deterministic measurement, and unusually strict
 real-time testing. It is not a hardware-cloning exercise and does not use
 “analog” as a substitute for describing measurable behaviour.
 
-> **Project status:** internal research prototype. Density D-01 is the only
-> implemented product. There is no supported release, installer, Developer ID
-> signature, notarization, final company identity, or DAW compatibility claim.
+> **Project status:** Density D-01 and Harmonic H-01 are working internal-beta
+> VST3 plugins. Both have product-owned DSP, state, tests, and industrial UIs;
+> neither is a supported release. There is no Developer ID signature,
+> notarization, final company identity, or DAW compatibility claim yet.
 
 ## The instrument family
 
 | Product | Purpose | Status |
 |---|---|---|
 | **Density D-01** | Parallel hard mastering compressor | Working VST3 prototype; active validation |
-| **Harmonic H-01** | Equalizer with nonlinear band behaviour | Research specification complete; DSP candidates next |
+| **Harmonic H-01** | Equalizer with nonlinear band behaviour | Working VST3 internal beta; musical/host validation next |
 | **Loop L-01** | Tape-inspired playable memory instrument | Product definition only |
 | **Impulse I-01** | Generative rhythm and transient instrument | Product definition only |
 
-Density must become stable before implementation begins on the other three
-products. Shared code is extracted only when two products genuinely need it or
-when correctness requires a single implementation.
+Density and Harmonic remain independent products. Shared code is extracted only
+when two products genuinely need it or when correctness requires one
+implementation; neither processor links to the other.
 
 ## Density D-01
 
@@ -87,6 +88,31 @@ keyboard order, editable values, and signal-driven meters. There are no tabs,
 fake materials, rack decorations, or hidden essential controls. The full family
 language is documented in [UI_SYSTEM.md](UI_SYSTEM.md).
 
+## Harmonic H-01
+
+Harmonic is a four-band broad equalizer whose boost behavior includes a bounded
+dynamic nonlinear component. Cuts stay clean; boosts progressively add a
+stateful harmonic contribution without switching topology. The provisional
+serial graph is:
+
+```text
+input -> Foundation -> Body -> Presence -> Air -> output
+           clean cuts / nonlinear-participating boosts
+```
+
+Foundation, Body, Presence, and Air each expose gain and a constrained frequency
+range. Input, Harmonic, and Output are global. The Harmonic macro continuously
+coordinates the bounded-stage drive and contribution; it does not add noise,
+drift, or a generic post-EQ saturator. The graph is minimum-phase, uses no
+lookahead or oversampling, and reports zero latency.
+
+Candidate 3 is deliberately provisional. It passed the laboratory contour,
+harmonic, IMD, recovery, finite-output, and CPU gates needed to justify a real
+plugin, but the music-machine test decides whether its four-band interaction is
+actually useful. The stable internal-beta contract is in
+[docs/products/harmonic/PARAMETERS.md](docs/products/harmonic/PARAMETERS.md), and
+the topology decision is [ADR 0007](docs/adr/0007-harmonic-internal-beta-topology.md).
+
 ## Requirements
 
 The tested development environment is macOS on Apple Silicon, with x86_64
@@ -120,9 +146,11 @@ It builds:
 - `density_dsp` — framework-independent production DSP;
 - `density_tests` — core correctness and property checks;
 - `density_lab` — offline rendering, measurement, comparison, and listening-pack
-  generator.
-- `harmonic_lab` — pre-product nonlinear-EQ topology measurements; no Harmonic
-  production processor or VST3 exists yet.
+  generator;
+- `harmonic_dsp` and `harmonic_tests` — independent four-band production DSP and
+  its correctness/property checks;
+- `harmonic_lab` — candidate research, six-rate product reports, and the
+  production-graph benchmark.
 
 ### VST3, adapter tests, and standalone host
 
@@ -136,22 +164,23 @@ cmake --build build-plugin --parallel
 ctest --test-dir build-plugin --output-on-failure
 ```
 
-The plugin bundle is produced at:
+The plugin bundles are produced at:
 
 ```text
 build-plugin/DensityD01_artefacts/Release/VST3/Density D-01.vst3
+build-plugin/HarmonicH01_artefacts/Release/VST3/Harmonic H-01.vst3
 ```
 
-`density_plugin_tests` constructs the JUCE adapter directly. The separate
-`density_vst3_host` executable links neither the product adapter nor its DSP;
-it discovers and loads the built bundle through the actual VST3 ABI, restores
-state, and processes irregular block sizes.
+Each product has direct JUCE-adapter tests. The separate `vst3_smoke_host`
+links neither adapter nor either DSP; it discovers and loads each built bundle
+through the actual VST3 ABI, restores state, and processes irregular blocks.
 
 To run that smoke host directly:
 
 ```sh
-"build-plugin/density_vst3_host_artefacts/Release/density_vst3_host" \
-  "build-plugin/DensityD01_artefacts/Release/VST3/Density D-01.vst3"
+"build-plugin/vst3_smoke_host_artefacts/Release/vst3_smoke_host" \
+  "build-plugin/HarmonicH01_artefacts/Release/VST3/Harmonic H-01.vst3" \
+  "Harmonic H-01" "Harmonic" 12
 ```
 
 ### Sanitizers
@@ -171,38 +200,41 @@ ctest --test-dir build-sanitize --output-on-failure
 ### Universal macOS bundle
 
 ```sh
-cmake -S . -B build-universal \
+cmake -S . -B build-plugin-universal \
   -DASTE_BUILD_VST3=ON \
   -DCMAKE_BUILD_TYPE=Release \
   '-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64'
-cmake --build build-universal --parallel
-ctest --test-dir build-universal --output-on-failure
+cmake --build build-plugin-universal --parallel
+ctest --test-dir build-plugin-universal --output-on-failure
 ```
 
 The internal bundle receives an ad-hoc signature so its completed manifest and
 binary can be validated locally. It is not Developer ID signed or notarized.
 
-### Install on this Mac for DAW testing
+### Build and install both on a music Mac
 
-Quit Cubase and Ableton, then install the clean universal development build for
-the current macOS user:
+Clone the repository on the music machine, quit Cubase and Ableton, then run:
 
 ```sh
-./tools/install_density_macos.sh
+./tools/build_and_install_macos.sh
 ```
 
-The script verifies the bundle and both architectures, installs it at
-`~/Library/Audio/Plug-Ins/VST3/Density D-01.vst3`, and preserves an existing
-Density bundle as a timestamped backup. It uses no `sudo`. Reopen the DAW and
-run its VST3 rescan if Density is not listed. This remains an ad-hoc-signed,
-unnotarized internal build with the deliberately invalid placeholder bundle
-identifier; it is for local host validation only.
+The script builds and tests universal arm64+x86_64 bundles, verifies both
+architectures and signatures, and installs Density and Harmonic under
+`~/Library/Audio/Plug-Ins/VST3`. Existing copies are preserved as timestamped
+backups, and no `sudo` is used. Reopen the DAW and rescan VST3 plugins.
+
+These are ad-hoc-signed, unnotarized internal builds with deliberately invalid
+placeholder bundle identifiers. macOS may require locally allowing the bundle;
+they are for private host and musical validation, not distribution.
 
 An explicit bundle path may be supplied when testing another build:
 
 ```sh
 ./tools/install_density_macos.sh \
-  "build-universal/DensityD01_artefacts/Release/VST3/Density D-01.vst3"
+  "build-plugin-universal/DensityD01_artefacts/Release/VST3/Density D-01.vst3"
+./tools/install_harmonic_macos.sh \
+  "build-plugin-universal/HarmonicH01_artefacts/Release/VST3/Harmonic H-01.vst3"
 ```
 
 ### Internal packaging rehearsal
@@ -211,9 +243,9 @@ After building the universal tree, create and inspect the deterministic internal
 archive with:
 
 ```sh
-cmake --build build-universal --target density_package
+cmake --build build-plugin-universal --target density_package
 python3 tools/package_density.py verify \
-  --archive build-universal/packages/Density-D01-0.1.0-internal-macos-universal.zip
+  --archive build-plugin-universal/packages/Density-D01-0.1.0-internal-macos-universal.zip
 ```
 
 The archive is explicitly marked `internal-development-only`. It is ad-hoc
@@ -285,9 +317,11 @@ Current automated coverage includes:
 - arm64 Release, arm64 ASan/UBSan, and x86_64 Release test trees;
 - semantic state exchange between arm64 and x86_64 hosts.
 
-The current plugin test tree contains 32 CTest checks. Independent local
+The current plugin test tree contains 43 CTest checks. Independent local
 validation has passed pluginval 1.0.4 at strictness 10 and the Steinberg VST3 SDK
-3.8.0 extensive suite at 537/537 for arm64, x86_64, and the universal bundle.
+3.8.0 extensive suite at 537/537. Density has arm64 and Rosetta x86_64 validator
+history; Harmonic's current universal beta has arm64 validator evidence and
+separate two-slice/ABI verification.
 The exact run history is in [HOST_COMPATIBILITY.md](HOST_COMPATIBILITY.md).
 
 GitHub Actions builds the core on arm64 and Intel runners, builds a universal
@@ -298,7 +332,7 @@ is [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
 ### Real-time rules
 
-`DensityProcessor::process` is `noexcept`. Processing may not allocate, free,
+Both production processors expose `noexcept` processing. Processing may not allocate, free,
 lock, wait, log, access files or networks, resize containers, trigger lazy
 initialization, call blocking OS services, or throw through the callback.
 Buffers and mutable DSP state are prepared in advance. Non-finite input is
@@ -307,11 +341,10 @@ runtime audit are documented in [REALTIME_SAFETY.md](REALTIME_SAFETY.md).
 
 ### State
 
-Density uses a portable, versioned, product-local XML state document containing
+Each product uses its own portable, versioned XML state document containing
 stable parameter IDs and scalar values. Unknown parameters are ignored, missing
 parameters receive defaults, duplicate IDs are rejected, and malformed state
-leaves the current configuration unchanged. Schema 1 contains no speculative
-quality or oversampling field. See [STATE_FORMAT.md](STATE_FORMAT.md).
+leaves the current configuration unchanged. See [STATE_FORMAT.md](STATE_FORMAT.md).
 
 ### Performance
 
@@ -322,11 +355,17 @@ not evidence for the oldest supported Apple Silicon or a native Intel Mac. Full
 measurements and rejected oversampling budgets are in
 [PERFORMANCE_BUDGETS.md](PERFORMANCE_BUDGETS.md).
 
+Harmonic measured 0.682702% on the same class of machine at 48 kHz / 128
+samples while every band and its macro changed each block. This passes the
+local provisional 1% budget, but still requires older Apple Silicon and native
+Intel evidence.
+
 ## Current release status
 
-Density has repository evidence for 16 of its 25 release gates. It remains an
-internal prototype because the following work requires people, DAWs, or target
-hardware rather than another synthetic unit test:
+Density and Harmonic are internal betas, not releases. Density has repository
+evidence for 16 of its 25 release gates. Harmonic has the engineering boundary
+needed for first external tests; both still require people, DAWs, and target
+hardware for:
 
 - Cubase 14, Ableton Live 13/beta, and one additional real-host matrix;
 - real-time versus offline bounce, freeze, reopen, suspend, and crash-recovery
@@ -347,13 +386,15 @@ into a compatibility or fidelity claim.
 ## Architecture
 
 ```text
-density_dsp  <- density_tests
-      ^  ^
-      |  +--- density_lab
-      |
-      +------ JUCE VST3 adapter/UI <- density_plugin_tests
-                       ^
-                       +---------- density_vst3_host (dynamic VST3 load)
+density_dsp  <- density_tests  <- density_lab
+      ^
+      +------ Density JUCE adapter/UI <- density_plugin_tests
+
+harmonic_dsp <- harmonic_tests <- harmonic_lab
+      ^
+      +------ Harmonic JUCE adapter/UI <- harmonic_plugin_tests
+
+both VST3 bundles <- vst3_smoke_host (dynamic ABI load only)
 ```
 
 The production DSP is ordinary C++20. JUCE is restricted to the VST3, host,
@@ -373,17 +414,21 @@ The expiring dependency-security review is
 ```text
 apps/
   density/             production DSP, JUCE adapter, and editor
+  harmonic/            independent four-band DSP, adapter, and editor
   dsp-lab/             offline renderer and measurement laboratory
   standalone-host/     minimal headless VST3 smoke host
 docs/
   adr/                 accepted engineering decisions
   products/density/    cycle reports and Density research evidence
+  products/harmonic/   Harmonic contract, research, and test handoff
   research/            lawful historical-reference metadata
   testing/             listening protocols
 tests/
   golden/              reviewed production metrics
   density_tests.cpp    framework-independent tests
   density_plugin_tests.cpp
+  harmonic_tests.cpp
+  harmonic_plugin_tests.cpp
   realtime_audit_mac.cpp
 tools/                  repository-policy and provenance checks
 ```
@@ -426,8 +471,7 @@ measurement standard is in [DSP_RESEARCH.md](DSP_RESEARCH.md).
 | [SECURITY.md](SECURITY.md) | Prototype security reporting policy |
 
 Each substantial engineering cycle records what changed, why, evidence, risks,
-and the smallest next action under
-[`docs/products/density/`](docs/products/density/).
+and the smallest next action in its product documentation directory.
 
 ## Contributing
 

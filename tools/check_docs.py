@@ -61,7 +61,7 @@ def main() -> int:
               if not (root / name).exists()]
     errors.extend(check_workflow_action_pins(root))
     for document in root.rglob("*.md"):
-        if (any(part.startswith("build") or part == ".git"
+        if (any(part.startswith(("build", "ci-")) or part == ".git"
                 for part in document.relative_to(root).parts)
                 or is_generated_build_file(document, root)):
             continue

@@ -1,8 +1,11 @@
 # Parameter model
 
-Stable IDs use product-local ASCII names. Normalized host values map to the
-physical ranges below; ranges are provisional until musical validation, but IDs
-are treated as permanent from the first external build.
+Stable IDs use product-local ASCII names. Normalized host values map to physical
+ranges; ranges are provisional until musical validation, but IDs are treated as
+permanent from the first external build. Both products use the shared strict
+decimal parser for text entry while retaining independent parameter layouts.
+
+## Density D-01
 
 | ID | Name | Unit/range | Default | Mapping | Smoothing |
 |---|---|---|---:|---|---|
@@ -44,3 +47,15 @@ like any manual setting. Protection is on and bypass is off in every snapshot.
 These are internal-beta starting points, not yet listening-approved factory
 content. Their names and values may change before the first external release;
 stable parameter identifiers and state compatibility may not.
+
+## Harmonic H-01
+
+Harmonic schema 1 contains 12 stable IDs: Input; gain and frequency for
+Foundation, Body, Presence, and Air; Harmonic; Output; and Bypass. Band gains
+span -12..+12 dB. Each frequency has a constrained product-specific range, and
+the global Harmonic macro spans 0..100%. Gain, coefficient, macro, and
+input/output transitions are smoothed without topology changes.
+
+The complete ranges, defaults, text behavior, automation contract, and
+maintainer-visible macro mapping are in
+[docs/products/harmonic/PARAMETERS.md](docs/products/harmonic/PARAMETERS.md).

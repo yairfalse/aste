@@ -9,20 +9,23 @@
 namespace {
 
 int fail(const juce::String& message) {
-  std::cerr << "density_vst3_host: " << message << '\n';
+  std::cerr << "vst3_smoke_host: " << message << '\n';
   return 1;
 }
 
 }  // namespace
 
 int main(int argc, char** argv) {
-  if (argc != 2 && argc != 4) {
+  if (argc != 5 && argc != 7) {
     return fail(
-        "usage: density_vst3_host <Density D-01.vst3> "
-        "[--write-state|--read-state <file>]");
+        "usage: vst3_smoke_host <plugin.vst3> <component> <parameter> "
+        "<count> [--write-state|--read-state <file>]");
   }
-  const juce::String stateMode = argc == 4 ? argv[2] : "";
-  if (argc == 4 && stateMode != "--write-state" &&
+  const juce::String expectedComponent = argv[2];
+  const juce::String expectedParameter = argv[3];
+  const int expectedParameterCount = juce::String{argv[4]}.getIntValue();
+  const juce::String stateMode = argc == 7 ? argv[5] : "";
+  if (argc == 7 && stateMode != "--write-state" &&
       stateMode != "--read-state") {
     return fail("unknown state exchange mode");
   }
@@ -40,8 +43,8 @@ int main(int argc, char** argv) {
 
   juce::OwnedArray<juce::PluginDescription> descriptions;
   vst3->findAllTypesForFile(descriptions, juce::String::fromUTF8(argv[1]));
-  if (descriptions.size() != 1 || descriptions[0]->name != "Density D-01") {
-    return fail("bundle did not expose exactly one Density D-01 component");
+  if (descriptions.size() != 1 || descriptions[0]->name != expectedComponent) {
+    return fail("bundle did not expose exactly one expected component");
   }
 
   constexpr double sampleRate = 48000.0;
@@ -61,19 +64,20 @@ int main(int argc, char** argv) {
   }
 
   const auto& parameters = plugin->getParameters();
-  if (parameters.size() != 11) {
+  if (parameters.size() != expectedParameterCount) {
     return fail("unexpected parameter count");
   }
-  const auto driveEntry = std::find_if(
-      parameters.begin(), parameters.end(),
-      [](const auto* parameter) { return parameter->getName(64) == "Drive"; });
-  if (driveEntry == parameters.end()) {
-    return fail("Drive parameter is unavailable");
+  const auto portabilityEntry = std::find_if(
+      parameters.begin(), parameters.end(), [&](const auto* parameter) {
+        return parameter->getName(64) == expectedParameter;
+      });
+  if (portabilityEntry == parameters.end()) {
+    return fail("state-portability parameter is unavailable");
   }
-  auto* drive = *driveEntry;
+  auto* portabilityParameter = *portabilityEntry;
 
   constexpr float portabilityValue = 0.8125F;
-  const juce::File stateFile{argc == 4 ? argv[3] : ""};
+  const juce::File stateFile{argc == 7 ? argv[6] : ""};
   if (stateMode == "--read-state") {
     juce::MemoryBlock importedState;
     if (!stateFile.loadFileAsData(importedState)) {
@@ -81,11 +85,12 @@ int main(int argc, char** argv) {
     }
     plugin->setStateInformation(importedState.getData(),
                                 static_cast<int>(importedState.getSize()));
-    if (std::abs(drive->getValue() - portabilityValue) > 1.0e-6F) {
-      return fail("exchanged state restored the wrong Drive value");
+    if (std::abs(portabilityParameter->getValue() - portabilityValue) >
+        1.0e-6F) {
+      return fail("exchanged state restored the wrong parameter value");
     }
   } else if (stateMode == "--write-state") {
-    drive->setValueNotifyingHost(portabilityValue);
+    portabilityParameter->setValueNotifyingHost(portabilityValue);
   }
 
   juce::MemoryBlock initialState;
@@ -97,7 +102,8 @@ int main(int argc, char** argv) {
                                  initialState.getSize())) {
     return fail("could not write exchanged state");
   }
-  drive->setValueNotifyingHost(drive->getValue() < 0.5F ? 1.0F : 0.0F);
+  portabilityParameter->setValueNotifyingHost(
+      portabilityParameter->getValue() < 0.5F ? 1.0F : 0.0F);
   plugin->getStateInformation(changedState);
   if (initialState.isEmpty() || initialState == changedState) {
     return fail("parameter mutation did not change serialized state");
@@ -146,8 +152,8 @@ int main(int argc, char** argv) {
     return fail("processing produced no finite signal");
   }
 
-  std::cout << "{\"component\":\"Density D-01\",\"parameters\":"
-            << parameters.size()
+  std::cout << "{\"component\":\"" << expectedComponent
+            << "\",\"parameters\":" << parameters.size()
             << ",\"latency_samples\":" << plugin->getLatencySamples()
             << ",\"blocks\":" << blockSizes.size()
             << ",\"state_bytes\":" << initialState.getSize()

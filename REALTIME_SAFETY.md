@@ -1,9 +1,10 @@
 # Real-time safety
 
-`DensityProcessor::process` is `noexcept` and performs no allocation, release,
-locking, I/O, logging, container resizing, lazy initialization, or system call.
-All state is fixed-size and prepared before processing. Global allocation
-counters cover both the core and full JUCE processor boundary.
+`DensityProcessor::process` and `harmonic::Processor::process` are `noexcept`
+and perform no allocation, release, locking, I/O, logging, container resizing,
+lazy initialization, or system call. Their state is fixed-size and prepared
+before processing. Global allocation counters cover both cores and full JUCE
+processor boundaries.
 
 The lab-only 73/33 processor mode uses fixed half-band state and two fixed
 44-sample dry-delay arrays. The core allocation counter covers this processing
@@ -23,10 +24,11 @@ Rules for future processing code:
 - Do not assume `std::atomic<T>` is lock-free; verify the exact type/platform
   before using it between audio and UI threads.
 
-Current ownership is single-audio-thread only. A future meter bridge must use
-verified lock-free atomics or a bounded wait-free snapshot, with a test and ADR.
+Current DSP ownership is single-audio-thread only. Each adapter publishes three
+meter snapshots through `std::atomic<float>` guarded by a compile-time lock-free
+assertion on supported targets; UI-side decay occurs on the message thread.
 
-On macOS, the plugin test links a test-only dynamic library using dyld
+On macOS, both plugin tests link a test-only dynamic library using dyld
 interposition. A thread-scoped guard counts POSIX mutex/rwlock/condition waits,
 unfair locks, `fopen`/`open`/`openat`, and raw `write` calls during
 `processBlock`. The guard deliberately performs one lock, open, and write before

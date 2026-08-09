@@ -6,7 +6,7 @@
 #include <string>
 #include <string_view>
 
-namespace aste::density {
+namespace aste::parameters {
 
 inline bool parseFiniteDecimal(std::string_view text, double& result) {
   std::istringstream input{std::string{text}};
@@ -20,4 +20,4 @@ inline bool parseFiniteDecimal(std::string_view text, double& result) {
   return true;
 }
 
-}  // namespace aste::density
+}  // namespace aste::parameters

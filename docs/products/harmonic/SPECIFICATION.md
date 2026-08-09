@@ -1,8 +1,8 @@
 # Harmonic H-01 — product and research specification
 
-Status: pre-implementation specification, 2026-08-09. Harmonic has no VST3
-target, production DSP, stable parameter identifiers, presets, or compatibility
-claim yet.
+Status: internal-beta implementation contract, 2026-08-09. ADR 0007 promotes
+Candidate 3 into the first testable four-band VST3. Parameter identifiers and
+schema 1 are frozen; host compatibility and musical preference remain unproven.
 
 ## Purpose
 
@@ -188,15 +188,17 @@ behavior.
 
 ## Implementation sequence
 
-1. Add four framework-independent lab candidates and scientific references.
-2. Render the complete measurement matrix and record negative results.
-3. Generate level-matched blind packs before selecting a topology.
-4. Freeze band count, steps, ranges, parameter IDs, latency, and CPU budget.
-5. Implement the product-owned core and automated tests.
-6. Add state schema and thin JUCE VST3 boundary.
-7. Build the industrial UI only around the frozen behavior.
-8. Run validators, target DAWs, listening, and real-project gates.
+1. Candidate 3 is provisionally selected for an external musical test build.
+2. Four bands, continuous constrained ranges, parameter IDs, schema 1, and
+   zero latency are frozen by ADR 0007.
+3. Implement the product-owned core, adapter, UI, and automated tests.
+4. Run validators and install the universal bundle on the music machine.
+5. Use real projects and level-matched comparisons to accept, revise, or reject
+   the provisional topology.
+6. Complete multi-band, automation, CPU, and host gates before release-candidate
+   status.
 
-Density external validation may proceed in parallel with Harmonic lab research.
-Harmonic production VST3 work waits until Density has at least passed initial
-Cubase and Ableton load, state-recall, automation, and bounce checks.
+Density and Harmonic external validation now proceed together. Harmonic's
+production topology remains provisional until its Cubase/Ableton, state-recall,
+automation, bounce, level-matched listening, and real-project checks are
+recorded.

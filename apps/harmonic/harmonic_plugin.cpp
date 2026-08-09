@@ -1,4 +1,4 @@
-#include "density_plugin.hpp"
+#include "harmonic_plugin.hpp"
 
 #include "decimal_parse.hpp"
 
@@ -7,41 +7,53 @@
 #include <memory>
 #include <string>
 
-namespace aste::density::plugin {
+namespace aste::harmonic::plugin {
 namespace {
 
-constexpr auto kStateType = "density-d01";
+constexpr auto kStateType = "harmonic-h01";
 constexpr int kStateSchema = 1;
 constexpr auto kSurface = 0xff111113U;
-constexpr auto kPanel = 0xff19191cU;
-constexpr auto kInk = 0xffe8e5dcU;
-constexpr auto kMuted = 0xff85827bU;
-constexpr auto kAccent = 0xff812d3dU;
-constexpr std::array<const char*, 11> kParameterIds{
-    "drive",  "crush",  "attack",       "release",    "density", "blend",
-    "output", "stereo", "detector_hpf", "protection", "bypass"};
+constexpr auto kPanel = 0xff1b1916U;
+constexpr auto kInk = 0xffe9e5d8U;
+constexpr auto kMuted = 0xff888277U;
+constexpr auto kAccent = 0xffa56328U;
+constexpr std::array<const char*, 12> kParameterIds{"input",
+                                                    "foundation_gain",
+                                                    "foundation_frequency",
+                                                    "body_gain",
+                                                    "body_frequency",
+                                                    "presence_gain",
+                                                    "presence_frequency",
+                                                    "air_gain",
+                                                    "air_frequency",
+                                                    "harmonic",
+                                                    "output",
+                                                    "bypass"};
 
 struct FactoryPreset {
   const char* name;
   std::array<float, kParameterIds.size()> values;
 };
 
-constexpr std::array<FactoryPreset, 5> kFactoryPresets{{
+constexpr std::array<FactoryPreset, 6> kFactoryPresets{{
     {"Default",
-     {0.0F, 65.0F, 1.0F, 180.0F, 50.0F, 50.0F, 0.0F, 100.0F, 90.0F, 1.0F,
-      0.0F}},
-    {"Continuity",
-     {2.0F, 50.0F, 8.0F, 320.0F, 35.0F, 35.0F, -1.0F, 100.0F, 120.0F, 1.0F,
-      0.0F}},
-    {"Proximity",
-     {6.0F, 75.0F, 0.5F, 140.0F, 70.0F, 55.0F, -3.0F, 85.0F, 100.0F, 1.0F,
-      0.0F}},
-    {"Parallel Crush",
-     {12.0F, 95.0F, 0.05F, 80.0F, 90.0F, 32.0F, -6.0F, 100.0F, 140.0F, 1.0F,
-      0.0F}},
-    {"Transient Hold",
-     {4.0F, 85.0F, 6.0F, 500.0F, 60.0F, 45.0F, -2.0F, 65.0F, 180.0F, 1.0F,
-      0.0F}},
+     {0.0F, 0.0F, 80.0F, 0.0F, 400.0F, 0.0F, 2500.0F, 0.0F, 12000.0F, 35.0F,
+      0.0F, 0.0F}},
+    {"Foundation",
+     {0.0F, 4.0F, 65.0F, 1.0F, 320.0F, 0.0F, 2500.0F, 0.0F, 12000.0F, 40.0F,
+      -2.0F, 0.0F}},
+    {"Continuum",
+     {1.0F, 2.0F, 80.0F, 1.5F, 450.0F, 1.5F, 2200.0F, 1.0F, 12000.0F, 55.0F,
+      -2.0F, 0.0F}},
+    {"Presence",
+     {0.0F, 0.0F, 80.0F, -1.0F, 350.0F, 3.0F, 3200.0F, 2.0F, 14000.0F, 45.0F,
+      -1.5F, 0.0F}},
+    {"Hard Air",
+     {2.0F, 1.0F, 90.0F, 0.0F, 450.0F, 3.0F, 4200.0F, 4.0F, 15000.0F, 80.0F,
+      -4.0F, 0.0F}},
+    {"Negative Space",
+     {0.0F, -3.0F, 70.0F, -2.0F, 300.0F, 2.0F, 1800.0F, 1.0F, 10000.0F, 30.0F,
+      0.0F, 0.0F}},
 }};
 
 bool parseFiniteFloat(const juce::var& value, float& result) {
@@ -59,13 +71,9 @@ juce::ValueTree migrateState(juce::ValueTree state) {
       state.getProperty("product").toString() != kStateType) {
     return {};
   }
-
-  switch (static_cast<int>(state.getProperty("schema", -1))) {
-    case 1:
-      return state;
-    default:
-      return {};
-  }
+  return static_cast<int>(state.getProperty("schema", -1)) == kStateSchema
+             ? state
+             : juce::ValueTree{};
 }
 
 juce::NormalisableRange<float> skewed(float minimum, float maximum,
@@ -84,9 +92,9 @@ void addFloat(juce::AudioProcessorValueTreeState::ParameterLayout& layout,
       juce::ParameterID{id, 1}, name, range, initial, attributes));
 }
 
-class DensityLookAndFeel final : public juce::LookAndFeel_V4 {
+class HarmonicLookAndFeel final : public juce::LookAndFeel_V4 {
  public:
-  DensityLookAndFeel() {
+  HarmonicLookAndFeel() {
     setColour(juce::Slider::textBoxTextColourId, juce::Colour{kInk});
     setColour(juce::Slider::textBoxBackgroundColourId, juce::Colour{kSurface});
     setColour(juce::Slider::textBoxOutlineColourId,
@@ -109,13 +117,11 @@ class DensityLookAndFeel final : public juce::LookAndFeel_V4 {
                         endAngle, true);
     graphics.setColour(juce::Colour{kMuted}.withAlpha(0.25F));
     graphics.strokePath(track, juce::PathStrokeType{3.0F});
-
     juce::Path value;
     value.addCentredArc(centre.x, centre.y, radius, radius, 0.0F, startAngle,
                         startAngle + position * (endAngle - startAngle), true);
     graphics.setColour(juce::Colour{kAccent});
     graphics.strokePath(value, juce::PathStrokeType{4.0F});
-
     const float angle = startAngle + position * (endAngle - startAngle);
     juce::Path pointer;
     pointer.addRectangle(-1.5F, -radius + 4.0F, 3.0F, radius * 0.38F);
@@ -139,7 +145,7 @@ class Knob final : public juce::Component {
                           decimals};
     };
     slider_.setTextValueSuffix(suffix);
-    slider_.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 82, 22);
+    slider_.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 86, 22);
     slider_.setDoubleClickReturnValue(true, initial);
     slider_.setTitle(name);
     slider_.setDescription(juce::String{name} + " parameter");
@@ -147,14 +153,14 @@ class Knob final : public juce::Component {
     slider_.setExplicitFocusOrder(focusOrder);
     label_.setText(name, juce::dontSendNotification);
     label_.setJustificationType(juce::Justification::centred);
-    label_.setFont(juce::FontOptions{12.0F, juce::Font::bold});
+    label_.setFont(juce::FontOptions{11.0F, juce::Font::bold});
     addAndMakeVisible(slider_);
     addAndMakeVisible(label_);
   }
 
   void resized() override {
     auto area = getLocalBounds();
-    label_.setBounds(area.removeFromTop(22));
+    label_.setBounds(area.removeFromTop(21));
     slider_.setBounds(area);
   }
 
@@ -164,64 +170,33 @@ class Knob final : public juce::Component {
   juce::AudioProcessorValueTreeState::SliderAttachment attachment_;
 };
 
-class Switch final : public juce::Component {
- public:
-  Switch(juce::AudioProcessorValueTreeState& state, const char* id,
-         const char* name, int focusOrder)
-      : attachment_{state, id, button_} {
-    button_.setButtonText(name);
-    button_.setTitle(name);
-    button_.setDescription(juce::String{name} + " switch");
-    button_.setWantsKeyboardFocus(true);
-    button_.setExplicitFocusOrder(focusOrder);
-    button_.setColour(juce::ToggleButton::textColourId, juce::Colour{kInk});
-    button_.setColour(juce::ToggleButton::tickColourId, juce::Colour{kAccent});
-    button_.setColour(juce::ToggleButton::tickDisabledColourId,
-                      juce::Colour{kMuted});
-    addAndMakeVisible(button_);
-  }
-
-  void resized() override { button_.setBounds(getLocalBounds().reduced(14)); }
-
- private:
-  juce::ToggleButton button_;
-  juce::AudioProcessorValueTreeState::ButtonAttachment attachment_;
-};
-
 class MeterPanel final : public juce::Component, private juce::Timer {
  public:
-  explicit MeterPanel(DensityAudioProcessor& processor)
+  explicit MeterPanel(HarmonicAudioProcessor& processor)
       : processor_{processor} {
     startTimerHz(30);
   }
 
   void paint(juce::Graphics& graphics) override {
     graphics.fillAll(juce::Colour{kPanel});
-    auto area = getLocalBounds().toFloat().reduced(16.0F);
+    auto area = getLocalBounds().toFloat().reduced(14.0F);
     graphics.setColour(juce::Colour{kMuted});
     graphics.setFont(juce::FontOptions{11.0F, juce::Font::bold});
     graphics.drawText("BOUNDARIES", area.removeFromTop(20.0F),
                       juce::Justification::centredLeft);
-
-    auto levels = area.removeFromTop(180.0F);
-    drawLevel(graphics, levels.removeFromLeft(levels.getWidth() * 0.45F),
-              input_, "IN");
+    auto levels = area.removeFromTop(210.0F);
+    drawLevel(graphics, levels.removeFromLeft(levels.getWidth() * 0.5F), input_,
+              "IN");
     drawLevel(graphics, levels, output_, "OUT");
     area.removeFromTop(18.0F);
-    graphics.setColour(juce::Colour{kMuted});
-    graphics.drawText("GAIN REDUCTION", area.removeFromTop(18.0F),
+    graphics.drawText("HARMONIC ACTIVITY", area.removeFromTop(20.0F),
                       juce::Justification::centredLeft);
-    auto reductionArea = area.removeFromTop(18.0F);
+    auto activityArea = area.removeFromTop(16.0F);
     graphics.setColour(juce::Colour{kSurface});
-    graphics.fillRect(reductionArea);
-    const float proportion = juce::jlimit(0.0F, 1.0F, reduction_ / 30.0F);
+    graphics.fillRect(activityArea);
     graphics.setColour(juce::Colour{kAccent});
-    graphics.fillRect(
-        reductionArea.withWidth(reductionArea.getWidth() * proportion));
-    graphics.setColour(juce::Colour{kInk});
-    graphics.drawText(juce::String{reduction_, 1} + " dB",
-                      area.removeFromTop(24.0F),
-                      juce::Justification::centredRight);
+    graphics.fillRect(activityArea.withWidth(
+        activityArea.getWidth() * juce::jlimit(0.0F, 1.0F, activity_ * 20.0F)));
   }
 
  private:
@@ -230,52 +205,72 @@ class MeterPanel final : public juce::Component, private juce::Timer {
     const auto label = area.removeFromBottom(20.0F);
     graphics.setColour(juce::Colour{kMuted});
     graphics.drawText(name, label, juce::Justification::centred);
-    area = area.reduced(12.0F, 0.0F);
+    area = area.reduced(11.0F, 0.0F);
     graphics.setColour(juce::Colour{kSurface});
     graphics.fillRect(area);
-    const float proportion = juce::jlimit(0.0F, 1.0F, level);
     auto fill = area;
-    fill.removeFromTop(area.getHeight() * (1.0F - proportion));
-    graphics.setColour(proportion > 0.95F ? juce::Colour{kAccent}
-                                          : juce::Colour{kInk});
+    fill.removeFromTop(area.getHeight() *
+                       (1.0F - juce::jlimit(0.0F, 1.0F, level)));
+    graphics.setColour(level > 0.95F ? juce::Colour{kAccent}
+                                     : juce::Colour{kInk});
     graphics.fillRect(fill);
   }
 
   void timerCallback() override {
     input_ = std::max(processor_.inputPeak(), input_ * 0.84F);
     output_ = std::max(processor_.outputPeak(), output_ * 0.84F);
-    reduction_ = std::max(processor_.gainReductionDb(), reduction_ * 0.88F);
+    activity_ = std::max(processor_.harmonicActivity(), activity_ * 0.86F);
     repaint();
   }
 
-  DensityAudioProcessor& processor_;
+  HarmonicAudioProcessor& processor_;
   float input_{};
   float output_{};
-  float reduction_{};
+  float activity_{};
 };
 
-class DensityEditor final : public juce::AudioProcessorEditor {
+class HarmonicEditor final : public juce::AudioProcessorEditor {
  public:
-  explicit DensityEditor(DensityAudioProcessor& processor)
+  explicit HarmonicEditor(HarmonicAudioProcessor& processor)
       : AudioProcessorEditor{processor},
         processor_{processor},
         meter_{processor},
-        density_{processor.state(), "density", "DENSITY", " %", 50.0, 1},
-        drive_{processor.state(), "drive", "DRIVE", " dB", 0.0, 2},
-        crush_{processor.state(), "crush", "CRUSH", " %", 65.0, 3},
-        attack_{processor.state(), "attack", "ATTACK", " ms", 1.0, 4},
-        release_{processor.state(), "release", "RELEASE", " ms", 180.0, 5},
-        blend_{processor.state(), "blend", "BLEND", " %", 50.0, 6},
-        stereo_{processor.state(), "stereo", "STEREO", " %", 100.0, 7},
-        hpf_{processor.state(), "detector_hpf", "DETECTOR HPF", " Hz", 90.0, 8},
-        output_{processor.state(), "output", "OUTPUT", " dB", 0.0, 9},
-        protection_{processor.state(), "protection", "PROTECTION", 10} {
+        harmonic_{processor.state(), "harmonic", "HARMONIC", " %", 35.0, 1},
+        input_{processor.state(), "input", "INPUT", " dB", 0.0, 2},
+        output_{processor.state(), "output", "OUTPUT", " dB", 0.0, 3},
+        foundationGain_{
+            processor.state(), "foundation_gain", "FOUNDATION", " dB", 0.0, 4},
+        foundationFrequency_{processor.state(),
+                             "foundation_frequency",
+                             "FOUNDATION FREQUENCY",
+                             " Hz",
+                             80.0,
+                             5},
+        bodyGain_{processor.state(), "body_gain", "BODY", " dB", 0.0, 6},
+        bodyFrequency_{processor.state(),
+                       "body_frequency",
+                       "BODY FREQUENCY",
+                       " Hz",
+                       400.0,
+                       7},
+        presenceGain_{
+            processor.state(), "presence_gain", "PRESENCE", " dB", 0.0, 8},
+        presenceFrequency_{processor.state(),
+                           "presence_frequency",
+                           "PRESENCE FREQUENCY",
+                           " Hz",
+                           2500.0,
+                           9},
+        airGain_{processor.state(), "air_gain", "AIR", " dB", 0.0, 10},
+        airFrequency_{processor.state(), "air_frequency",
+                      "AIR FREQUENCY",   " Hz",
+                      12000.0,           11} {
     setLookAndFeel(&lookAndFeel_);
     preset_.setTextWhenNothingSelected("PRESETS");
     preset_.setTitle("PRESETS");
-    preset_.setDescription("Load a Density factory starting point");
+    preset_.setDescription("Load a Harmonic factory starting point");
     preset_.setWantsKeyboardFocus(true);
-    preset_.setExplicitFocusOrder(11);
+    preset_.setExplicitFocusOrder(12);
     preset_.setColour(juce::ComboBox::backgroundColourId, juce::Colour{kPanel});
     preset_.setColour(juce::ComboBox::textColourId, juce::Colour{kInk});
     preset_.setColour(juce::ComboBox::outlineColourId, juce::Colour{kMuted});
@@ -283,35 +278,35 @@ class DensityEditor final : public juce::AudioProcessorEditor {
       preset_.addItem(processor_.factoryPresetName(index), index + 1);
     }
     preset_.onChange = [this] {
-      const int selected = preset_.getSelectedId();
-      if (selected > 0) {
+      if (const int selected = preset_.getSelectedId(); selected > 0) {
         processor_.loadFactoryPreset(selected - 1);
         preset_.setSelectedId(0, juce::dontSendNotification);
       }
     };
-    for (auto* component : std::array<juce::Component*, 12>{
-             &meter_, &density_, &drive_, &crush_, &attack_, &release_, &blend_,
-             &stereo_, &hpf_, &output_, &protection_, &preset_}) {
+    for (auto* component : std::array<juce::Component*, 13>{
+             &meter_, &harmonic_, &input_, &output_, &foundationGain_,
+             &foundationFrequency_, &bodyGain_, &bodyFrequency_, &presenceGain_,
+             &presenceFrequency_, &airGain_, &airFrequency_, &preset_}) {
       addAndMakeVisible(component);
     }
     setResizable(true, true);
-    setResizeLimits(760, 420, 1520, 840);
-    setSize(980, 540);
+    setResizeLimits(860, 480, 1720, 960);
+    setSize(1120, 620);
   }
 
-  ~DensityEditor() override { setLookAndFeel(nullptr); }
+  ~HarmonicEditor() override { setLookAndFeel(nullptr); }
 
   void paint(juce::Graphics& graphics) override {
     graphics.fillAll(juce::Colour{kSurface});
     auto header = getLocalBounds().reduced(24).removeFromTop(52);
     graphics.setColour(juce::Colour{kInk});
     graphics.setFont(juce::FontOptions{22.0F, juce::Font::bold});
-    graphics.drawText("DENSITY", header.removeFromLeft(180),
+    graphics.drawText("HARMONIC", header.removeFromLeft(190),
                       juce::Justification::centredLeft);
     graphics.setColour(juce::Colour{kAccent});
     graphics.setFont(juce::FontOptions{12.0F, juce::Font::bold});
     header.removeFromRight(210);
-    graphics.drawText("D-01 / PARALLEL DYNAMICS", header,
+    graphics.drawText("H-01 / SPECTRAL NONLINEARITY", header,
                       juce::Justification::centredRight);
     graphics.setColour(juce::Colour{kMuted}.withAlpha(0.35F));
     graphics.fillRect(24, 74, getWidth() - 48, 1);
@@ -321,117 +316,127 @@ class DensityEditor final : public juce::AudioProcessorEditor {
     preset_.setBounds(getWidth() - 204, 28, 180, 28);
     auto area = getLocalBounds().reduced(24);
     area.removeFromTop(68);
-    auto meterColumn = area.removeFromLeft(138);
-    protection_.setBounds(meterColumn.removeFromBottom(50));
-    meter_.setBounds(meterColumn);
-    area.removeFromLeft(18);
-    density_.setBounds(area.removeFromLeft(270));
-    area.removeFromLeft(18);
-
+    meter_.setBounds(area.removeFromLeft(136));
+    area.removeFromLeft(16);
+    auto hero = area.removeFromRight(214);
+    input_.setBounds(hero.removeFromTop(hero.getHeight() / 3));
+    output_.setBounds(hero.removeFromBottom(hero.getHeight() / 2));
+    harmonic_.setBounds(hero);
+    area.removeFromRight(16);
     const int columnWidth = std::max(1, area.getWidth() / 4);
     const int rowHeight = std::max(1, area.getHeight() / 2);
-    const std::array<Knob*, 8> controls{&drive_, &crush_,  &attack_, &release_,
-                                        &blend_, &stereo_, &hpf_,    &output_};
-    for (std::size_t i = 0; i < controls.size(); ++i) {
-      const int column = static_cast<int>(i % 4);
-      const int row = static_cast<int>(i / 4);
-      controls[i]->setBounds(area.getX() + column * columnWidth,
-                             area.getY() + row * rowHeight, columnWidth,
-                             rowHeight);
+    const std::array<Knob*, 8> controls{&foundationGain_,      &bodyGain_,
+                                        &presenceGain_,        &airGain_,
+                                        &foundationFrequency_, &bodyFrequency_,
+                                        &presenceFrequency_,   &airFrequency_};
+    for (std::size_t index = 0; index < controls.size(); ++index) {
+      const int column = static_cast<int>(index % 4U);
+      const int row = static_cast<int>(index / 4U);
+      controls[index]->setBounds(area.getX() + column * columnWidth,
+                                 area.getY() + row * rowHeight, columnWidth,
+                                 rowHeight);
     }
   }
 
  private:
-  DensityLookAndFeel lookAndFeel_;
-  DensityAudioProcessor& processor_;
+  HarmonicLookAndFeel lookAndFeel_;
+  HarmonicAudioProcessor& processor_;
   MeterPanel meter_;
-  Knob density_;
-  Knob drive_;
-  Knob crush_;
-  Knob attack_;
-  Knob release_;
-  Knob blend_;
-  Knob stereo_;
-  Knob hpf_;
+  Knob harmonic_;
+  Knob input_;
   Knob output_;
-  Switch protection_;
+  Knob foundationGain_;
+  Knob foundationFrequency_;
+  Knob bodyGain_;
+  Knob bodyFrequency_;
+  Knob presenceGain_;
+  Knob presenceFrequency_;
+  Knob airGain_;
+  Knob airFrequency_;
   juce::ComboBox preset_;
 };
 
 }  // namespace
 
 juce::AudioProcessorValueTreeState::ParameterLayout
-DensityAudioProcessor::createParameterLayout() {
+HarmonicAudioProcessor::createParameterLayout() {
   juce::AudioProcessorValueTreeState::ParameterLayout layout;
-  addFloat(layout, "drive", "Drive", {-12.0F, 24.0F, 0.01F}, 0.0F, "dB");
-  addFloat(layout, "crush", "Crush", {0.0F, 100.0F, 0.01F}, 65.0F, "%");
-  addFloat(layout, "attack", "Attack", skewed(0.02F, 30.0F, 1.0F, 0.001F), 1.0F,
-           "ms");
-  addFloat(layout, "release", "Release", skewed(20.0F, 1200.0F, 180.0F, 0.1F),
-           180.0F, "ms");
-  addFloat(layout, "density", "Density", {0.0F, 100.0F, 0.01F}, 50.0F, "%");
-  addFloat(layout, "blend", "Blend", {0.0F, 100.0F, 0.01F}, 50.0F, "%");
-  addFloat(layout, "stereo", "Stereo", {0.0F, 100.0F, 0.01F}, 100.0F, "%");
-  addFloat(layout, "output", "Output", {-24.0F, 12.0F, 0.01F}, 0.0F, "dB");
-  addFloat(layout, "detector_hpf", "Detector HPF",
-           skewed(20.0F, 300.0F, 90.0F, 0.1F), 90.0F, "Hz");
-  layout.add(std::make_unique<juce::AudioParameterBool>(
-      juce::ParameterID{"protection", 1}, "Protection", true));
+  addFloat(layout, "input", "Input", {-18.0F, 18.0F, 0.01F}, 0.0F, "dB");
+  addFloat(layout, "foundation_gain", "Foundation", {-12.0F, 12.0F, 0.01F},
+           0.0F, "dB");
+  addFloat(layout, "foundation_frequency", "Foundation Frequency",
+           skewed(35.0F, 160.0F, 80.0F, 0.1F), 80.0F, "Hz");
+  addFloat(layout, "body_gain", "Body", {-12.0F, 12.0F, 0.01F}, 0.0F, "dB");
+  addFloat(layout, "body_frequency", "Body Frequency",
+           skewed(160.0F, 1000.0F, 400.0F, 0.1F), 400.0F, "Hz");
+  addFloat(layout, "presence_gain", "Presence", {-12.0F, 12.0F, 0.01F}, 0.0F,
+           "dB");
+  addFloat(layout, "presence_frequency", "Presence Frequency",
+           skewed(800.0F, 7000.0F, 2500.0F, 0.1F), 2500.0F, "Hz");
+  addFloat(layout, "air_gain", "Air", {-12.0F, 12.0F, 0.01F}, 0.0F, "dB");
+  addFloat(layout, "air_frequency", "Air Frequency",
+           skewed(6000.0F, 20000.0F, 12000.0F, 0.1F), 12000.0F, "Hz");
+  addFloat(layout, "harmonic", "Harmonic", {0.0F, 100.0F, 0.01F}, 35.0F, "%");
+  addFloat(layout, "output", "Output", {-18.0F, 18.0F, 0.01F}, 0.0F, "dB");
   layout.add(std::make_unique<juce::AudioParameterBool>(
       juce::ParameterID{"bypass", 1}, "Bypass", false));
   return layout;
 }
 
-DensityAudioProcessor::DensityAudioProcessor()
+HarmonicAudioProcessor::HarmonicAudioProcessor()
     : AudioProcessor{BusesProperties{}
                          .withInput("Input", juce::AudioChannelSet::stereo(),
                                     true)
                          .withOutput("Output", juce::AudioChannelSet::stereo(),
                                      true)},
       state_{*this, nullptr, kStateType, createParameterLayout()} {
-  for (std::size_t i = 0; i < kParameterIds.size(); ++i) {
-    parameterValues_[i] = state_.getRawParameterValue(kParameterIds[i]);
-    jassert(parameterValues_[i] != nullptr);
+  for (std::size_t index = 0; index < kParameterIds.size(); ++index) {
+    parameterValues_[index] = state_.getRawParameterValue(kParameterIds[index]);
+    jassert(parameterValues_[index] != nullptr);
   }
 }
 
-Parameters DensityAudioProcessor::currentParameters() const noexcept {
+Parameters HarmonicAudioProcessor::currentParameters() const noexcept {
   return {
-      .driveDb = parameterValues_[drive]->load(std::memory_order_relaxed),
-      .crush = parameterValues_[crush]->load(std::memory_order_relaxed) * 0.01F,
-      .attackMs = parameterValues_[attack]->load(std::memory_order_relaxed),
-      .releaseMs = parameterValues_[release]->load(std::memory_order_relaxed),
-      .density =
-          parameterValues_[density]->load(std::memory_order_relaxed) * 0.01F,
-      .blend = parameterValues_[blend]->load(std::memory_order_relaxed) * 0.01F,
-      .stereoLink =
-          parameterValues_[stereo]->load(std::memory_order_relaxed) * 0.01F,
+      .inputDb = parameterValues_[input]->load(std::memory_order_relaxed),
+      .foundationGainDb =
+          parameterValues_[foundationGain]->load(std::memory_order_relaxed),
+      .foundationFrequencyHz = parameterValues_[foundationFrequency]->load(
+          std::memory_order_relaxed),
+      .bodyGainDb = parameterValues_[bodyGain]->load(std::memory_order_relaxed),
+      .bodyFrequencyHz =
+          parameterValues_[bodyFrequency]->load(std::memory_order_relaxed),
+      .presenceGainDb =
+          parameterValues_[presenceGain]->load(std::memory_order_relaxed),
+      .presenceFrequencyHz =
+          parameterValues_[presenceFrequency]->load(std::memory_order_relaxed),
+      .airGainDb = parameterValues_[airGain]->load(std::memory_order_relaxed),
+      .airFrequencyHz =
+          parameterValues_[airFrequency]->load(std::memory_order_relaxed),
+      .harmonic =
+          parameterValues_[harmonic]->load(std::memory_order_relaxed) * 0.01F,
       .outputDb = parameterValues_[output]->load(std::memory_order_relaxed),
-      .detectorHpfHz =
-          parameterValues_[detectorHpf]->load(std::memory_order_relaxed),
-      .protection =
-          parameterValues_[protection]->load(std::memory_order_relaxed) >= 0.5F,
   };
 }
 
-void DensityAudioProcessor::prepareToPlay(double sampleRate, int) {
+void HarmonicAudioProcessor::prepareToPlay(double sampleRate, int) {
   processor_.prepare(sampleRate, currentParameters());
   setLatencySamples(static_cast<int>(processor_.latencySamples()));
   publishMeters({});
 }
 
-void DensityAudioProcessor::releaseResources() { processor_.reset(); }
+void HarmonicAudioProcessor::releaseResources() { processor_.reset(); }
 
-bool DensityAudioProcessor::isBusesLayoutSupported(
+bool HarmonicAudioProcessor::isBusesLayoutSupported(
     const BusesLayout& layouts) const {
-  const auto input = layouts.getMainInputChannelSet();
-  return input == layouts.getMainOutputChannelSet() &&
-         (input == juce::AudioChannelSet::mono() ||
-          input == juce::AudioChannelSet::stereo());
+  const auto inputSet = layouts.getMainInputChannelSet();
+  return inputSet == layouts.getMainOutputChannelSet() &&
+         (inputSet == juce::AudioChannelSet::mono() ||
+          inputSet == juce::AudioChannelSet::stereo());
 }
 
-void DensityAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
-                                         juce::MidiBuffer& midi) {
+void HarmonicAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
+                                          juce::MidiBuffer& midi) {
   juce::ScopedNoDenormals noDenormals;
   if (parameterValues_[bypass]->load(std::memory_order_relaxed) >= 0.5F) {
     processBlockBypassed(buffer, midi);
@@ -449,7 +454,7 @@ void DensityAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
   publishMeters(processor_.meters());
 }
 
-void DensityAudioProcessor::processBlockBypassed(
+void HarmonicAudioProcessor::processBlockBypassed(
     juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) {
   float peak = 0.0F;
   for (int channel = 0; channel < buffer.getNumChannels(); ++channel) {
@@ -459,58 +464,55 @@ void DensityAudioProcessor::processBlockBypassed(
   publishMeters({peak, peak, 0.0F});
 }
 
-void DensityAudioProcessor::publishMeters(
+void HarmonicAudioProcessor::publishMeters(
     const MeterSnapshot& meters) noexcept {
   inputPeak_.store(meters.inputPeak, std::memory_order_relaxed);
   outputPeak_.store(meters.outputPeak, std::memory_order_relaxed);
-  gainReduction_.store(meters.gainReductionDb, std::memory_order_relaxed);
+  harmonicActivity_.store(meters.harmonicActivity, std::memory_order_relaxed);
 }
 
-float DensityAudioProcessor::inputPeak() const noexcept {
+float HarmonicAudioProcessor::inputPeak() const noexcept {
   return inputPeak_.load(std::memory_order_relaxed);
 }
 
-float DensityAudioProcessor::outputPeak() const noexcept {
+float HarmonicAudioProcessor::outputPeak() const noexcept {
   return outputPeak_.load(std::memory_order_relaxed);
 }
 
-float DensityAudioProcessor::gainReductionDb() const noexcept {
-  return gainReduction_.load(std::memory_order_relaxed);
+float HarmonicAudioProcessor::harmonicActivity() const noexcept {
+  return harmonicActivity_.load(std::memory_order_relaxed);
 }
 
-int DensityAudioProcessor::factoryPresetCount() noexcept {
+int HarmonicAudioProcessor::factoryPresetCount() noexcept {
   return static_cast<int>(kFactoryPresets.size());
 }
 
-juce::String DensityAudioProcessor::factoryPresetName(int index) {
-  if (!juce::isPositiveAndBelow(index, factoryPresetCount())) {
-    return {};
-  }
-  return kFactoryPresets[static_cast<std::size_t>(index)].name;
+juce::String HarmonicAudioProcessor::factoryPresetName(int index) {
+  return juce::isPositiveAndBelow(index, factoryPresetCount())
+             ? kFactoryPresets[static_cast<std::size_t>(index)].name
+             : juce::String{};
 }
 
-void DensityAudioProcessor::loadFactoryPreset(int index) {
+void HarmonicAudioProcessor::loadFactoryPreset(int index) {
   if (!juce::isPositiveAndBelow(index, factoryPresetCount())) {
     return;
   }
   const auto& preset = kFactoryPresets[static_cast<std::size_t>(index)];
   for (std::size_t parameterIndex = 0; parameterIndex < preset.values.size();
        ++parameterIndex) {
-    auto* parameter = state_.getParameter(kParameterIds[parameterIndex]);
-    jassert(parameter != nullptr);
-    if (parameter != nullptr) {
+    if (auto* parameter = state_.getParameter(kParameterIds[parameterIndex])) {
       parameter->setValueNotifyingHost(
           parameter->convertTo0to1(preset.values[parameterIndex]));
     }
   }
 }
 
-juce::AudioProcessorParameter* DensityAudioProcessor::getBypassParameter()
+juce::AudioProcessorParameter* HarmonicAudioProcessor::getBypassParameter()
     const {
   return state_.getParameter("bypass");
 }
 
-void DensityAudioProcessor::getStateInformation(
+void HarmonicAudioProcessor::getStateInformation(
     juce::MemoryBlock& destination) {
   auto state = state_.copyState();
   state.setProperty("schema", kStateSchema, nullptr);
@@ -520,7 +522,7 @@ void DensityAudioProcessor::getStateInformation(
   }
 }
 
-void DensityAudioProcessor::setStateInformation(const void* data, int size) {
+void HarmonicAudioProcessor::setStateInformation(const void* data, int size) {
   const auto xml = getXmlFromBinary(data, size);
   if (xml == nullptr) {
     return;
@@ -529,7 +531,6 @@ void DensityAudioProcessor::setStateInformation(const void* data, int size) {
   if (!restored.isValid()) {
     return;
   }
-
   auto validated = state_.copyState();
   for (int index = 0; index < validated.getNumChildren(); ++index) {
     auto child = validated.getChild(index);
@@ -540,7 +541,6 @@ void DensityAudioProcessor::setStateInformation(const void* data, int size) {
           nullptr);
     }
   }
-
   juce::StringArray seen;
   for (int index = 0; index < restored.getNumChildren(); ++index) {
     const auto child = restored.getChild(index);
@@ -553,7 +553,6 @@ void DensityAudioProcessor::setStateInformation(const void* data, int size) {
       return;
     }
     seen.add(id);
-
     float value{};
     if (!parseFiniteFloat(child.getProperty("value"), value)) {
       return;
@@ -571,14 +570,14 @@ void DensityAudioProcessor::setStateInformation(const void* data, int size) {
   state_.replaceState(validated);
 }
 
-juce::AudioProcessorEditor* DensityAudioProcessor::createEditor() {
-  return new DensityEditor{*this};
+juce::AudioProcessorEditor* HarmonicAudioProcessor::createEditor() {
+  return new HarmonicEditor{*this};
 }
 
-}  // namespace aste::density::plugin
+}  // namespace aste::harmonic::plugin
 
 #if !defined(ASTE_NO_PLUGIN_FACTORY)
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {
-  return new aste::density::plugin::DensityAudioProcessor{};
+  return new aste::harmonic::plugin::HarmonicAudioProcessor{};
 }
 #endif

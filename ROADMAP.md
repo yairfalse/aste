@@ -1,6 +1,6 @@
 # Roadmap
 
-## Now — Density D-01 validation
+## Now — Density and Harmonic external validation
 
 The first working VST3, DSP lab, state model, industrial editor, and automated
 foundation exist. A deterministic internal package rehearsal now checks bundle
@@ -16,7 +16,7 @@ it now has zero local `Open` rows. Density is specification-complete internal
 beta; every remaining item below requires DAWs, target hardware, controlled
 listening, real musical projects, or final release identity.
 
-Remaining release work:
+Density's remaining release work:
 
 1. Complete the automation, Density-macro, stereo-link, detector, and
    oversampling listening sheets.
@@ -36,26 +36,26 @@ Remaining release work:
   packaging only after the company identity, distribution terms, licence
   material, presets, and release notes are decided.
 
+## Harmonic H-01 internal beta
+
+Harmonic now has an independent four-band production DSP, 12-parameter schema,
+six factory starting points, VST3 adapter, industrial editor, product report,
+and automated core/adapter/ABI-host boundaries. Candidate 3 remains provisional:
+repository evidence justifies putting it in a DAW, not claiming the sound is
+finished.
+
+The next Harmonic gate is the music-machine checklist: Cubase and Ableton load,
+save/reopen, automation, mono/stereo, offline/real-time bounce, scaling, and
+level-matched listening on full mixes, ambient, percussion, bass-heavy, and
+sparse material. Findings may revise ranges or the nonlinear contribution while
+schema-1 IDs remain stable. Oldest-supported Apple Silicon and native Intel CPU
+evidence are also outstanding.
+
 ## Later — product family
 
-Harmonic now has a frozen
-[research specification](docs/products/harmonic/SPECIFICATION.md). Its
-framework-independent lab candidates may proceed while Density completes
-external validation; its production VST3 waits for initial Cubase and Ableton
-evidence. Loop and Impulse remain design consumers, not implementation work.
-Extract shared UI or amplifier code only when the second product needs the same
+Loop and Impulse remain design consumers, not implementation work. Extract
+shared UI or amplifier code only when another product needs identical measured
 behavior; transport and rhythm foundations wait for Loop or Impulse.
-
-Harmonic's linear reference is established. The first nonlinear residual
-candidate is rejected because full Harmonic collapses a +12 dB contour to about
-+2.16 dB. The pre-emphasis/nonlinear/de-emphasis candidate passes its frozen
-six-rate advance gate while exposing roughly -41.4 dBc worst third-order IMD
-and -50.3 dBc worst folded-harmonic proxy. The bounded state-variable candidate
-also passes, with 0.138 dB worst gated contour error, -55.1 dBc worst IMD, and a
--57.4 dBc worst folded-harmonic proxy. Both remain lab candidates. The next
-cycle compares serial and parallel multi-band interaction, differential alias,
-automation, CPU, and level-matched listening rather than building a premature
-VST3 shell.
 
 ## Explicitly deferred
 

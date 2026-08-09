@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(ASTE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
-option(ASTE_BUILD_VST3 "Build the internal Density VST3 prototype" OFF)
+option(ASTE_BUILD_VST3 "Build the internal Density and Harmonic VST3 prototypes" OFF)
 set(ASTE_JUCE_COMMIT "7c9d3783b127263d72bb65fe0a7e2dc8a02a7ac2")
 
 find_package(Git QUIET)
@@ -60,7 +60,10 @@ if(ASTE_SANITIZERS AND CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
 endif()
 
 add_library(density_dsp apps/density/density_processor.cpp)
-target_include_directories(density_dsp PUBLIC apps/density)
+target_include_directories(density_dsp PUBLIC apps/density libs/parameters)
+
+add_library(harmonic_dsp apps/harmonic/harmonic_processor.cpp)
+target_include_directories(harmonic_dsp PUBLIC apps/harmonic libs/parameters)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang")
   add_custom_target(density_static_analysis
@@ -71,9 +74,17 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang")
             "${CMAKE_CURRENT_SOURCE_DIR}/apps/density/density_processor.cpp"
     COMMENT "Running Clang static analysis on Density DSP"
     VERBATIM)
+  add_custom_target(harmonic_static_analysis
+    COMMAND "${CMAKE_CXX_COMPILER}" --analyze
+            -Xanalyzer -analyzer-output=text
+            -std=c++20 -Wall -Wextra -Wpedantic -Werror
+            -I"${CMAKE_CURRENT_SOURCE_DIR}/apps/harmonic"
+            "${CMAKE_CURRENT_SOURCE_DIR}/apps/harmonic/harmonic_processor.cpp"
+    COMMENT "Running Clang static analysis on Harmonic DSP"
+    VERBATIM)
 endif()
 
-foreach(target density_dsp)
+foreach(target density_dsp harmonic_dsp)
   target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endforeach()
 
@@ -82,6 +93,7 @@ target_link_libraries(density_lab PRIVATE density_dsp)
 target_compile_options(density_lab PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
 add_executable(harmonic_lab apps/dsp-lab/harmonic.cpp)
+target_link_libraries(harmonic_lab PRIVATE harmonic_dsp)
 target_compile_options(harmonic_lab PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
 enable_testing()
@@ -104,10 +116,20 @@ add_executable(density_tests tests/density_tests.cpp)
 target_link_libraries(density_tests PRIVATE density_dsp)
 target_compile_options(density_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 add_test(NAME density_tests COMMAND density_tests)
+add_executable(harmonic_tests tests/harmonic_tests.cpp)
+target_link_libraries(harmonic_tests PRIVATE harmonic_dsp)
+target_compile_options(harmonic_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+add_test(NAME harmonic_tests COMMAND harmonic_tests)
 if(APPLE)
   add_test(NAME density_installer_syntax
     COMMAND /bin/sh -n
             "${CMAKE_CURRENT_SOURCE_DIR}/tools/install_density_macos.sh")
+  add_test(NAME harmonic_installer_syntax
+    COMMAND /bin/sh -n
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/install_harmonic_macos.sh")
+  add_test(NAME build_and_install_syntax
+    COMMAND /bin/sh -n
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/build_and_install_macos.sh")
 endif()
 add_test(NAME harmonic_reference_compare
   COMMAND harmonic_lab --compare
@@ -121,6 +143,9 @@ add_test(NAME harmonic_stateful_compare
           "${CMAKE_CURRENT_BINARY_DIR}/harmonic-stateful-tone.csv"
           "${CMAKE_CURRENT_BINARY_DIR}/harmonic-stateful-imd.csv"
           "${CMAKE_CURRENT_BINARY_DIR}/harmonic-stateful-dynamics.csv")
+add_test(NAME harmonic_product_report
+  COMMAND harmonic_lab --product-report
+          "${CMAKE_CURRENT_BINARY_DIR}/harmonic-product-report.csv")
 add_test(NAME density_detector_compare
   COMMAND density_lab --detector-compare
           "${CMAKE_CURRENT_BINARY_DIR}/density_detector_compare.csv")
@@ -263,12 +288,45 @@ if(ASTE_BUILD_VST3)
     )
   endif()
 
+  juce_add_plugin(HarmonicH01
+    VERSION ${PROJECT_VERSION}
+    COMPANY_NAME "Aste Internal"
+    BUNDLE_ID "invalid.aste.harmonic-h01"
+    IS_SYNTH FALSE
+    NEEDS_MIDI_INPUT FALSE
+    NEEDS_MIDI_OUTPUT FALSE
+    IS_MIDI_EFFECT FALSE
+    EDITOR_WANTS_KEYBOARD_FOCUS TRUE
+    COPY_PLUGIN_AFTER_BUILD FALSE
+    PLUGIN_MANUFACTURER_CODE Aste
+    PLUGIN_CODE Har1
+    FORMATS VST3
+    VST3_CATEGORIES Fx EQ
+    PRODUCT_NAME "Harmonic H-01"
+  )
+  target_sources(HarmonicH01 PRIVATE apps/harmonic/harmonic_plugin.cpp)
+  target_include_directories(HarmonicH01 PRIVATE apps/harmonic)
+  target_link_libraries(HarmonicH01 PRIVATE harmonic_dsp juce::juce_audio_utils)
+  target_compile_definitions(HarmonicH01 PUBLIC
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_VST3_CAN_REPLACE_VST2=0
+  )
+  target_compile_options(HarmonicH01 PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  if(APPLE)
+    add_custom_command(TARGET HarmonicH01_VST3 POST_BUILD
+      COMMAND codesign --force --deep --sign - "$<TARGET_BUNDLE_DIR:HarmonicH01_VST3>"
+      COMMENT "Applying final ad-hoc signature after Harmonic VST3 manifest generation"
+      VERBATIM
+    )
+  endif()
+
   juce_add_console_app(density_plugin_tests PRODUCT_NAME "Density plugin tests")
   if(APPLE)
-    add_library(density_realtime_audit SHARED tests/realtime_audit_mac.cpp)
-    target_compile_options(density_realtime_audit PRIVATE
+    add_library(realtime_audit SHARED tests/realtime_audit_mac.cpp)
+    target_compile_options(realtime_audit PRIVATE
       -Wall -Wextra -Wpedantic -Werror)
-    target_link_libraries(density_plugin_tests PRIVATE density_realtime_audit)
+    target_link_libraries(density_plugin_tests PRIVATE realtime_audit)
   endif()
   target_sources(density_plugin_tests PRIVATE
     apps/density/density_plugin.cpp
@@ -287,24 +345,48 @@ if(ASTE_BUILD_VST3)
     COMMAND density_plugin_tests --editor-artifacts
             "${CMAKE_CURRENT_BINARY_DIR}/density_editor_artifacts")
 
-  juce_add_console_app(density_vst3_host PRODUCT_NAME "Density VST3 smoke host")
-  target_sources(density_vst3_host PRIVATE apps/standalone-host/main.cpp)
-  target_link_libraries(density_vst3_host PRIVATE
+  juce_add_console_app(harmonic_plugin_tests PRODUCT_NAME "Harmonic plugin tests")
+  if(APPLE)
+    target_link_libraries(harmonic_plugin_tests PRIVATE realtime_audit)
+  endif()
+  target_sources(harmonic_plugin_tests PRIVATE
+    apps/harmonic/harmonic_plugin.cpp
+    tests/harmonic_plugin_tests.cpp
+  )
+  target_include_directories(harmonic_plugin_tests PRIVATE apps/harmonic)
+  target_link_libraries(harmonic_plugin_tests PRIVATE
+    harmonic_dsp juce::juce_audio_utils)
+  target_compile_definitions(harmonic_plugin_tests PRIVATE
+    ASTE_NO_PLUGIN_FACTORY=1
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+  )
+  target_compile_options(harmonic_plugin_tests PRIVATE
+    -Wall -Wextra -Wpedantic -Werror)
+  add_test(NAME harmonic_plugin_tests COMMAND harmonic_plugin_tests)
+
+  juce_add_console_app(vst3_smoke_host PRODUCT_NAME "VST3 smoke host")
+  target_sources(vst3_smoke_host PRIVATE apps/standalone-host/main.cpp)
+  target_link_libraries(vst3_smoke_host PRIVATE
     juce::juce_audio_processors_headless)
-  target_compile_definitions(density_vst3_host PRIVATE
+  target_compile_definitions(vst3_smoke_host PRIVATE
     JUCE_PLUGINHOST_VST3=1
     JUCE_USE_CURL=0
     JUCE_WEB_BROWSER=0
   )
-  target_compile_options(density_vst3_host PRIVATE
+  target_compile_options(vst3_smoke_host PRIVATE
     -Wall -Wextra -Wpedantic -Werror)
   if(ASTE_HAS_NO_UNNECESSARY_VIRTUAL_SPECIFIER)
-    target_compile_options(density_vst3_host PRIVATE
+    target_compile_options(vst3_smoke_host PRIVATE
       -Wno-unnecessary-virtual-specifier)
   endif()
-  add_dependencies(density_vst3_host DensityD01_VST3)
+  add_dependencies(vst3_smoke_host DensityD01_VST3 HarmonicH01_VST3)
   add_test(NAME density_vst3_host
-    COMMAND density_vst3_host "$<TARGET_BUNDLE_DIR:DensityD01_VST3>")
+    COMMAND vst3_smoke_host "$<TARGET_BUNDLE_DIR:DensityD01_VST3>"
+            "Density D-01" "Drive" 11)
+  add_test(NAME harmonic_vst3_host
+    COMMAND vst3_smoke_host "$<TARGET_BUNDLE_DIR:HarmonicH01_VST3>"
+            "Harmonic H-01" "Harmonic" 12)
 
   if(Python3_Interpreter_FOUND AND APPLE)
     set(ASTE_DENSITY_PACKAGE

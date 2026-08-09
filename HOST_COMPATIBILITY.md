@@ -25,6 +25,8 @@
 | 2026-08-08 | Steinberg VST3 SDK 3.8.0 arm64 and x86_64 validators, extensive | matching slices of universal VST3 | Pass, 537/537 each |
 | 2026-08-08 | repository headless VST3 host | thin arm64, thin x86_64, and both universal slices | Pass, dynamic load, state, and six irregular blocks |
 | 2026-08-09 | Steinberg VST3 SDK 3.8.0 clean source-built arm64 validator, extensive | signed universal VST3 | Pass, 537/537 tests; pinned CI gate added |
+| 2026-08-09 | Steinberg VST3 SDK 3.8.0 arm64 validator, extensive | Harmonic H-01 universal arm64+x86_64 VST3, 12 parameters | Pass, 537/537 tests |
+| 2026-08-09 | pluginval 1.0.4 arm64, seed `0xa501` | Harmonic H-01 universal arm64+x86_64 VST3 | Pass, strictness 10 |
 
 The run included cold/warm loading, editor open during processing, state and
 state restoration, background-thread state, parameter thread safety and fuzzing,
@@ -58,13 +60,24 @@ bytes are required only for repeated serialization of equivalent state within
 one host instance; semantic cross-architecture restoration is the portability
 gate.
 
+Harmonic's first external-tool run used the signed universal internal-beta
+bundle. The source-built Steinberg 3.8.0 validator passed its 537-test extensive
+suite, including 12-parameter one-sample automation, threaded processing,
+variable blocks, state transitions, bypass persistence, silence, buses, and
+sample-rate extremes. Pluginval 1.0.4 passed strictness 10 with seed `0xa501`,
+the six supported sample rates, all thirteen required nonzero block sizes,
+editor lifecycle, state, buses, thread checks, automation, and parameter fuzz.
+Both tools executed the arm64 slice; `lipo` and the repo ABI host separately
+verified the universal artifact contains arm64 and x86_64. This is not native
+Intel execution or DAW evidence.
+
 ## DAWs
 
-| Host | Version | Status |
-|---|---|---|
-| Cubase | 14 | Not installed; not yet tested |
-| Ableton Live | 13/beta | Not installed; not yet tested |
-| Additional VST3 host | Pending selection | None installed; not yet tested |
+| Host | Version | Products | Status |
+|---|---|---|---|
+| Cubase | 14 | Density, Harmonic | Not installed; not yet tested |
+| Ableton Live | 13/beta | Density, Harmonic | Not installed; not yet tested |
+| Additional VST3 host | Pending selection | Density, Harmonic | None installed; not yet tested |
 
 An application inventory on 2026-08-07 confirmed that no target or additional
 VST3 DAW is installed on the current test machine.

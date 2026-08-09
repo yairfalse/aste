@@ -7,26 +7,28 @@ and documentation. Products never link to each other. Shared code is extracted
 only after a second real consumer appears or when correctness requires one
 implementation.
 
-The framework-independent targets remain small; the opt-in plugin adds one thin
-JUCE boundary:
+The framework-independent targets remain small; each opt-in plugin adds one
+thin JUCE boundary:
 
 ```text
-density_dsp  <- density_tests
-      ^  ^
-      |  +--- density_lab
-      |
-      +------ JUCE VST3 adapter/UI <- density_plugin_tests
-                       ^
-                       +---------- density_vst3_host (dynamic VST3 load)
+density_dsp  <- density_tests  <- density_lab
+      ^
+      +------ Density JUCE adapter/UI <- density_plugin_tests
+
+harmonic_dsp <- harmonic_tests <- harmonic_lab
+      ^
+      +------ Harmonic JUCE adapter/UI <- harmonic_plugin_tests
+
+both VST3 bundles <- vst3_smoke_host (dynamic ABI load only)
 ```
 
-The JUCE VST3 target adapts host buffers, automation, state, and UI to
-`density_dsp`; the DSP library contains no JUCE headers. No universal plugin
+The JUCE VST3 targets adapt host buffers, automation, state, and UI to their
+product DSP; the DSP libraries contain no JUCE headers. No universal plugin
 engine or speculative shared library tree exists.
 
 The standalone smoke host uses JUCE's headless VST3 loader and links neither
-the product adapter nor the DSP library. It therefore reaches Density only
-through the built VST3 ABI.
+product adapter nor either DSP library. It reaches both products only through
+their built VST3 ABI.
 
 ## Density D-01 graph
 
@@ -62,6 +64,24 @@ detector signal. The parameter is smoothed over 10 ms without topology changes.
   lock-free assertion on supported targets; the UI applies display decay at 30 Hz.
 - Lab filesystem output: command-line thread, after each process call.
 
+## Harmonic H-01 graph
+
+```text
+input -> Foundation -> Body -> Presence -> Air -> output
+           linear cuts / bounded nonlinear-participating boosts
+```
+
+Each serial band owns matching linear and bounded state-variable sections. Cuts
+take the linear path; positive gain continuously adds the difference between
+the colored and linear band sections. The global Harmonic macro coordinates
+bounded drive and contribution without changing topology. Input/output gain,
+macro values, coefficients, and boost participation are smoothed. The graph is
+minimum-phase, has no lookahead or oversampling, and reports zero latency.
+
+Harmonic owns its graph, parameters, schema, UI, presets, and regression
+fixtures. It does not link to Density. The only extracted runtime utility is
+strict decimal parsing, which now has two identical product consumers.
+
 ## Product philosophy
 
 The family exposes audible phenomena rather than circuit trivia. Interfaces
@@ -77,9 +97,6 @@ mastering limiter.
 
 ## Next product boundary
 
-Harmonic H-01 remains a lab-research product with no source target or dependency
-on Density. Its product behavior, candidate graphs, evidence requirements, and
-production-entry gates are frozen in
-[docs/products/harmonic/SPECIFICATION.md](docs/products/harmonic/SPECIFICATION.md).
-Only a winning measured algorithm justifies adding `apps/harmonic/` or extracting
-a shared foundation from Density.
+Loop L-01 and Impulse I-01 remain specifications rather than source targets.
+Host transport, buffer, rhythm, resonator, and amplifier abstractions wait for a
+real product consumer; Harmonic's existence does not justify inventing them.

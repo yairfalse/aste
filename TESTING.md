@@ -13,7 +13,8 @@ signal path:
 - monotonic internal Density mappings;
 - no heap allocation inside `process`.
 
-`harmonic_lab` is the separate pre-product research boundary for Harmonic H-01.
+`harmonic_lab` began as the separate pre-product research boundary for Harmonic
+H-01 and now also exercises the selected product graph.
 `--compare` covers the double-precision peaking reference and rejected
 residual-excitation candidate. `--preemphasis` renders five centers, four input
 levels, clean cuts, a canonical macro sweep, a folded odd-harmonic proxy, and
@@ -26,6 +27,15 @@ are marked unobservable instead of being misreported as distortion.
 and adds neutral-silence, impulse, step, overload, two-second recovery, and
 steady-state error evidence. It also runs in CTest; the frozen advance decision
 is reported separately from finite measurement validity.
+
+`--product-report` runs the complete four-band serial processor at all six
+supported rates with broad-boost and boost/cut fixtures, recording RMS gain,
+peak, harmonic activity, latency, and finite status. `--product-benchmark`
+changes every band and the Harmonic macro at block rate and reports a five-run
+median without placing timing in sanitizer gates. `harmonic_tests` independently
+checks finite output, exact neutral behavior, zero latency, stereo identity,
+deterministic reset, variable-block identity, clean cuts, monotonic canonical
+H3, and zero processing allocation at the required rates and block sizes.
 
 CTest runs the check. `density_lab` renders a deterministic amplitude-stepped
 sine to CSV and prints machine-readable peak/RMS/gain-reduction measurements.
@@ -45,12 +55,12 @@ CTest also checks the required-document set, local Markdown links, and configure
 build provenance. CI records the same results as JUnit XML.
 
 CI checks every tracked C++ source against the repository `.clang-format` file.
-Apple Clang's path-sensitive static analyzer runs separately over the
-framework-independent production Density DSP with warnings treated as errors.
+Apple Clang's path-sensitive static analyzer runs separately over both
+framework-independent production DSP targets with warnings treated as errors.
 The JUCE adapter retains strict compiler warnings and the independent runtime,
 fuzz, sanitizer, pluginval, and Steinberg validator boundaries described below.
 
-The VST3 adapter adds deterministic state round-trip, malformed-state,
+Each VST3 adapter adds deterministic state round-trip, malformed-state,
 mono/stereo layout, latency, finite audio, meter, exact-entry, reset,
 accessibility exposure, explicit ten-control keyboard focus order,
 resize-contract, and headless editor-paint checks. A locally built
@@ -61,7 +71,9 @@ validator's extensive suite passes 537 tests, including bypass, state
 transitions, variable blocks, silence flags, automation, and threaded processing.
 The universal VST3 CI job rebuilds that validator from pinned MIT-licensed
 source and requires the extensive suite to pass the signed bundle. The
-validator is test tooling only and is not a product dependency.
+validator is test tooling only and is not a product dependency. Harmonic's
+adapter tests additionally lock its 12 parameter IDs/text contract, six factory
+starting points, bypass, four-band UI exposure, and arbitrary-byte state fuzz.
 
 After independent validation, CI builds the deterministic internal Density ZIP
 and reopens it with `tools/package_density.py verify --require-clean`. The check
@@ -87,10 +99,10 @@ dispositions, cross-checks the source and package pins, and fails after the
 90-day review window. A dependency update therefore cannot reuse the previous
 security conclusion.
 
-`density_vst3_host` is the smallest repo-owned standalone host. Unlike the
-linked adapter tests, it discovers and loads the built bundle through VST3,
-then checks component identity, parameter count, latency, deterministic state,
-and finite stereo processing across six irregular block sizes. Optional
+`vst3_smoke_host` is the smallest repo-owned standalone host. Unlike the linked
+adapter tests, it discovers and loads either built bundle through VST3, then
+checks component identity, parameter count, latency, deterministic state, and
+finite stereo processing across six irregular block sizes. Optional
 `--write-state` and `--read-state` modes exchange one known non-default state
 for arm64/x86_64 portability checks without adding a preset format.
 

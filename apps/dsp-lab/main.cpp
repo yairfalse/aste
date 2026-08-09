@@ -755,13 +755,13 @@ bool parseGoldenLine(std::string_view line, GoldenMetrics& metrics) {
   metrics.fixture = fields[1];
   if (!parseInteger(fields[2], sampleRate) ||
       !parseInteger(fields[3], frames) || !parseInteger(fields[4], blockSize) ||
-      !aste::density::parseFiniteDecimal(fields[5], metrics.rmsDb) ||
-      !aste::density::parseFiniteDecimal(fields[6], metrics.peakDb) ||
-      !aste::density::parseFiniteDecimal(fields[7], metrics.crestDb) ||
-      !aste::density::parseFiniteDecimal(fields[8], metrics.gainChangeDb) ||
-      !aste::density::parseFiniteDecimal(fields[9], metrics.correlation) ||
-      !aste::density::parseFiniteDecimal(fields[10],
-                                         metrics.maximumReductionDb) ||
+      !aste::parameters::parseFiniteDecimal(fields[5], metrics.rmsDb) ||
+      !aste::parameters::parseFiniteDecimal(fields[6], metrics.peakDb) ||
+      !aste::parameters::parseFiniteDecimal(fields[7], metrics.crestDb) ||
+      !aste::parameters::parseFiniteDecimal(fields[8], metrics.gainChangeDb) ||
+      !aste::parameters::parseFiniteDecimal(fields[9], metrics.correlation) ||
+      !aste::parameters::parseFiniteDecimal(fields[10],
+                                            metrics.maximumReductionDb) ||
       !parseInteger(fields[11], latency) ||
       !parseInteger(fields[12], metrics.fingerprint, 16)) {
     return false;

@@ -1,5 +1,8 @@
+#include "harmonic_processor.hpp"
+
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <complex>
 #include <cstddef>
@@ -7,6 +10,7 @@
 #include <iostream>
 #include <numbers>
 #include <string_view>
+#include <vector>
 
 namespace {
 
@@ -754,6 +758,128 @@ CandidateResult renderStateful(const char* tonePath, const char* imdPath,
   return result;
 }
 
+bool renderProductReport(const char* outputPath) {
+  constexpr std::array<double, 6> rates{44100.0, 48000.0,  88200.0,
+                                        96000.0, 176400.0, 192000.0};
+  std::ofstream output{outputPath};
+  if (!output) {
+    return false;
+  }
+  output << "sample_rate,fixture,rms_gain_db,peak,harmonic_activity,latency,"
+            "finite\n";
+  bool valid = true;
+  for (double sampleRate : rates) {
+    for (int fixture = 0; fixture < 2; ++fixture) {
+      aste::harmonic::Parameters parameters;
+      parameters.foundationGainDb = fixture == 0 ? 4.0F : 6.0F;
+      parameters.bodyGainDb = fixture == 0 ? 3.0F : -4.0F;
+      parameters.presenceGainDb = fixture == 0 ? 2.0F : 3.0F;
+      parameters.airGainDb = fixture == 0 ? 1.0F : -2.0F;
+      parameters.harmonic = fixture == 0 ? 0.75F : 1.0F;
+      parameters.outputDb = fixture == 0 ? -1.0F : -2.0F;
+      aste::harmonic::Processor processor;
+      processor.prepare(sampleRate, parameters);
+      constexpr std::size_t blockSize = 127;
+      std::array<float, blockSize> left{};
+      std::array<float, blockSize> right{};
+      const std::size_t frames = static_cast<std::size_t>(sampleRate);
+      double inputPower = 0.0;
+      double outputPower = 0.0;
+      float peak = 0.0F;
+      float activity = 0.0F;
+      bool finite = true;
+      for (std::size_t offset = 0; offset < frames; offset += blockSize) {
+        const std::size_t count = std::min(blockSize, frames - offset);
+        for (std::size_t sample = 0; sample < count; ++sample) {
+          const double time = static_cast<double>(offset + sample) / sampleRate;
+          const float signal = static_cast<float>(
+              0.22 * std::sin(2.0 * std::numbers::pi * 70.0 * time) +
+              0.16 * std::sin(2.0 * std::numbers::pi * 430.0 * time) +
+              0.11 * std::sin(2.0 * std::numbers::pi * 2700.0 * time) +
+              0.07 * std::sin(2.0 * std::numbers::pi * 11000.0 * time));
+          left[sample] = signal;
+          right[sample] = signal * 0.93F;
+          inputPower += static_cast<double>(left[sample]) * left[sample] +
+                        static_cast<double>(right[sample]) * right[sample];
+        }
+        processor.process(left.data(), right.data(), count, parameters);
+        const auto meters = processor.meters();
+        activity = std::max(activity, meters.harmonicActivity);
+        for (std::size_t sample = 0; sample < count; ++sample) {
+          finite = finite && std::isfinite(left[sample]) &&
+                   std::isfinite(right[sample]);
+          peak =
+              std::max({peak, std::abs(left[sample]), std::abs(right[sample])});
+          outputPower += static_cast<double>(left[sample]) * left[sample] +
+                         static_cast<double>(right[sample]) * right[sample];
+        }
+      }
+      const double gainDb = 10.0 * std::log10(std::max(outputPower, 1.0e-30) /
+                                              std::max(inputPower, 1.0e-30));
+      output << sampleRate << ',' << (fixture == 0 ? "broad" : "sculpt") << ','
+             << gainDb << ',' << peak << ',' << activity << ','
+             << processor.latencySamples() << ',' << finite << '\n';
+      valid = valid && finite && activity > 0.0F &&
+              processor.latencySamples() == 0U && peak <= 16.0F;
+    }
+  }
+  return valid && output.good();
+}
+
+bool benchmarkProduct() {
+  constexpr double sampleRate = 48000.0;
+  constexpr std::size_t blockSize = 128;
+  constexpr std::size_t seconds = 30;
+  constexpr std::size_t runs = 5;
+  constexpr std::size_t blocks =
+      static_cast<std::size_t>(sampleRate) * seconds / blockSize;
+  std::array<double, runs> percentages{};
+  double checksum = 0.0;
+  for (std::size_t run = 0; run < runs; ++run) {
+    aste::harmonic::Parameters parameters;
+    parameters.foundationGainDb = 6.0F;
+    parameters.bodyGainDb = 4.0F;
+    parameters.presenceGainDb = 5.0F;
+    parameters.airGainDb = 3.0F;
+    parameters.harmonic = 1.0F;
+    aste::harmonic::Processor processor;
+    processor.prepare(sampleRate, parameters);
+    std::array<float, blockSize> left{};
+    std::array<float, blockSize> right{};
+    std::size_t offset = 0;
+    const auto start = std::chrono::steady_clock::now();
+    for (std::size_t block = 0; block < blocks; ++block) {
+      parameters.foundationGainDb = block % 2U == 0U ? 6.0F : -4.0F;
+      parameters.bodyFrequencyHz = block % 2U == 0U ? 250.0F : 700.0F;
+      parameters.presenceGainDb = block % 2U == 0U ? 5.0F : -3.0F;
+      parameters.airFrequencyHz = block % 2U == 0U ? 9000.0F : 17000.0F;
+      parameters.harmonic = block % 2U == 0U ? 1.0F : 0.1F;
+      for (std::size_t sample = 0; sample < blockSize; ++sample) {
+        left[sample] =
+            0.5F * std::sin(static_cast<float>(offset + sample) * 0.071F);
+        right[sample] =
+            0.5F * std::sin(static_cast<float>(offset + sample) * 0.083F);
+      }
+      processor.process(left.data(), right.data(), blockSize, parameters);
+      checksum += std::abs(left[block % blockSize]) +
+                  std::abs(right[block % blockSize]);
+      offset += blockSize;
+    }
+    const double elapsed =
+        std::chrono::duration<double>(std::chrono::steady_clock::now() - start)
+            .count();
+    percentages[run] = 100.0 * elapsed / static_cast<double>(seconds);
+  }
+  std::sort(percentages.begin(), percentages.end());
+  const double median = percentages[runs / 2U];
+  std::cout << "{\"sample_rate\":48000,\"block_size\":128,\"seconds\":30,"
+               "\"runs\":5,\"median_core_percent\":"
+            << median << ",\"minimum_core_percent\":" << percentages.front()
+            << ",\"maximum_core_percent\":" << percentages.back()
+            << ",\"checksum\":" << checksum << "}\n";
+  return std::isfinite(checksum) && checksum > 0.0 && median < 1.0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -794,8 +920,21 @@ int main(int argc, char** argv) {
               << "}\n";
     return result.valid ? 0 : 1;
   }
+  if (argc == 3 && std::string_view{argv[1]} == "--product-report") {
+    if (!renderProductReport(argv[2])) {
+      std::cerr << "harmonic_lab: product report failed\n";
+      return 1;
+    }
+    std::cout << "harmonic_lab: product report ok\n";
+    return 0;
+  }
+  if (argc == 2 && std::string_view{argv[1]} == "--product-benchmark") {
+    return benchmarkProduct() ? 0 : 1;
+  }
   std::cerr << "usage: harmonic_lab --compare OUTPUT.csv\n"
                "       harmonic_lab --preemphasis TONE.csv IMD.csv\n"
-               "       harmonic_lab --stateful TONE.csv IMD.csv DYNAMICS.csv\n";
+               "       harmonic_lab --stateful TONE.csv IMD.csv DYNAMICS.csv\n"
+               "       harmonic_lab --product-report OUTPUT.csv\n"
+               "       harmonic_lab --product-benchmark\n";
   return 2;
 }
