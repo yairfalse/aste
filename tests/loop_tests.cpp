@@ -70,7 +70,7 @@ void testCapturePlaybackAndReset() {
 }
 
 void testModesAndRealtimeSafety() {
-  for (double rate : {44100.0, 48000.0, 96000.0, 192000.0}) {
+  for (double rate : {44100.0, 48000.0, 88200.0, 96000.0, 176400.0, 192000.0}) {
     aste::loop::Processor processor;
     processor.prepare(rate, 1.0);
     require(processor.capacitySamples() >= static_cast<std::size_t>(rate),

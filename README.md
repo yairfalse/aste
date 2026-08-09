@@ -11,8 +11,8 @@ engineering research, deterministic measurement, and unusually strict
 real-time testing. It is not a hardware-cloning exercise and does not use
 “analog” as a substitute for describing measurable behaviour.
 
-> **Project status:** Density D-01, Harmonic H-01, Sequence S-01, and Loop L-01
-> are working internal VST3 prototypes. All have product-owned DSP, state,
+> **Project status:** Density D-01, Harmonic H-01, Sequence S-01, Loop L-01,
+> and Impulse I-01 are working internal VST3 prototypes. All have product-owned DSP, state,
 > tests, and industrial UIs; none is a supported release. There is no Developer ID signature,
 > notarization, final company identity, or DAW compatibility claim yet.
 
@@ -24,7 +24,7 @@ real-time testing. It is not a hardware-cloning exercise and does not use
 | **Harmonic H-01** | Equalizer with nonlinear band behaviour | Working VST3 internal beta; musical/host validation next |
 | **Sequence S-01** | Monophonic programmed-current synthesizer | Working VST3 internal beta; musical/host validation next |
 | **Loop L-01** | Tape-inspired playable memory instrument | Working VST3 prototype; memory-state validation next |
-| **Impulse I-01** | Generative rhythm and transient instrument | Product definition only |
+| **Impulse I-01** | Generative rhythm and transient instrument | Working VST3 prototype; musical/host validation next |
 
 Density, Harmonic, and Sequence remain independent products. Shared code is extracted only
 when two products genuinely need it or when correctness requires one
@@ -143,6 +143,20 @@ processing. Its schema-1 control state is deterministic, but captured audio is
 not yet serialized; session memory recall remains a stated release blocker. See
 [docs/products/loop/SPECIFICATION.md](docs/products/loop/SPECIFICATION.md).
 
+## Impulse I-01
+
+Impulse synthesizes Kick, Click, Burst, and Body objects from exciters,
+resonant bodies, and bounded amplifier stages. Each track owns an independent
+1–32-step Euclidean cycle, rotation, probability, ratchets, timing, condition,
+and accent. Stored seeds make probability, variation, and mutation reproducible
+from host PPQ across block partitions and project recall. MIDI C/C#/D/D# in any
+octave triggers the four objects directly.
+
+The default 15/23/11/16 cycles remain host-clocked while drifting against one
+another. No drum samples, genre kits, named circuit clone, or nondeterministic
+“analog” behavior defines the product. See
+[docs/products/impulse/SPECIFICATION.md](docs/products/impulse/SPECIFICATION.md).
+
 ## Requirements
 
 The tested development environment is macOS on Apple Silicon, with x86_64
@@ -187,6 +201,8 @@ It builds:
   benchmark.
 - `loop_dsp`, `loop_tests`, and `loop_lab` — capture/playback memory engine,
   property tests, deterministic render, and worst-case benchmark.
+- `impulse_dsp`, `impulse_tests`, and `impulse_lab` — physical-event voices,
+  deterministic polymetric scheduling, render, and benchmark.
 
 ### VST3, adapter tests, and standalone host
 
@@ -207,6 +223,7 @@ build-plugin/DensityD01_artefacts/Release/VST3/Density D-01.vst3
 build-plugin/HarmonicH01_artefacts/Release/VST3/Harmonic H-01.vst3
 build-plugin/SequenceS01_artefacts/Release/VST3/Sequence S-01.vst3
 build-plugin/LoopL01_artefacts/Release/VST3/Loop L-01.vst3
+build-plugin/ImpulseI01_artefacts/Release/VST3/Impulse I-01.vst3
 ```
 
 Each product has direct JUCE-adapter tests. The separate `vst3_smoke_host`
@@ -258,7 +275,7 @@ Clone the repository on the music machine, quit Cubase and Ableton, then run:
 ```
 
 The script builds and tests universal arm64+x86_64 bundles, verifies both
-architectures and signatures, and installs Density, Harmonic, Sequence, and Loop under
+architectures and signatures, and installs the complete five-product line under
 `~/Library/Audio/Plug-Ins/VST3`. Existing copies are preserved as timestamped
 backups, and no `sudo` is used. Reopen the DAW and rescan VST3 plugins.
 
@@ -280,6 +297,8 @@ An explicit bundle path may be supplied when testing another build:
   "build-plugin-universal/SequenceS01_artefacts/Release/VST3/Sequence S-01.vst3"
 ./tools/install_loop_macos.sh \
   "build-plugin-universal/LoopL01_artefacts/Release/VST3/Loop L-01.vst3"
+./tools/install_impulse_macos.sh \
+  "build-plugin-universal/ImpulseI01_artefacts/Release/VST3/Impulse I-01.vst3"
 ```
 
 ### Internal packaging rehearsal
@@ -416,9 +435,14 @@ all transport modulation, degradation, and amplifier stages at worst case. It
 passes the local provisional 1% budget; captured-memory recall, native Intel,
 older Apple Silicon, and DAW/UI-open measurements remain open.
 
+Impulse measured a 0.352056% five-run median on the same machine at 48 kHz /
+127 samples with 32-pulse tracks, 4× ratchets, 180 BPM, maximum Energy,
+Variation, Mutation, and Drive. It passes the local provisional 1% budget;
+native Intel, older Apple Silicon, DAW, and open-UI evidence remain external.
+
 ## Current release status
 
-Density, Harmonic, Sequence, and Loop are internal prototypes, not releases. Density has repository
+The five-product line consists of internal prototypes, not releases. Density has repository
 evidence for 16 of its 25 release gates. Harmonic has the engineering boundary
 needed for first external tests; all three still require people, DAWs, and target
 hardware for:
@@ -458,6 +482,10 @@ loop_dsp     <- loop_tests <- loop_lab
       ^
       +------ Loop JUCE effect/UI <- loop_plugin_tests
 
+impulse_dsp  <- impulse_tests <- impulse_lab
+      ^
+      +------ Impulse JUCE instrument/UI <- impulse_plugin_tests
+
 all VST3 bundles <- vst3_smoke_host (dynamic ABI load only)
 ```
 
@@ -481,6 +509,7 @@ apps/
   harmonic/            independent four-band DSP, adapter, and editor
   sequence/            monophonic voice, host sequencer, adapter, and editor
   loop/                capture memory, adapter, and editor
+  impulse/             rhythmic objects, polymetric clock, adapter, and editor
   dsp-lab/             offline renderer and measurement laboratory
   standalone-host/     minimal headless VST3 smoke host
 docs/
@@ -497,6 +526,7 @@ tests/
   harmonic_plugin_tests.cpp
   sequence_tests.cpp / sequence_plugin_tests.cpp
   loop_tests.cpp / loop_plugin_tests.cpp
+  impulse_tests.cpp / impulse_plugin_tests.cpp
   realtime_audit_mac.cpp
 tools/                  repository-policy and provenance checks
 ```

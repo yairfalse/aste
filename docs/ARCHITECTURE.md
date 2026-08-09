@@ -27,6 +27,10 @@ loop_dsp     <- loop_tests <- loop_lab
       ^
       +------ Loop JUCE effect/UI <- loop_plugin_tests
 
+impulse_dsp  <- impulse_tests <- impulse_lab
+      ^
+      +------ Impulse JUCE instrument/UI <- impulse_plugin_tests
+
 all VST3 bundles <- vst3_smoke_host (dynamic ABI load only)
 ```
 
@@ -121,6 +125,21 @@ free duration has its own seconds parameter. MIDI capture changes are processed
 at event offsets. The graph reports zero latency. Schema 1 stores controls but
 not captured audio; ADR 0009 records that explicit prototype boundary.
 
+## Impulse I-01 graph
+
+```text
+host PPQ + seed -> four polymetric schedulers ----+
+MIDI C/C#/D/D# -> direct excitation -------------+-> object voices
+                                                     -> bounded loading
+                                                     -> stereo output
+```
+
+Impulse is a no-input instrument. Four fixed voices and pure hash decisions
+belong to the audio thread; PPQ derives absolute steps and ratchet ticks without
+block accumulation. Stored seed, track, and absolute position fully determine
+probability and mutation. The UI reads only lock-free output and step snapshots.
+The product-local graph reports zero latency; ADR 0010 owns the boundary.
+
 ## Product philosophy
 
 The family exposes audible phenomena rather than circuit trivia. Interfaces
@@ -136,8 +155,7 @@ mastering limiter.
 
 ## Next product boundary
 
-Impulse I-01 remains the next product source target. Sequence and Loop consume
+All five product source targets now exist. Sequence, Loop, and Impulse consume
 host timing locally with different contracts, so transport extraction remains
-deferred. Rhythm and resonator abstractions also remain deferred. Loop's bounded
-amplifier stays product-local until a second product needs identical measured
-behavior.
+deferred until identical behavior is proven. Loop and Impulse amplifier stages
+also remain product-local because their measured jobs differ.

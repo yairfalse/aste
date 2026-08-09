@@ -25,3 +25,5 @@ ctest --test-dir "$build_dir" --output-on-failure
   "$build_dir/SequenceS01_artefacts/Release/VST3/Sequence S-01.vst3"
 "$repository_dir/tools/install_loop_macos.sh" \
   "$build_dir/LoopL01_artefacts/Release/VST3/Loop L-01.vst3"
+"$repository_dir/tools/install_impulse_macos.sh" \
+  "$build_dir/ImpulseI01_artefacts/Release/VST3/Impulse I-01.vst3"

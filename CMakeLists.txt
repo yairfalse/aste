@@ -71,6 +71,9 @@ target_include_directories(sequence_dsp PUBLIC apps/sequence libs/parameters)
 add_library(loop_dsp apps/loop/loop_processor.cpp)
 target_include_directories(loop_dsp PUBLIC apps/loop libs/parameters)
 
+add_library(impulse_dsp apps/impulse/impulse_processor.cpp)
+target_include_directories(impulse_dsp PUBLIC apps/impulse libs/parameters)
+
 if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang")
   add_custom_target(density_static_analysis
     COMMAND "${CMAKE_CXX_COMPILER}" --analyze
@@ -104,9 +107,17 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang")
             "${CMAKE_CURRENT_SOURCE_DIR}/apps/loop/loop_processor.cpp"
     COMMENT "Running Clang static analysis on Loop DSP"
     VERBATIM)
+  add_custom_target(impulse_static_analysis
+    COMMAND "${CMAKE_CXX_COMPILER}" --analyze
+            -Xanalyzer -analyzer-output=text
+            -std=c++20 -Wall -Wextra -Wpedantic -Werror
+            -I"${CMAKE_CURRENT_SOURCE_DIR}/apps/impulse"
+            "${CMAKE_CURRENT_SOURCE_DIR}/apps/impulse/impulse_processor.cpp"
+    COMMENT "Running Clang static analysis on Impulse DSP"
+    VERBATIM)
 endif()
 
-foreach(target density_dsp harmonic_dsp sequence_dsp loop_dsp)
+foreach(target density_dsp harmonic_dsp sequence_dsp loop_dsp impulse_dsp)
   target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endforeach()
 
@@ -125,6 +136,10 @@ target_compile_options(sequence_lab PRIVATE -Wall -Wextra -Wpedantic -Werror)
 add_executable(loop_lab apps/dsp-lab/loop.cpp)
 target_link_libraries(loop_lab PRIVATE loop_dsp)
 target_compile_options(loop_lab PRIVATE -Wall -Wextra -Wpedantic -Werror)
+
+add_executable(impulse_lab apps/dsp-lab/impulse.cpp)
+target_link_libraries(impulse_lab PRIVATE impulse_dsp)
+target_compile_options(impulse_lab PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
 enable_testing()
 find_package(Python3 COMPONENTS Interpreter)
@@ -158,6 +173,10 @@ add_executable(loop_tests tests/loop_tests.cpp)
 target_link_libraries(loop_tests PRIVATE loop_dsp)
 target_compile_options(loop_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 add_test(NAME loop_tests COMMAND loop_tests)
+add_executable(impulse_tests tests/impulse_tests.cpp)
+target_link_libraries(impulse_tests PRIVATE impulse_dsp)
+target_compile_options(impulse_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+add_test(NAME impulse_tests COMMAND impulse_tests)
 if(APPLE)
   add_test(NAME density_installer_syntax
     COMMAND /bin/sh -n
@@ -171,6 +190,9 @@ if(APPLE)
   add_test(NAME loop_installer_syntax
     COMMAND /bin/sh -n
             "${CMAKE_CURRENT_SOURCE_DIR}/tools/install_loop_macos.sh")
+  add_test(NAME impulse_installer_syntax
+    COMMAND /bin/sh -n
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/install_impulse_macos.sh")
   add_test(NAME build_and_install_syntax
     COMMAND /bin/sh -n
             "${CMAKE_CURRENT_SOURCE_DIR}/tools/build_and_install_macos.sh")
@@ -194,6 +216,8 @@ add_test(NAME sequence_product_render
   COMMAND sequence_lab "${CMAKE_CURRENT_BINARY_DIR}/sequence-product-render.csv")
 add_test(NAME loop_product_render
   COMMAND loop_lab "${CMAKE_CURRENT_BINARY_DIR}/loop-product-render.csv")
+add_test(NAME impulse_product_render
+  COMMAND impulse_lab "${CMAKE_CURRENT_BINARY_DIR}/impulse-product-render.csv")
 add_test(NAME density_detector_compare
   COMMAND density_lab --detector-compare
           "${CMAKE_CURRENT_BINARY_DIR}/density_detector_compare.csv")
@@ -370,6 +394,34 @@ if(ASTE_BUILD_VST3)
     )
   endif()
 
+  juce_add_plugin(ImpulseI01
+    VERSION ${PROJECT_VERSION}
+    COMPANY_NAME "Aste Internal"
+    BUNDLE_ID "invalid.aste.impulse-i01"
+    IS_SYNTH TRUE
+    NEEDS_MIDI_INPUT TRUE
+    NEEDS_MIDI_OUTPUT FALSE
+    IS_MIDI_EFFECT FALSE
+    EDITOR_WANTS_KEYBOARD_FOCUS TRUE
+    COPY_PLUGIN_AFTER_BUILD FALSE
+    PLUGIN_MANUFACTURER_CODE Aste
+    PLUGIN_CODE Imp1
+    FORMATS VST3
+    VST3_CATEGORIES Instrument Synth
+    PRODUCT_NAME "Impulse I-01"
+  )
+  target_sources(ImpulseI01 PRIVATE apps/impulse/impulse_plugin.cpp)
+  target_include_directories(ImpulseI01 PRIVATE apps/impulse)
+  target_link_libraries(ImpulseI01 PRIVATE impulse_dsp juce::juce_audio_utils)
+  target_compile_definitions(ImpulseI01 PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0 JUCE_VST3_EMULATE_MIDI_CC_WITH_PARAMETERS=0)
+  target_compile_options(ImpulseI01 PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  if(APPLE)
+    add_custom_command(TARGET ImpulseI01_VST3 POST_BUILD
+      COMMAND codesign --force --deep --sign - "$<TARGET_BUNDLE_DIR:ImpulseI01_VST3>"
+      COMMENT "Applying final ad-hoc signature after Impulse VST3 manifest generation"
+      VERBATIM)
+  endif()
+
   juce_add_plugin(HarmonicH01
     VERSION ${PROJECT_VERSION}
     COMPANY_NAME "Aste Internal"
@@ -526,6 +578,18 @@ if(ASTE_BUILD_VST3)
     COMMAND loop_plugin_tests --editor-artifacts
             "${CMAKE_CURRENT_BINARY_DIR}/loop_editor_artifacts")
 
+  juce_add_console_app(impulse_plugin_tests PRODUCT_NAME "Impulse plugin tests")
+  if(APPLE)
+    target_link_libraries(impulse_plugin_tests PRIVATE realtime_audit)
+  endif()
+  target_sources(impulse_plugin_tests PRIVATE apps/impulse/impulse_plugin.cpp tests/impulse_plugin_tests.cpp)
+  target_include_directories(impulse_plugin_tests PRIVATE apps/impulse)
+  target_link_libraries(impulse_plugin_tests PRIVATE impulse_dsp juce::juce_audio_utils)
+  target_compile_definitions(impulse_plugin_tests PRIVATE ASTE_NO_PLUGIN_FACTORY=1 JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
+  target_compile_options(impulse_plugin_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  add_test(NAME impulse_plugin_tests COMMAND impulse_plugin_tests)
+  add_test(NAME impulse_editor_artifacts COMMAND impulse_plugin_tests --editor-artifacts "${CMAKE_CURRENT_BINARY_DIR}/impulse_editor_artifacts")
+
   juce_add_console_app(vst3_smoke_host PRODUCT_NAME "VST3 smoke host")
   target_sources(vst3_smoke_host PRIVATE apps/standalone-host/main.cpp)
   target_link_libraries(vst3_smoke_host PRIVATE
@@ -542,7 +606,7 @@ if(ASTE_BUILD_VST3)
       -Wno-unnecessary-virtual-specifier)
   endif()
   add_dependencies(vst3_smoke_host DensityD01_VST3 HarmonicH01_VST3
-                   SequenceS01_VST3 LoopL01_VST3)
+                   SequenceS01_VST3 LoopL01_VST3 ImpulseI01_VST3)
   add_test(NAME density_vst3_host
     COMMAND vst3_smoke_host "$<TARGET_BUNDLE_DIR:DensityD01_VST3>"
             "Density D-01" "Drive" 11)
@@ -555,6 +619,9 @@ if(ASTE_BUILD_VST3)
   add_test(NAME loop_vst3_host
     COMMAND vst3_smoke_host "$<TARGET_BUNDLE_DIR:LoopL01_VST3>"
             "Loop L-01" "Capture" 19)
+  add_test(NAME impulse_vst3_host
+    COMMAND vst3_smoke_host "$<TARGET_BUNDLE_DIR:ImpulseI01_VST3>"
+            "Impulse I-01" "Energy" 60)
 
   if(Python3_Interpreter_FOUND AND APPLE)
     set(ASTE_DENSITY_PACKAGE

@@ -52,3 +52,6 @@ its exact contract is in
 Loop applies the scalar boundary to 19 controls. Its schema-1 prototype does not
 serialize captured sample memory; the exact limitation and migration boundary
 are in [docs/products/loop/STATE_FORMAT.md](products/loop/STATE_FORMAT.md).
+Impulse stores every object, cycle, probability, mutation, and seed value as 60
+portable scalars. Its deterministic pattern contract is in
+[docs/products/impulse/STATE_FORMAT.md](products/impulse/STATE_FORMAT.md).

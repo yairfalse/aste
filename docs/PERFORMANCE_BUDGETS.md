@@ -166,3 +166,15 @@ measured a 0.369393% median of one M4 Pro performance core across five runs
 (0.366017–0.378431%). This passes the local budget
 but is not native Intel, oldest-supported Apple Silicon, loaded-DAW, or open-UI
 evidence.
+
+## Impulse I-01 baseline
+
+Impulse adopts a provisional budget below 1.0% of one performance core at 48
+kHz / 127 samples with all four voices and densest scheduler settings. Callback
+allocation, locks, filesystem access, logging, and latency must remain zero.
+
+On 2026-08-09, five Release `impulse_lab --benchmark` runs used 32 active pulses
+on every track, 4× ratchets, 180 BPM, and maximum Energy, Variation, Mutation,
+and Drive. The median was 0.352056% of one M4 Pro performance core, with a
+0.339692–0.367345% range. This passes the local budget but is not native Intel,
+oldest-supported Apple Silicon, loaded-DAW, or open-UI evidence.

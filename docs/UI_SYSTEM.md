@@ -52,3 +52,11 @@ shows capture fill, playback position, input/output boundaries, and one explicit
 clear action. Capture, host sync, and reverse remain visible above a three-row
 control field. Oxidized teal marks active memory and values; motion is limited
 to signal levels and memory travel. All essential controls remain on one panel.
+
+## Impulse I-01
+
+The 1480×900 editor scales from 1120×700 to 1800×1120. Energy leads the global
+row; Variation, Mutation, Seed, Output, Division, Sequence, and Snapshots remain
+visible. Four equal object strips expose all thirteen sound and cycle controls
+without tabs. Signal orange communicates parameter amount and each track's
+current host-clocked step; output level is the only other motion.

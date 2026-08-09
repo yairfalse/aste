@@ -57,9 +57,10 @@ Sequence S-01 has passed hosted core, sanitizer, universal, signature, and
 independent Steinberg validation. Its immediate gate is the music-machine
 checklist. Loop L-01 now has an independent working VST3 prototype; its next
 gate is the Loop music-machine checklist and a race-free captured-memory state
-snapshot. Impulse I-01 is the next implementation product. Extract shared UI,
-transport, or amplifier code only after identical behavior is measured in two
-products.
+snapshot. Impulse I-01 now has an independent working VST3 prototype; its next
+gate is deterministic music-machine transport and deep-kick validation. Extract
+shared UI, transport, or amplifier code only after identical behavior is
+measured in two products.
 
 ## Explicitly deferred
 

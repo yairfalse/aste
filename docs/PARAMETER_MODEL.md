@@ -75,3 +75,11 @@ seconds are different IDs so unit meaning never changes with a mode switch.
 Percent values are exposed as 0–100 and converted only at the DSP boundary.
 Complete ranges, defaults, and musical roles are in
 [docs/products/loop/PARAMETERS.md](products/loop/PARAMETERS.md).
+
+## Impulse I-01
+
+Impulse schema 1 contains eight global parameters plus thirteen parameters for
+each of four rhythmic objects, for 60 stable IDs. Seed, cycles, probability,
+conditions, ratchets, and timing are ordinary scalar state rather than hidden
+sequencer data. The complete contract is
+[docs/products/impulse/PARAMETERS.md](products/impulse/PARAMETERS.md).
