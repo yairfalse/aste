@@ -1,6 +1,6 @@
 # Roadmap
 
-## Now — Density, Harmonic, and Sequence external validation
+## Now — complete-line external validation
 
 The first working VST3, DSP lab, state model, industrial editor, and automated
 foundation exist. A deterministic internal package rehearsal now checks bundle

@@ -26,9 +26,9 @@ real-time testing. It is not a hardware-cloning exercise and does not use
 | **Loop L-01** | Tape-inspired playable memory instrument | Working VST3 prototype; memory-state validation next |
 | **Impulse I-01** | Generative rhythm and transient instrument | Working VST3 prototype; musical/host validation next |
 
-Density, Harmonic, and Sequence remain independent products. Shared code is extracted only
-when two products genuinely need it or when correctness requires one
-implementation; neither processor links to the other.
+All five products remain independent. Shared code is extracted only when two
+products genuinely need identical behavior or when correctness requires one
+implementation; no product processor links to another product.
 
 ## Density D-01
 
@@ -442,10 +442,10 @@ native Intel, older Apple Silicon, DAW, and open-UI evidence remain external.
 
 ## Current release status
 
-The five-product line consists of internal prototypes, not releases. Density has repository
-evidence for 16 of its 25 release gates. Harmonic has the engineering boundary
-needed for first external tests; all three still require people, DAWs, and target
-hardware for:
+The five-product line consists of internal prototypes, not releases. Density
+has repository evidence for 16 of its 25 release gates. Harmonic has the
+engineering boundary needed for first external tests; all five still require
+people, DAWs, and target hardware for:
 
 - Cubase 14, Ableton Live 13/beta, and one additional real-host matrix;
 - real-time versus offline bounce, freeze, reopen, suspend, and crash-recovery
