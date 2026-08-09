@@ -27,8 +27,10 @@ and state cues, not decoration.
 The current 980×540 editor scales between 760×420 and 1520×840. Density is the
 first and largest control; input/output boundaries and gain reduction occupy the
 left meter column; Drive, Crush, Attack, Release, Blend, Stereo, Detector HPF,
-and Output form the secondary grid; Protection remains visible. Keyboard order
-follows that musical hierarchy.
+and Output form the secondary grid; Protection remains visible. A compact
+header menu applies five factory starting points without adding a browser or
+hidden page. Keyboard order follows the musical hierarchy and reaches the menu
+after the ten essential controls.
 
 Headless 1x/2x artifacts and paint timing are regression evidence, not a Retina
 or usability claim. Native DAW, VoiceOver, contrast, and first-time-use review

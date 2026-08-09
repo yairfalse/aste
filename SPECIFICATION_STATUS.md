@@ -47,7 +47,7 @@ Status meanings:
 | Explicit schema migration boundary | Done | Schema 1 identity migration; unknown versions leave state unchanged. |
 | Deterministic state recall | Done | Repeated byte-stable serialization and equivalent processing. |
 | Malformed-state safety | Done | 3,072 deterministic byte and structured mutations. |
-| Compact product preset menu | Open | Add a small local preset set with stable portable state; no browser or cloud service. |
+| Compact product preset menu | Done | Five product-local starting points apply stable parameters from one accessible header menu; no browser, filesystem, or new state field. |
 | MIDI mapping | Accepted | Density exposes ordinary automatable VST3 parameters; no product-specific MIDI behavior is required. |
 | Host transport abstraction | Later | Density does not consume transport. Add only for Loop or Impulse, its first real consumers. |
 
@@ -135,3 +135,8 @@ to make the future directory tree look complete.
 Density becomes **specification-complete internal beta** when every **Open** row
 above is either **Done** with evidence or **Accepted** by an ADR. This label does
 not mean release-ready: every **External** row remains a hard release gate.
+
+As of 2026-08-09 there are zero **Open** rows. Density is therefore
+specification-complete for internal beta, subject to a green build and test run
+for the declaring commit. It is not release-ready and makes no Cubase, Ableton,
+native-Intel performance, listening, notarization, or real-project claim.

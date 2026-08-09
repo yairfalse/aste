@@ -337,6 +337,42 @@ void testStateRoundTrip() {
           "Older partial state receives the fully linked Stereo default");
 }
 
+void testFactoryPresets() {
+  aste::density::plugin::DensityAudioProcessor processor;
+  require(processor.factoryPresetCount() == 5,
+          "Density exposes the reviewed factory preset count");
+  for (int index = 0; index < processor.factoryPresetCount(); ++index) {
+    require(!processor.factoryPresetName(index).isEmpty(),
+            "Every factory preset has a visible name");
+    processor.loadFactoryPreset(index);
+    for (const char* id : std::array<const char*, 11>{
+             "drive", "crush", "attack", "release", "density", "blend",
+             "output", "stereo", "detector_hpf", "protection", "bypass"}) {
+      const auto* parameter = processor.state().getParameter(id);
+      const auto value = rawValue(processor, id);
+      require(parameter != nullptr && std::isfinite(value) &&
+                  value >= parameter->getNormalisableRange().start &&
+                  value <= parameter->getNormalisableRange().end,
+              "Every factory preset value is finite and in range");
+    }
+    juce::MemoryBlock first;
+    juce::MemoryBlock second;
+    processor.getStateInformation(first);
+    processor.getStateInformation(second);
+    require(first == second,
+            "Every factory preset serializes deterministically");
+  }
+
+  juce::MemoryBlock beforeInvalid;
+  processor.getStateInformation(beforeInvalid);
+  processor.loadFactoryPreset(-1);
+  processor.loadFactoryPreset(processor.factoryPresetCount());
+  juce::MemoryBlock afterInvalid;
+  processor.getStateInformation(afterInvalid);
+  require(beforeInvalid == afterInvalid,
+          "Invalid factory preset indices leave state unchanged");
+}
+
 void testStateFuzz() {
   constexpr std::size_t byteCases = 2048;
   constexpr std::size_t treeCases = 1024;
@@ -673,9 +709,22 @@ void testEditorContract() {
               protection->isAccessible(),
           "Protection is keyboard and accessibility reachable");
 
-  constexpr std::array<const char*, 10> focusTitles{
-      "DENSITY", "DRIVE",  "CRUSH",        "ATTACK", "RELEASE",
-      "BLEND",   "STEREO", "DETECTOR HPF", "OUTPUT", "PROTECTION"};
+  auto* presets = dynamic_cast<juce::ComboBox*>(findTitled(*editor, "PRESETS"));
+  require(presets != nullptr && presets->getNumItems() == 5 &&
+              presets->getWantsKeyboardFocus() && presets->isAccessible(),
+          "Factory presets are compact, keyboard reachable, and accessible");
+  if (presets != nullptr) {
+    presets->setSelectedId(2, juce::sendNotificationSync);
+    require(
+        std::abs(rawValue(processor, "drive") - 2.0F) < 0.011F &&
+            presets->getSelectedId() == 0,
+        "Preset menu actions load parameters and return to a neutral label");
+    presets->setSelectedId(1, juce::sendNotificationSync);
+  }
+
+  constexpr std::array<const char*, 11> focusTitles{
+      "DENSITY", "DRIVE",        "CRUSH",  "ATTACK",     "RELEASE", "BLEND",
+      "STEREO",  "DETECTOR HPF", "OUTPUT", "PROTECTION", "PRESETS"};
   for (std::size_t index = 0; index < focusTitles.size(); ++index) {
     auto* control = findTitled(*editor, focusTitles[index]);
     require(
@@ -781,6 +830,7 @@ int main(int argc, char** argv) {
   }
   testParameterTextContract();
   testStateRoundTrip();
+  testFactoryPresets();
   testStateFuzz();
   testLifecycleAndAudio();
   testProcessingBoundary();

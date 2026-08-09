@@ -49,6 +49,9 @@ class DensityAudioProcessor final : public juce::AudioProcessor {
   [[nodiscard]] float inputPeak() const noexcept;
   [[nodiscard]] float outputPeak() const noexcept;
   [[nodiscard]] float gainReductionDb() const noexcept;
+  [[nodiscard]] static int factoryPresetCount() noexcept;
+  [[nodiscard]] static juce::String factoryPresetName(int index);
+  void loadFactoryPreset(int index);
 
  private:
   enum ParameterIndex : std::size_t {

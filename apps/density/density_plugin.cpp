@@ -21,6 +21,29 @@ constexpr std::array<const char*, 11> kParameterIds{
     "drive",  "crush",  "attack",       "release",    "density", "blend",
     "output", "stereo", "detector_hpf", "protection", "bypass"};
 
+struct FactoryPreset {
+  const char* name;
+  std::array<float, kParameterIds.size()> values;
+};
+
+constexpr std::array<FactoryPreset, 5> kFactoryPresets{{
+    {"Default",
+     {0.0F, 65.0F, 1.0F, 180.0F, 50.0F, 50.0F, 0.0F, 100.0F, 90.0F, 1.0F,
+      0.0F}},
+    {"Continuity",
+     {2.0F, 50.0F, 8.0F, 320.0F, 35.0F, 35.0F, -1.0F, 100.0F, 120.0F, 1.0F,
+      0.0F}},
+    {"Proximity",
+     {6.0F, 75.0F, 0.5F, 140.0F, 70.0F, 55.0F, -3.0F, 85.0F, 100.0F, 1.0F,
+      0.0F}},
+    {"Parallel Crush",
+     {12.0F, 95.0F, 0.05F, 80.0F, 90.0F, 32.0F, -6.0F, 100.0F, 140.0F, 1.0F,
+      0.0F}},
+    {"Transient Hold",
+     {4.0F, 85.0F, 6.0F, 500.0F, 60.0F, 45.0F, -2.0F, 65.0F, 180.0F, 1.0F,
+      0.0F}},
+}};
+
 bool parseFiniteFloat(const juce::var& value, float& result) {
   const std::string text = value.toString().toStdString();
   double parsed{};
@@ -235,6 +258,7 @@ class DensityEditor final : public juce::AudioProcessorEditor {
  public:
   explicit DensityEditor(DensityAudioProcessor& processor)
       : AudioProcessorEditor{processor},
+        processor_{processor},
         meter_{processor},
         density_{processor.state(), "density", "DENSITY", " %", 50.0, 1},
         drive_{processor.state(), "drive", "DRIVE", " dB", 0.0, 2},
@@ -247,9 +271,27 @@ class DensityEditor final : public juce::AudioProcessorEditor {
         output_{processor.state(), "output", "OUTPUT", " dB", 0.0, 9},
         protection_{processor.state(), "protection", "PROTECTION", 10} {
     setLookAndFeel(&lookAndFeel_);
-    for (auto* component : std::array<juce::Component*, 11>{
+    preset_.setTextWhenNothingSelected("PRESETS");
+    preset_.setTitle("PRESETS");
+    preset_.setDescription("Load a Density factory starting point");
+    preset_.setWantsKeyboardFocus(true);
+    preset_.setExplicitFocusOrder(11);
+    preset_.setColour(juce::ComboBox::backgroundColourId, juce::Colour{kPanel});
+    preset_.setColour(juce::ComboBox::textColourId, juce::Colour{kInk});
+    preset_.setColour(juce::ComboBox::outlineColourId, juce::Colour{kMuted});
+    for (int index = 0; index < processor_.factoryPresetCount(); ++index) {
+      preset_.addItem(processor_.factoryPresetName(index), index + 1);
+    }
+    preset_.onChange = [this] {
+      const int selected = preset_.getSelectedId();
+      if (selected > 0) {
+        processor_.loadFactoryPreset(selected - 1);
+        preset_.setSelectedId(0, juce::dontSendNotification);
+      }
+    };
+    for (auto* component : std::array<juce::Component*, 12>{
              &meter_, &density_, &drive_, &crush_, &attack_, &release_, &blend_,
-             &stereo_, &hpf_, &output_, &protection_}) {
+             &stereo_, &hpf_, &output_, &protection_, &preset_}) {
       addAndMakeVisible(component);
     }
     setResizable(true, true);
@@ -268,6 +310,7 @@ class DensityEditor final : public juce::AudioProcessorEditor {
                       juce::Justification::centredLeft);
     graphics.setColour(juce::Colour{kAccent});
     graphics.setFont(juce::FontOptions{12.0F, juce::Font::bold});
+    header.removeFromRight(210);
     graphics.drawText("D-01 / PARALLEL DYNAMICS", header,
                       juce::Justification::centredRight);
     graphics.setColour(juce::Colour{kMuted}.withAlpha(0.35F));
@@ -275,6 +318,7 @@ class DensityEditor final : public juce::AudioProcessorEditor {
   }
 
   void resized() override {
+    preset_.setBounds(getWidth() - 204, 28, 180, 28);
     auto area = getLocalBounds().reduced(24);
     area.removeFromTop(68);
     auto meterColumn = area.removeFromLeft(138);
@@ -299,6 +343,7 @@ class DensityEditor final : public juce::AudioProcessorEditor {
 
  private:
   DensityLookAndFeel lookAndFeel_;
+  DensityAudioProcessor& processor_;
   MeterPanel meter_;
   Knob density_;
   Knob drive_;
@@ -310,6 +355,7 @@ class DensityEditor final : public juce::AudioProcessorEditor {
   Knob hpf_;
   Knob output_;
   Switch protection_;
+  juce::ComboBox preset_;
 };
 
 }  // namespace
@@ -430,6 +476,33 @@ float DensityAudioProcessor::outputPeak() const noexcept {
 
 float DensityAudioProcessor::gainReductionDb() const noexcept {
   return gainReduction_.load(std::memory_order_relaxed);
+}
+
+int DensityAudioProcessor::factoryPresetCount() noexcept {
+  return static_cast<int>(kFactoryPresets.size());
+}
+
+juce::String DensityAudioProcessor::factoryPresetName(int index) {
+  if (!juce::isPositiveAndBelow(index, factoryPresetCount())) {
+    return {};
+  }
+  return kFactoryPresets[static_cast<std::size_t>(index)].name;
+}
+
+void DensityAudioProcessor::loadFactoryPreset(int index) {
+  if (!juce::isPositiveAndBelow(index, factoryPresetCount())) {
+    return;
+  }
+  const auto& preset = kFactoryPresets[static_cast<std::size_t>(index)];
+  for (std::size_t parameterIndex = 0; parameterIndex < preset.values.size();
+       ++parameterIndex) {
+    auto* parameter = state_.getParameter(kParameterIds[parameterIndex]);
+    jassert(parameter != nullptr);
+    if (parameter != nullptr) {
+      parameter->setValueNotifyingHost(
+          parameter->convertTo0to1(preset.values[parameterIndex]));
+    }
+  }
 }
 
 juce::AudioProcessorParameter* DensityAudioProcessor::getBypassParameter()

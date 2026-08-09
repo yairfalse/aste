@@ -12,8 +12,9 @@ been reviewed.
 
 The authoritative master-brief audit is
 [SPECIFICATION_STATUS.md](SPECIFICATION_STATUS.md). Before external validation,
-close its final local `Open` row: the compact product preset menu. Formatting,
-static analysis, and immutable workflow-action refs are already CI gates.
+it now has zero local `Open` rows. Density is specification-complete internal
+beta; every remaining item below requires DAWs, target hardware, controlled
+listening, real musical projects, or final release identity.
 
 Remaining release work:
 

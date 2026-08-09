@@ -25,3 +25,22 @@ Density continuously lowers threshold while increasing ratio, saturation drive,
 program-dependent release curvature, and crushed-path make-up. There are no
 topology switches. `mapDensity()` is the maintainer-visible mapping and has a
 monotonicity test.
+
+## Factory starting points
+
+The compact `PRESETS` action menu applies five product-local parameter snapshots
+through normal host-notifying parameter updates. Presets add no state field or
+binary format: the resulting stable parameter values serialize through schema 1
+like any manual setting. Protection is on and bypass is off in every snapshot.
+
+| Name | Drive | Crush | Attack | Release | Density | Blend | Output | Stereo | HPF |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Default | 0 dB | 65% | 1 ms | 180 ms | 50% | 50% | 0 dB | 100% | 90 Hz |
+| Continuity | 2 dB | 50% | 8 ms | 320 ms | 35% | 35% | -1 dB | 100% | 120 Hz |
+| Proximity | 6 dB | 75% | 0.5 ms | 140 ms | 70% | 55% | -3 dB | 85% | 100 Hz |
+| Parallel Crush | 12 dB | 95% | 0.05 ms | 80 ms | 90% | 32% | -6 dB | 100% | 140 Hz |
+| Transient Hold | 4 dB | 85% | 6 ms | 500 ms | 60% | 45% | -2 dB | 65% | 180 Hz |
+
+These are internal-beta starting points, not yet listening-approved factory
+content. Their names and values may change before the first external release;
+stable parameter identifiers and state compatibility may not.
