@@ -156,9 +156,10 @@ Intel, the oldest supported Apple Silicon, a loaded DAW, or the open editor.
 
 Loop adopts a provisional budget below 1.0% of one performance core at 48 kHz /
 127 samples with stereo memory, pitch heads, transport modulation, degradation,
-and amplifier stages active. Its 30-second stereo memory is prepared before
-processing; callback allocations, locks, file access, writes, and latency must
-remain zero.
+amplifier stages, and generational printing active. Three 16-second stereo decks
+are prepared before processing; callback allocations, locks, file access,
+writes, and latency must remain zero. The existing single-memory measurement is
+retained only as the pre-generational comparison baseline.
 
 On 2026-08-09, Release `loop_lab --benchmark` rendered 30 seconds with pitch at
 +7 semitones and wow, flutter, drift, degradation, and amplifier at maximum. It
@@ -166,6 +167,12 @@ measured a 0.369393% median of one M4 Pro performance core across five runs
 (0.366017–0.378431%). This passes the local budget
 but is not native Intel, oldest-supported Apple Silicon, loaded-DAW, or open-UI
 evidence.
+
+On 2026-08-10, the generational benchmark continuously printed successive
+two-second generations through the three-deck record/loss path while pitch,
+motion, Record, and Loss remained at worst case. Five runs measured
+0.520554–0.560591%, with a 0.526622% median of one M4 Pro performance core. The
+new topology remains below its 1% local budget.
 
 ## Impulse I-01 baseline
 

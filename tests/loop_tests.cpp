@@ -62,11 +62,63 @@ void testCapturePlaybackAndReset() {
     peak = std::max(peak, std::abs(sample));
   }
   require(peak > 0.01F, "Captured audio plays without live input");
-  processor.clear();
+  processor.discard();
   std::fill(playback.begin(), playback.end(), 0.0F);
   processor.process(playback.data(), nullptr, playback.size(), parameters);
   require(processor.meters().outputPeak == 0.0F,
           "Clear deterministically removes captured memory");
+  parameters.capture = true;
+  parameters.overdub = 1.0F;
+  parameters.feedback = 1.0F;
+  processor.process(playback.data(), nullptr, playback.size(), parameters);
+  require(processor.meters().outputPeak == 0.0F,
+          "Capture after clear cannot recover stale deck samples");
+}
+
+void testGenerationalReloop() {
+  aste::loop::Processor processor;
+  processor.prepare(48000.0, 1.0);
+  aste::loop::Parameters parameters;
+  parameters.capture = true;
+  parameters.loopLengthSeconds = 0.05F;
+  parameters.mix = 1.0F;
+  std::vector<float> audio(2400);
+  for (std::size_t sample = 0; sample < audio.size(); ++sample)
+    audio[sample] = 0.4F * std::sin(static_cast<float>(sample) * 0.09F);
+  processor.process(audio.data(), nullptr, audio.size(), parameters);
+  require(processor.meters().generation == 1U,
+          "Initial capture creates the first tape generation");
+
+  parameters.capture = false;
+  parameters.reloop = true;
+  parameters.pitchSemitones = 7.0F;
+  parameters.degradation = 0.65F;
+  parameters.amplifier = 0.7F;
+  for (std::uint32_t expected = 2U; expected <= 4U; ++expected) {
+    std::fill(audio.begin(), audio.end(), 0.0F);
+    processor.process(audio.data(), nullptr, audio.size(), parameters);
+    require(processor.meters().generation == expected,
+            "RELOOP prints a complete transformed generation");
+  }
+  require(processor.meters().retainedGenerations == 3U,
+          "Three tape decks retain a bounded generation history");
+  processor.previousGeneration();
+  parameters.reloop = false;
+  std::array<float, 1> tick{};
+  processor.process(tick.data(), nullptr, tick.size(), parameters);
+  require(processor.meters().generation < 4U,
+          "Previous returns to an earlier retained generation");
+  const auto branchSource = processor.meters().generation;
+  parameters.reloop = true;
+  std::fill(audio.begin(), audio.end(), 0.0F);
+  processor.process(audio.data(), nullptr, audio.size(), parameters);
+  require(processor.meters().generation == 5U,
+          "RELOOP from history creates a new generation branch");
+  processor.previousGeneration();
+  parameters.reloop = false;
+  processor.process(tick.data(), nullptr, tick.size(), parameters);
+  require(processor.meters().generation == branchSource,
+          "Branching discards later history rather than preserving ambiguity");
 }
 
 void testModesAndRealtimeSafety() {
@@ -134,6 +186,7 @@ void testVariableBlocks() {
 
 int main() {
   testCapturePlaybackAndReset();
+  testGenerationalReloop();
   testModesAndRealtimeSafety();
   testVariableBlocks();
   if (failures == 0) std::cout << "loop_tests: ok\n";

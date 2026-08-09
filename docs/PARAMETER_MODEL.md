@@ -70,10 +70,11 @@ defaults, smoothing, step IDs, and the Pressure mapping are in
 
 ## Loop L-01
 
-Loop schema 1 contains 19 stable product parameters. Synced beat length and free
-seconds are different IDs so unit meaning never changes with a mode switch.
-Percent values are exposed as 0–100 and converted only at the DSP boundary.
-Complete ranges, defaults, and musical roles are in
+Loop schema 2 contains 20 stable product parameters; schema 1 migrates with the
+new Tape Speed parameter at its default. Synced beat length and free seconds are
+different IDs so unit meaning never changes with a mode switch. RELOOP and
+generation navigation are bounded actions rather than fake continuous
+parameters. Complete ranges, defaults, and musical roles are in
 [docs/products/loop/PARAMETERS.md](products/loop/PARAMETERS.md).
 
 ## Impulse I-01

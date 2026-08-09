@@ -134,15 +134,18 @@ The full internal-beta contract is
 
 ## Loop L-01
 
-Loop captures mono or stereo audio into preallocated circular memory and makes
-that memory playable through varispeed, reverse, splice, a separate dual-head
-pitch mechanism, deterministic wow/flutter/drift, degradation, and bounded
-amplifier loading. Host-synced beat length and free seconds are separate stable
-parameters. MIDI notes hold capture with sample-offset event handling.
+Loop catches mono or stereo audio on three preallocated tape decks. RELOOP
+prints the currently transformed playback through a record/reproduce stage onto
+the next deck, allowing pitch, reverse, splice, transport motion, loading, and
+loss to accumulate across generations. The latest three generations remain
+navigable while the generation counter continues. Host-synced beat length and
+free seconds remain separate stable parameters; MIDI performance actions are
+sample-offset accurate.
 
 The prototype reports zero latency and never allocates or locks while
-processing. Its schema-1 control state is deterministic, but captured audio is
-not yet serialized; session memory recall remains a stated release blocker. See
+processing. Its schema-2 control state and schema-1 migration are deterministic,
+but captured audio and generations are not yet serialized; session memory
+recall remains a stated release blocker. See
 [docs/products/loop/SPECIFICATION.md](docs/products/loop/SPECIFICATION.md).
 
 ## Impulse I-01
@@ -432,10 +435,11 @@ Pressure at 100%, resonance at 85%, both filters active, and stereo output. It
 passes the local provisional 1% budget; native Intel, older Apple Silicon, and
 DAW/UI-open measurements remain external gates.
 
-Loop measured a 0.369393% five-run median on the same machine at 48 kHz / 127 samples with pitch,
-all transport modulation, degradation, and amplifier stages at worst case. It
-passes the local provisional 1% budget; captured-memory recall, native Intel,
-older Apple Silicon, and DAW/UI-open measurements remain open.
+Loop's generational topology measured a 0.526622% five-run median on the same
+machine at 48 kHz / 127 samples while continuously printing through pitch,
+transport modulation, Record, and Loss at worst case. It passes the local
+provisional 1% budget; captured-memory recall, native Intel, older Apple
+Silicon, and DAW/UI-open measurements remain open.
 
 Impulse measured a 0.352056% five-run median on the same machine at 48 kHz /
 127 samples with 32-pulse tracks, 4× ratchets, 180 BPM, maximum Energy,

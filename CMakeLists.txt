@@ -618,7 +618,7 @@ if(ASTE_BUILD_VST3)
             "Sequence S-01" "Pressure" 83)
   add_test(NAME loop_vst3_host
     COMMAND vst3_smoke_host "$<TARGET_BUNDLE_DIR:LoopL01_VST3>"
-            "Loop L-01" "Capture" 19)
+            "Loop L-01" "Capture" 20)
   add_test(NAME impulse_vst3_host
     COMMAND vst3_smoke_host "$<TARGET_BUNDLE_DIR:ImpulseI01_VST3>"
             "Impulse I-01" "Energy" 60)

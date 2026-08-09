@@ -47,11 +47,15 @@ void Processor::prepare(double sampleRate, double maximumSeconds) noexcept {
   const auto capacity =
       static_cast<std::size_t>(std::ceil(sampleRate_ * maximumSeconds));
   try {
-    left_.assign(capacity, 0.0F);
-    right_.assign(capacity, 0.0F);
+    for (auto& deck : decks_) {
+      deck.left.assign(capacity, 0.0F);
+      deck.right.assign(capacity, 0.0F);
+    }
   } catch (...) {
-    left_.clear();
-    right_.clear();
+    for (auto& deck : decks_) {
+      deck.left.clear();
+      deck.right.clear();
+    }
   }
   smoothingCoefficient_ =
       static_cast<float>(1.0 - std::exp(-1.0 / (0.005 * sampleRate_)));
@@ -59,24 +63,77 @@ void Processor::prepare(double sampleRate, double maximumSeconds) noexcept {
 }
 
 void Processor::reset() noexcept {
+  for (auto& deck : decks_) {
+    deck.length = 0U;
+    deck.generation = 0U;
+  }
+  activeDeck_ = 0U;
+  printingDeck_ = 0U;
   writePosition_ = 0U;
-  capturedSamples_ = 0U;
+  printPosition_ = 0U;
+  printLength_ = 0U;
+  generationCounter_ = 0U;
   readPosition_ = 0.0;
   modulationPhase_ = 0.0;
   pitchPhase_ = 0.0;
   driftState_ = 0.0F;
+  printStateLeft_ = 0.0F;
+  printStateRight_ = 0.0F;
   smoothingInitialized_ = false;
   wasCapturing_ = false;
+  printing_ = false;
   meters_ = {};
 }
 
 void Processor::clear() noexcept {
-  std::fill(left_.begin(), left_.end(), 0.0F);
-  std::fill(right_.begin(), right_.end(), 0.0F);
+  for (auto& deck : decks_) {
+    std::fill(deck.left.begin(), deck.left.end(), 0.0F);
+    std::fill(deck.right.begin(), deck.right.end(), 0.0F);
+  }
   reset();
 }
 
 void Processor::discard() noexcept { reset(); }
+
+void Processor::previousGeneration() noexcept {
+  if (printing_ || decks_[activeDeck_].generation == 0U) return;
+  std::size_t candidate = activeDeck_;
+  std::uint32_t nearest{};
+  const auto current = decks_[activeDeck_].generation;
+  for (std::size_t deck = 0; deck < decks_.size(); ++deck) {
+    const auto generation = decks_[deck].generation;
+    if (generation < current && generation > nearest) {
+      nearest = generation;
+      candidate = deck;
+    }
+  }
+  if (candidate != activeDeck_) {
+    activeDeck_ = candidate;
+    writePosition_ = 0U;
+    readPosition_ = 0.0;
+    pitchPhase_ = 0.0;
+  }
+}
+
+void Processor::nextGeneration() noexcept {
+  if (printing_ || decks_[activeDeck_].generation == 0U) return;
+  std::size_t candidate = activeDeck_;
+  auto nearest = std::numeric_limits<std::uint32_t>::max();
+  const auto current = decks_[activeDeck_].generation;
+  for (std::size_t deck = 0; deck < decks_.size(); ++deck) {
+    const auto generation = decks_[deck].generation;
+    if (generation > current && generation < nearest) {
+      nearest = generation;
+      candidate = deck;
+    }
+  }
+  if (candidate != activeDeck_) {
+    activeDeck_ = candidate;
+    writePosition_ = 0U;
+    readPosition_ = 0.0;
+    pitchPhase_ = 0.0;
+  }
+}
 
 float Processor::read(const std::vector<float>& channel, double position,
                       std::size_t length) const noexcept {
@@ -129,9 +186,68 @@ float Processor::playback(const std::vector<float>& channel,
   return clean(first + second);
 }
 
+std::size_t Processor::retainedGenerations() const noexcept {
+  return static_cast<std::size_t>(
+      std::count_if(decks_.begin(), decks_.end(),
+                    [](const Deck& deck) { return deck.generation != 0U; }));
+}
+
+void Processor::beginReloop(std::size_t length) noexcept {
+  if (printing_ || length < 2U || decks_[activeDeck_].generation == 0U) return;
+  const auto sourceGeneration = decks_[activeDeck_].generation;
+  for (std::size_t deck = 0; deck < decks_.size(); ++deck) {
+    if (deck != activeDeck_ && decks_[deck].generation > sourceGeneration) {
+      decks_[deck].length = 0U;
+      decks_[deck].generation = 0U;
+    }
+  }
+  std::size_t destination = decks_.size();
+  for (std::size_t deck = 0; deck < decks_.size(); ++deck) {
+    if (deck != activeDeck_ && decks_[deck].generation == 0U) {
+      destination = deck;
+      break;
+    }
+  }
+  if (destination == decks_.size()) {
+    auto oldest = std::numeric_limits<std::uint32_t>::max();
+    for (std::size_t deck = 0; deck < decks_.size(); ++deck) {
+      if (deck != activeDeck_ && decks_[deck].generation < oldest) {
+        oldest = decks_[deck].generation;
+        destination = deck;
+      }
+    }
+  }
+  if (destination == decks_.size()) return;
+  printingDeck_ = destination;
+  printLength_ = std::min(length, decks_[destination].left.size());
+  printPosition_ = 0U;
+  printStateLeft_ = 0.0F;
+  printStateRight_ = 0.0F;
+  decks_[destination].length = 0U;
+  decks_[destination].generation = 0U;
+  printing_ = true;
+}
+
+float Processor::printSample(float input, float& state,
+                             const Parameters& parameters) const noexcept {
+  const float record = bounded(parameters.amplifier, 0.0F, 1.0F, 0.25F);
+  const float loss = bounded(parameters.degradation, 0.0F, 1.0F, 0.08F);
+  const float tapeSpeed = bounded(parameters.tapeSpeed, 0.5F, 2.0F, 1.0F);
+  const float drive = 1.0F + 5.0F * record;
+  const float saturated = std::tanh(input * drive) / std::tanh(drive);
+  const double cutoff = std::clamp(19000.0 * tapeSpeed * (1.0 - 0.72 * loss),
+                                   1800.0, sampleRate_ * 0.45);
+  const float coefficient = static_cast<float>(
+      1.0 - std::exp(-2.0 * std::numbers::pi * cutoff / sampleRate_));
+  state = clean(state + coefficient * (saturated - state));
+  const float resolution = 32768.0F / (1.0F + 95.0F * loss);
+  const float printed = std::round(state * resolution) / resolution;
+  return clean(printed * (1.0F - 0.11F * loss));
+}
+
 void Processor::process(float* left, float* right, std::size_t frames,
                         const Parameters& parameters) noexcept {
-  if (left == nullptr || frames == 0U || left_.empty()) {
+  if (left == nullptr || frames == 0U || decks_[0].left.empty()) {
     meters_ = {};
     return;
   }
@@ -139,8 +255,10 @@ void Processor::process(float* left, float* right, std::size_t frames,
       std::clamp(static_cast<double>(bounded(parameters.loopLengthSeconds,
                                              0.05F, 30.0F, 2.0F)) *
                      sampleRate_,
-                 64.0, static_cast<double>(left_.size())));
+                 64.0, static_cast<double>(decks_[0].left.size())));
   const std::size_t length = std::max<std::size_t>(64U, requested);
+  const auto playbackLength = std::min(length, decks_[activeDeck_].length);
+  if (parameters.reloop) beginReloop(playbackLength);
   const bool stereo = right != nullptr;
   const float overdub = bounded(parameters.overdub, 0.0F, 1.0F, 0.5F);
   const float feedback = bounded(parameters.feedback, 0.0F, 1.0F, 0.85F);
@@ -159,7 +277,8 @@ void Processor::process(float* left, float* right, std::size_t frames,
     smoothedSpeed_ = targetSpeed;
     smoothingInitialized_ = true;
   }
-  if (parameters.capture && !wasCapturing_ && capturedSamples_ == 0U) {
+  if (parameters.capture && !wasCapturing_ &&
+      decks_[activeDeck_].length == 0U) {
     writePosition_ = 0U;
     readPosition_ = 0.0;
   }
@@ -178,27 +297,34 @@ void Processor::process(float* left, float* right, std::size_t frames,
     measured.inputPeak =
         std::max(measured.inputPeak,
                  std::max(std::abs(inputLeft), std::abs(inputRight)));
-    float wetLeft =
-        capturedSamples_ > 1U
-            ? playback(left_, parameters, std::min(length, capturedSamples_))
-            : 0.0F;
-    float wetRight =
-        capturedSamples_ > 1U
-            ? playback(right_, parameters, std::min(length, capturedSamples_))
-            : 0.0F;
-    if (capturedSamples_ < 2U) {
+    auto& active = decks_[activeDeck_];
+    const auto currentLength = std::min(length, active.length);
+    float wetLeft = currentLength > 1U
+                        ? playback(active.left, parameters, currentLength)
+                        : 0.0F;
+    float wetRight = currentLength > 1U
+                         ? playback(active.right, parameters, currentLength)
+                         : 0.0F;
+    if (currentLength < 2U) {
       wetLeft = inputLeft;
       wetRight = inputRight;
     }
-    if (parameters.capture) {
-      const float existingLeft = left_[writePosition_];
-      const float existingRight = right_[writePosition_];
-      left_[writePosition_] = clean(inputLeft * (1.0F - overdub) +
-                                    existingLeft * feedback * overdub);
-      right_[writePosition_] = clean(inputRight * (1.0F - overdub) +
-                                     existingRight * feedback * overdub);
+    if (parameters.capture && !printing_) {
+      if (active.generation == 0U) {
+        active.generation = ++generationCounter_;
+      }
+      writePosition_ %= length;
+      const bool hasRecordedSample = writePosition_ < active.length;
+      const float existingLeft =
+          hasRecordedSample ? active.left[writePosition_] : 0.0F;
+      const float existingRight =
+          hasRecordedSample ? active.right[writePosition_] : 0.0F;
+      active.left[writePosition_] = clean(inputLeft * (1.0F - overdub) +
+                                          existingLeft * feedback * overdub);
+      active.right[writePosition_] = clean(inputRight * (1.0F - overdub) +
+                                           existingRight * feedback * overdub);
       writePosition_ = (writePosition_ + 1U) % length;
-      capturedSamples_ = std::min(length, capturedSamples_ + 1U);
+      active.length = std::min(length, active.length + 1U);
     }
     const float drive = 1.0F + 4.0F * smoothedAmplifier_;
     wetLeft = std::tanh(drive * wetLeft) / drive;
@@ -206,6 +332,23 @@ void Processor::process(float* left, float* right, std::size_t frames,
     const float quantization = 32768.0F / (1.0F + 63.0F * smoothedDegradation_);
     wetLeft = std::round(wetLeft * quantization) / quantization;
     wetRight = std::round(wetRight * quantization) / quantization;
+    if (printing_ && printPosition_ < printLength_) {
+      auto& destination = decks_[printingDeck_];
+      destination.left[printPosition_] =
+          printSample(wetLeft, printStateLeft_, parameters);
+      destination.right[printPosition_] =
+          printSample(wetRight, printStateRight_, parameters);
+      ++printPosition_;
+      destination.length = printPosition_;
+      if (printPosition_ >= printLength_) {
+        destination.generation = ++generationCounter_;
+        activeDeck_ = printingDeck_;
+        readPosition_ = 0.0;
+        pitchPhase_ = 0.0;
+        writePosition_ = 0U;
+        printing_ = false;
+      }
+    }
     float outputLeft = inputLeft + smoothedMix_ * (wetLeft - inputLeft);
     float outputRight = inputRight + smoothedMix_ * (wetRight - inputRight);
     outputLeft = clean(outputLeft * smoothedOutputGain_);
@@ -241,16 +384,28 @@ void Processor::process(float* left, float* right, std::size_t frames,
     if (parameters.reverse) {
       speed = -speed;
     }
-    readPosition_ = wrap(readPosition_ + speed * modulation, length);
+    const auto advancingLength = std::min(length, decks_[activeDeck_].length);
+    readPosition_ = wrap(readPosition_ + speed * modulation, advancingLength);
     const double pitchRatio = std::exp2(
         bounded(parameters.pitchSemitones, -12.0F, 12.0F, 0.0F) / 12.0F);
     pitchPhase_ = wrap(pitchPhase_ + std::abs(pitchRatio - 1.0) / 1024.0, 1U);
   }
   wasCapturing_ = parameters.capture;
-  measured.position =
-      length > 0U ? static_cast<float>(readPosition_ / length) : 0.0F;
-  measured.captured = static_cast<float>(capturedSamples_) /
+  const auto& active = decks_[activeDeck_];
+  const auto activeLength = std::min(length, active.length);
+  measured.position = activeLength > 0U
+                          ? static_cast<float>(readPosition_ / activeLength)
+                          : 0.0F;
+  measured.captured = static_cast<float>(activeLength) /
                       static_cast<float>(std::max<std::size_t>(1U, length));
+  measured.printing = printing_ && printLength_ > 0U
+                          ? static_cast<float>(printPosition_) /
+                                static_cast<float>(printLength_)
+                          : 0.0F;
+  measured.generation = active.generation;
+  measured.retainedGenerations =
+      static_cast<std::uint32_t>(retainedGenerations());
+  measured.activeDeck = activeDeck_;
   meters_ = measured;
 }
 

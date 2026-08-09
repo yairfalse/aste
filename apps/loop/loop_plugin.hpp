@@ -28,7 +28,7 @@ class LoopAudioProcessor final : public juce::AudioProcessor {
   [[nodiscard]] bool acceptsMidi() const override { return true; }
   [[nodiscard]] bool producesMidi() const override { return false; }
   [[nodiscard]] bool isMidiEffect() const override { return false; }
-  [[nodiscard]] double getTailLengthSeconds() const override { return 30.0; }
+  [[nodiscard]] double getTailLengthSeconds() const override { return 16.0; }
   [[nodiscard]] juce::AudioProcessorParameter* getBypassParameter()
       const override;
 
@@ -50,7 +50,14 @@ class LoopAudioProcessor final : public juce::AudioProcessor {
   [[nodiscard]] float outputPeak() const noexcept;
   [[nodiscard]] float loopPosition() const noexcept;
   [[nodiscard]] float capturedAmount() const noexcept;
+  [[nodiscard]] float printingProgress() const noexcept;
+  [[nodiscard]] int generation() const noexcept;
+  [[nodiscard]] int retainedGenerations() const noexcept;
+  [[nodiscard]] int activeDeck() const noexcept;
   void clearLoop() noexcept;
+  void reloop() noexcept;
+  void previousGeneration() noexcept;
+  void nextGeneration() noexcept;
   [[nodiscard]] static int factoryPresetCount() noexcept;
   [[nodiscard]] static juce::String factoryPresetName(int index);
   void loadFactoryPreset(int index);
@@ -73,6 +80,7 @@ class LoopAudioProcessor final : public juce::AudioProcessor {
     drift,
     degradation,
     amplifier,
+    tapeSpeed,
     mix,
     output,
     bypass,
@@ -91,10 +99,16 @@ class LoopAudioProcessor final : public juce::AudioProcessor {
   std::array<std::atomic<float>*, parameterCount> parameterValues_{};
   bool midiCapture_{};
   std::atomic<bool> clearRequested_{};
+  std::atomic<bool> reloopRequested_{};
+  std::atomic<int> generationNavigation_{};
   std::atomic<float> inputPeak_{};
   std::atomic<float> outputPeak_{};
   std::atomic<float> loopPosition_{};
   std::atomic<float> capturedAmount_{};
+  std::atomic<float> printingProgress_{};
+  std::atomic<int> generation_{};
+  std::atomic<int> retainedGenerations_{};
+  std::atomic<int> activeDeck_{};
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LoopAudioProcessor)
 };
@@ -103,5 +117,7 @@ static_assert(std::atomic<float>::is_always_lock_free,
               "Loop meter publication must remain lock-free");
 static_assert(std::atomic<bool>::is_always_lock_free,
               "Loop clear request must remain lock-free");
+static_assert(std::atomic<int>::is_always_lock_free,
+              "Loop generation requests must remain lock-free");
 
 }  // namespace aste::loop::plugin

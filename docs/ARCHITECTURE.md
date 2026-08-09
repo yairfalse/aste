@@ -112,18 +112,20 @@ snapshots. The product-local graph is zero-latency.
 ## Loop L-01 graph
 
 ```text
-audio + MIDI capture -> circular memory -> start/splice
+audio + MIDI capture -> Tape A/B/C -> start/splice
                      -> varispeed/reverse -> dual pitch heads
-                     -> wow/flutter/drift -> degradation/amplifier
-live input + memory -> mix -> output
+                     -> wow/flutter/drift -> reproduce loading
+                     -> RELOOP record/loss -> next tape deck
+live input + active tape -> mix -> output
 ```
 
-Loop is a mono/stereo effect with a preallocated 30-second stereo buffer. The
-audio thread owns memory writes, playback positions, modulation, and meters.
+Loop is a mono/stereo effect with three preallocated 16-second stereo decks.
+The audio thread owns memory writes, generational printing, playback positions,
+navigation, modulation, and meters.
 Host BPM selects synced duration without changing the stable beat parameter;
 free duration has its own seconds parameter. MIDI capture changes are processed
-at event offsets. The graph reports zero latency. Schema 1 stores controls but
-not captured audio; ADR 0009 records that explicit prototype boundary.
+at event offsets. The graph reports zero latency. Schema 2 stores controls but
+not captured audio or generations; ADR 0011 records the generational boundary.
 
 ## Impulse I-01 graph
 

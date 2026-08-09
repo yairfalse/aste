@@ -83,8 +83,8 @@ juce::Component* findTitled(juce::Component& component,
 
 void testContractAndState() {
   Loop source;
-  require(source.getParameters().size() == 19,
-          "Loop exposes 19 stable parameters");
+  require(source.getParameters().size() == 20,
+          "Loop exposes 20 stable parameters");
   setValue(source, "feedback", 73.25F);
   setValue(source, "pitch", -7.0F);
   setValue(source, "reverse", 1.0F);
@@ -104,6 +104,19 @@ void testContractAndState() {
   restored.setStateInformation(malformed, sizeof(malformed));
   require(std::abs(value(restored, "feedback") - 73.25F) < 0.02F,
           "Malformed Loop state is rejected");
+  juce::XmlElement legacy{"loop-l01"};
+  legacy.setAttribute("schema", 1);
+  legacy.setAttribute("product", "loop-l01");
+  auto* legacyFeedback = legacy.createNewChildElement("PARAM");
+  legacyFeedback->setAttribute("id", "feedback");
+  legacyFeedback->setAttribute("value", 61.0);
+  juce::MemoryBlock legacyState;
+  juce::AudioProcessor::copyXmlToBinary(legacy, legacyState);
+  restored.setStateInformation(legacyState.getData(),
+                               static_cast<int>(legacyState.getSize()));
+  require(std::abs(value(restored, "feedback") - 61.0F) < 0.02F &&
+              std::abs(value(restored, "tape_speed") - 1.0F) < 0.02F,
+          "Loop schema 1 migrates with the new tape speed default");
   require(restored.factoryPresetCount() == 5, "Loop has five starting points");
 }
 
@@ -147,6 +160,18 @@ void testProcessingMidiAndRealtime() {
               "Loop output remains finite");
   require(processor.getLatencySamples() == 0,
           "Loop adapter reports zero latency");
+
+  audio.clear();
+  midi.clear();
+  midi.addEvent(juce::MidiMessage::noteOn(1, 62, 1.0F), 23);
+  const auto reloopBefore = allocations.load();
+  setAudit(true);
+  processor.processBlock(audio, midi);
+  setAudit(false);
+  require(allocations.load() == reloopBefore,
+          "Loop sample-offset MIDI RELOOP printing performs no allocation");
+  require(processor.generation() == 2 && processor.retainedGenerations() == 2,
+          "Loop adapter prints and publishes a second generation");
 }
 
 void testEditor(const char* artifactDirectory) {
@@ -156,9 +181,10 @@ void testEditor(const char* artifactDirectory) {
               editor->isResizable(),
           "Loop editor uses its intended scalable panel");
   if (!editor) return;
-  for (const char* title :
-       std::array<const char*, 8>{"CAPTURE", "HOST SYNC", "REVERSE", "OVERDUB",
-                                  "SPEED", "PITCH", "OUTPUT", "CLEAR MEMORY"})
+  for (const char* title : std::array<const char*, 11>{
+           "CAPTURE", "RELOOP", "PREVIOUS GENERATION", "NEXT GENERATION",
+           "HOST SYNC", "REVERSE", "TAPE SPEED", "OVERDUB", "PITCH", "OUTPUT",
+           "CLEAR MEMORY"})
     require(findTitled(*editor, title),
             "Essential Loop control remains visible");
   juce::Image image{juce::Image::RGB, editor->getWidth(), editor->getHeight(),

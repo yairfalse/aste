@@ -1,6 +1,7 @@
 # ADR 0009 — Loop memory, clock, and pitch boundary
 
-Status: accepted for internal prototype, 2026-08-09.
+Status: partially superseded by ADR 0011, 2026-08-10. The pitch and state
+snapshot boundaries remain accepted.
 
 ## Decision
 

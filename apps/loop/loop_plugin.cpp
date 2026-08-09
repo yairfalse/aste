@@ -11,17 +11,17 @@ namespace aste::loop::plugin {
 namespace {
 
 constexpr auto kStateType = "loop-l01";
-constexpr int kStateSchema = 1;
+constexpr int kStateSchema = 2;
 constexpr auto kSurface = 0xff0d1212U;
 constexpr auto kPanel = 0xff172120U;
 constexpr auto kInk = 0xffe5ece8U;
 constexpr auto kMuted = 0xff718781U;
 constexpr auto kAccent = 0xff2f9a86U;
-constexpr std::array<const char*, 19> kParameterIds{
-    "capture",     "overdub", "feedback", "sync",    "length_beats",
-    "free_length", "start",   "speed",    "reverse", "pitch",
-    "splice",      "wow",     "flutter",  "drift",   "degradation",
-    "amplifier",   "mix",     "output",   "bypass"};
+constexpr std::array<const char*, 20> kParameterIds{
+    "capture",     "overdub",    "feedback", "sync",    "length_beats",
+    "free_length", "start",      "speed",    "reverse", "pitch",
+    "splice",      "wow",        "flutter",  "drift",   "degradation",
+    "amplifier",   "tape_speed", "mix",      "output",  "bypass"};
 
 struct Preset {
   const char* name;
@@ -30,15 +30,15 @@ struct Preset {
 
 constexpr std::array<Preset, 5> kPresets{{
     {"Clean Memory",
-     {0, 50, 90, 1, 4, 2, 0, 1, 0, 0, 3, 2, 1, 1, 2, 12, 100, -3, 0}},
+     {0, 50, 90, 1, 4, 2, 0, 1, 0, 0, 3, 2, 1, 1, 2, 12, 2, 100, -3, 0}},
     {"Oxide Circle",
-     {0, 58, 82, 1, 8, 4, 7, 0.75F, 0, -5, 7, 18, 9, 7, 14, 35, 100, -5, 0}},
+     {0, 58, 82, 1, 8, 4, 7, 0.75F, 0, -5, 7, 18, 9, 7, 14, 35, 1, 100, -5, 0}},
     {"Reverse Field",
-     {0, 42, 88, 1, 6, 3, 18, 0.5F, 1, 7, 10, 10, 5, 4, 8, 28, 100, -5, 0}},
+     {0, 42, 88, 1, 6, 3, 18, 0.5F, 1, 7, 10, 10, 5, 4, 8, 28, 1, 100, -5, 0}},
     {"Short Splice",
-     {0, 70, 72, 0, 4, 0.35F, 0, 1, 0, 12, 2, 5, 3, 2, 20, 52, 100, -7, 0}},
-    {"Half Current",
-     {0, 60, 94, 1, 8, 4, 12, 0.5F, 0, -12, 12, 30, 12, 12, 28, 62, 86, -8, 0}},
+     {0, 70, 72, 0, 4, 0.35F, 0, 1, 0, 12, 2, 5, 3, 2, 20, 52, 0, 100, -7, 0}},
+    {"Half Current", {0,  60, 94, 1,  8,  4,  12, 0.5F, 0,  -12,
+                      12, 30, 12, 12, 28, 62, 0,  86,   -8, 0}},
 }};
 
 bool parseFiniteFloat(const juce::var& value, float& result) {
@@ -150,15 +150,39 @@ class Toggle final : public juce::ToggleButton {
 class MemoryPanel final : public juce::Component, private juce::Timer {
  public:
   explicit MemoryPanel(LoopAudioProcessor& processor) : processor_{processor} {
+    reloop_.setButtonText("RELOOP");
+    reloop_.setTitle("RELOOP");
+    reloop_.setColour(juce::TextButton::buttonColourId, juce::Colour{kAccent});
+    reloop_.setColour(juce::TextButton::textColourOffId,
+                      juce::Colour{kSurface});
+    reloop_.onClick = [this] { processor_.reloop(); };
+    previous_.setButtonText("PREVIOUS");
+    previous_.setTitle("PREVIOUS GENERATION");
+    previous_.onClick = [this] { processor_.previousGeneration(); };
+    next_.setButtonText("NEXT");
+    next_.setTitle("NEXT GENERATION");
+    next_.onClick = [this] { processor_.nextGeneration(); };
     clear_.setButtonText("CLEAR MEMORY");
     clear_.setTitle("CLEAR MEMORY");
     clear_.setColour(juce::TextButton::buttonColourId, juce::Colour{kPanel});
     clear_.setColour(juce::TextButton::textColourOffId, juce::Colour{kInk});
     clear_.onClick = [this] { processor_.clearLoop(); };
+    for (auto* button : {&previous_, &next_}) {
+      button->setColour(juce::TextButton::buttonColourId,
+                        juce::Colour{kSurface});
+      button->setColour(juce::TextButton::textColourOffId, juce::Colour{kInk});
+    }
+    addAndMakeVisible(reloop_);
+    addAndMakeVisible(previous_);
+    addAndMakeVisible(next_);
     addAndMakeVisible(clear_);
     startTimerHz(30);
   }
   void resized() override {
+    reloop_.setBounds(16, getHeight() - 138, getWidth() - 32, 48);
+    previous_.setBounds(16, getHeight() - 82, (getWidth() - 38) / 2, 26);
+    next_.setBounds(previous_.getRight() + 6, getHeight() - 82,
+                    (getWidth() - 38) / 2, 26);
     clear_.setBounds(16, getHeight() - 42, getWidth() - 32, 26);
   }
   void paint(juce::Graphics& g) override {
@@ -166,26 +190,45 @@ class MemoryPanel final : public juce::Component, private juce::Timer {
     auto area = getLocalBounds().toFloat().reduced(16);
     g.setColour(juce::Colour{kMuted});
     g.setFont(juce::FontOptions{11.0F, juce::Font::bold});
-    g.drawText("PLAYABLE MEMORY", area.removeFromTop(20),
+    g.drawText("THREE-DECK MEMORY", area.removeFromTop(20),
                juce::Justification::centredLeft);
-    auto ring =
-        area.removeFromTop(std::min(area.getWidth(), 190.0F)).reduced(18);
-    const auto centre = ring.getCentre();
-    const float radius = std::min(ring.getWidth(), ring.getHeight()) * 0.42F;
-    g.setColour(juce::Colour{kSurface});
-    g.fillEllipse(centre.x - radius, centre.y - radius, radius * 2, radius * 2);
-    juce::Path arc;
-    arc.addCentredArc(centre.x, centre.y, radius, radius, 0,
-                      -juce::MathConstants<float>::pi,
-                      -juce::MathConstants<float>::pi +
-                          juce::MathConstants<float>::twoPi * position_,
-                      true);
-    g.setColour(juce::Colour{kAccent});
-    g.strokePath(arc, juce::PathStrokeType{7.0F});
-    g.setFont(juce::FontOptions{22.0F, juce::Font::bold});
-    g.drawText(juce::String{captured_ * 100.0F, 0} + " %", ring,
-               juce::Justification::centred);
-    auto levels = area.removeFromTop(60).reduced(5, 8);
+    area.removeFromTop(10);
+    for (int deck = 0; deck < 3; ++deck) {
+      auto lane = area.removeFromTop(48).reduced(2, 7);
+      g.setColour(deck == activeDeck_ ? juce::Colour{kAccent}
+                                      : juce::Colour{kMuted}.withAlpha(0.55F));
+      g.setFont(juce::FontOptions{10.0F, juce::Font::bold});
+      g.drawText("TAPE " + juce::String::charToString(
+                               static_cast<juce::juce_wchar>('A' + deck)),
+                 lane.removeFromLeft(48), juce::Justification::centredLeft);
+      const auto path = lane.reduced(2, 12);
+      g.fillRect(path.withHeight(2.0F).withCentre(path.getCentre()));
+      if (deck == activeDeck_) {
+        const float head = path.getX() + position_ * path.getWidth();
+        g.fillRect(head - 2.0F, path.getY(), 4.0F, path.getHeight());
+      }
+    }
+    area.removeFromTop(8);
+    g.setColour(juce::Colour{kInk});
+    g.setFont(juce::FontOptions{20.0F, juce::Font::bold});
+    g.drawText(
+        generation_ > 0 ? "GENERATION " + juce::String{generation_} : "EMPTY",
+        area.removeFromTop(28), juce::Justification::centred);
+    g.setColour(juce::Colour{kMuted});
+    g.setFont(juce::FontOptions{10.0F});
+    g.drawText(juce::String{retained_} + " RETAINED / " +
+                   juce::String{captured_ * 100.0F, 0} + " % CAPTURED",
+               area.removeFromTop(18), juce::Justification::centred);
+    if (printing_ > 0.0F) {
+      auto progress = area.removeFromTop(12).reduced(4, 3);
+      g.setColour(juce::Colour{kSurface});
+      g.fillRect(progress);
+      g.setColour(juce::Colour{kAccent});
+      g.fillRect(progress.withWidth(progress.getWidth() * printing_));
+    } else {
+      area.removeFromTop(12);
+    }
+    auto levels = area.removeFromTop(54).reduced(5, 6);
     drawLevel(g, levels.removeFromTop(18), input_, "IN");
     drawLevel(g, levels.removeFromTop(18), output_, "OUT");
   }
@@ -207,14 +250,22 @@ class MemoryPanel final : public juce::Component, private juce::Timer {
     output_ = std::max(processor_.outputPeak(), output_ * 0.84F);
     position_ = processor_.loopPosition();
     captured_ = processor_.capturedAmount();
+    printing_ = processor_.printingProgress();
+    generation_ = processor_.generation();
+    retained_ = processor_.retainedGenerations();
+    activeDeck_ = processor_.activeDeck();
     repaint();
   }
   LoopAudioProcessor& processor_;
-  juce::TextButton clear_;
+  juce::TextButton reloop_, previous_, next_, clear_;
   float input_{};
   float output_{};
   float position_{};
   float captured_{};
+  float printing_{};
+  int generation_{};
+  int retained_{};
+  int activeDeck_{};
 };
 
 class LoopEditor final : public juce::AudioProcessorEditor {
@@ -238,11 +289,22 @@ class LoopEditor final : public juce::AudioProcessorEditor {
         wow_{processor.state(), "wow", "WOW", " %", 8, 12},
         flutter_{processor.state(), "flutter", "FLUTTER", " %", 3, 13},
         drift_{processor.state(), "drift", "DRIFT", " %", 2, 14},
-        degradation_{processor.state(), "degradation", "DEGRADE", " %", 8, 15},
-        amplifier_{processor.state(), "amplifier", "AMPLIFIER", " %", 25, 16},
+        degradation_{processor.state(), "degradation", "LOSS", " %", 8, 15},
+        amplifier_{processor.state(), "amplifier", "RECORD", " %", 25, 16},
         mix_{processor.state(), "mix", "MIX", " %", 100, 17},
         output_{processor.state(), "output", "OUTPUT", " dB", -3, 18} {
     setLookAndFeel(&lookAndFeel_);
+    tapeSpeed_.setTitle("TAPE SPEED");
+    tapeSpeed_.setTextWhenNothingSelected("TAPE SPEED");
+    tapeSpeed_.addItem("3 3/4 IPS", 1);
+    tapeSpeed_.addItem("7 1/2 IPS", 2);
+    tapeSpeed_.addItem("15 IPS", 3);
+    tapeSpeedAttachment_ = std::make_unique<
+        juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+        processor.state(), "tape_speed", tapeSpeed_);
+    tapeSpeed_.setColour(juce::ComboBox::backgroundColourId,
+                         juce::Colour{kPanel});
+    tapeSpeed_.setColour(juce::ComboBox::textColourId, juce::Colour{kInk});
     preset_.setTitle("PRESETS");
     preset_.setTextWhenNothingSelected("PRESETS");
     for (int index = 0; index < processor_.factoryPresetCount(); ++index)
@@ -253,11 +315,12 @@ class LoopEditor final : public juce::AudioProcessorEditor {
         preset_.setSelectedId(0, juce::dontSendNotification);
       }
     };
-    for (auto* component : std::array<juce::Component*, 19>{
-             &memory_, &capture_, &sync_, &reverse_, &overdub_, &feedback_,
-             &lengthBeats_, &freeLength_, &start_, &speed_, &pitch_, &splice_,
-             &wow_, &flutter_, &drift_, &degradation_, &amplifier_, &mix_,
-             &output_})
+    for (auto* component : std::array<juce::Component*, 20>{
+             &memory_,    &capture_,  &sync_,        &reverse_,
+             &overdub_,   &feedback_, &lengthBeats_, &freeLength_,
+             &start_,     &speed_,    &pitch_,       &splice_,
+             &wow_,       &flutter_,  &drift_,       &degradation_,
+             &amplifier_, &mix_,      &output_,      &tapeSpeed_})
       addAndMakeVisible(component);
     addAndMakeVisible(preset_);
     setResizable(true, true);
@@ -284,12 +347,13 @@ class LoopEditor final : public juce::AudioProcessorEditor {
     preset_.setBounds(getWidth() - 204, 27, 180, 28);
     auto area = getLocalBounds().reduced(24);
     area.removeFromTop(66);
-    memory_.setBounds(area.removeFromLeft(250));
+    memory_.setBounds(area.removeFromLeft(310));
     area.removeFromLeft(14);
     auto switches = area.removeFromTop(36);
     capture_.setBounds(switches.removeFromLeft(120));
     sync_.setBounds(switches.removeFromLeft(130));
     reverse_.setBounds(switches.removeFromLeft(110));
+    tapeSpeed_.setBounds(switches.removeFromLeft(140).reduced(3, 4));
     area.removeFromTop(8);
     constexpr int columns = 5;
     constexpr int rows = 3;
@@ -314,6 +378,9 @@ class LoopEditor final : public juce::AudioProcessorEditor {
   Toggle capture_, sync_, reverse_;
   Knob overdub_, feedback_, lengthBeats_, freeLength_, start_, speed_, pitch_;
   Knob splice_, wow_, flutter_, drift_, degradation_, amplifier_, mix_, output_;
+  juce::ComboBox tapeSpeed_;
+  std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>
+      tapeSpeedAttachment_;
   juce::ComboBox preset_;
 };
 
@@ -330,7 +397,7 @@ LoopAudioProcessor::createParameterLayout() {
       juce::ParameterID{"sync", 1}, "Host Sync", true));
   addFloat(layout, "length_beats", "Length Beats", {0.25F, 16, 0.25F}, 4,
            "beats");
-  addFloat(layout, "free_length", "Free Length", skewed(0.05F, 30, 2, 0.01F), 2,
+  addFloat(layout, "free_length", "Free Length", skewed(0.05F, 16, 2, 0.01F), 2,
            "s");
   addFloat(layout, "start", "Start", {0, 100, 0.01F}, 0, "%");
   addFloat(layout, "speed", "Speed", skewed(0.125F, 4, 1, 0.001F), 1, "x");
@@ -341,8 +408,11 @@ LoopAudioProcessor::createParameterLayout() {
   addFloat(layout, "wow", "Wow", {0, 100, 0.01F}, 8, "%");
   addFloat(layout, "flutter", "Flutter", {0, 100, 0.01F}, 3, "%");
   addFloat(layout, "drift", "Drift", {0, 100, 0.01F}, 2, "%");
-  addFloat(layout, "degradation", "Degradation", {0, 100, 0.01F}, 8, "%");
-  addFloat(layout, "amplifier", "Amplifier", {0, 100, 0.01F}, 25, "%");
+  addFloat(layout, "degradation", "Loss", {0, 100, 0.01F}, 8, "%");
+  addFloat(layout, "amplifier", "Record", {0, 100, 0.01F}, 25, "%");
+  layout.add(std::make_unique<juce::AudioParameterChoice>(
+      juce::ParameterID{"tape_speed", 1}, "Tape Speed",
+      juce::StringArray{"3 3/4 IPS", "7 1/2 IPS", "15 IPS"}, 1));
   addFloat(layout, "mix", "Mix", {0, 100, 0.01F}, 100, "%");
   addFloat(layout, "output", "Output", {-24, 12, 0.01F}, -3, "dB");
   layout.add(std::make_unique<juce::AudioParameterBool>(
@@ -391,13 +461,15 @@ Parameters LoopAudioProcessor::currentParameters() const noexcept {
           .drift = value(drift) * 0.01F,
           .degradation = value(degradation) * 0.01F,
           .amplifier = value(amplifier) * 0.01F,
+          .tapeSpeed = std::array{0.5F, 1.0F, 2.0F}[static_cast<std::size_t>(
+              juce::jlimit(0, 2, static_cast<int>(value(tapeSpeed))))],
           .mix = value(mix) * 0.01F,
           .outputDb = value(output),
           .bypass = value(bypass) >= 0.5F};
 }
 
 void LoopAudioProcessor::prepareToPlay(double sampleRate, int) {
-  processor_.prepare(sampleRate, 30.0);
+  processor_.prepare(sampleRate, 16.0);
   midiCapture_ = false;
   setLatencySamples(0);
   publishMeters({});
@@ -429,19 +501,32 @@ void LoopAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
   if (clearRequested_.exchange(false, std::memory_order_acq_rel)) {
     processor_.discard();
   }
+  const int navigation =
+      generationNavigation_.exchange(0, std::memory_order_acq_rel);
+  if (navigation < 0) processor_.previousGeneration();
+  if (navigation > 0) processor_.nextGeneration();
   if (buffer.getNumChannels() < 1 || buffer.getNumSamples() == 0) {
     publishMeters({});
     return;
   }
   Parameters parameters = currentParameters();
+  parameters.reloop =
+      reloopRequested_.exchange(false, std::memory_order_acq_rel);
   int processed{};
   for (const auto metadata : midi) {
     const int position =
         juce::jlimit(0, buffer.getNumSamples(), metadata.samplePosition);
     processRange(buffer, processed, position - processed, parameters);
+    if (position > processed) parameters.reloop = false;
     processed = position;
-    if (metadata.getMessage().isNoteOn()) midiCapture_ = true;
-    if (metadata.getMessage().isNoteOff()) midiCapture_ = false;
+    const auto& message = metadata.getMessage();
+    const int pitchClass =
+        message.isNoteOnOrOff() ? message.getNoteNumber() % 12 : -1;
+    if (message.isNoteOn() && pitchClass == 0) midiCapture_ = true;
+    if (message.isNoteOff() && pitchClass == 0) midiCapture_ = false;
+    if (message.isNoteOn() && pitchClass == 2) parameters.reloop = true;
+    if (message.isNoteOn() && pitchClass == 11) processor_.previousGeneration();
+    if (message.isNoteOn() && pitchClass == 1) processor_.nextGeneration();
     parameters.capture =
         parameterValues_[capture]->load(std::memory_order_relaxed) >= 0.5F ||
         midiCapture_;
@@ -465,6 +550,13 @@ void LoopAudioProcessor::publishMeters(const MeterSnapshot& meters) noexcept {
   outputPeak_.store(meters.outputPeak, std::memory_order_relaxed);
   loopPosition_.store(meters.position, std::memory_order_relaxed);
   capturedAmount_.store(meters.captured, std::memory_order_relaxed);
+  printingProgress_.store(meters.printing, std::memory_order_relaxed);
+  generation_.store(static_cast<int>(meters.generation),
+                    std::memory_order_relaxed);
+  retainedGenerations_.store(static_cast<int>(meters.retainedGenerations),
+                             std::memory_order_relaxed);
+  activeDeck_.store(static_cast<int>(meters.activeDeck),
+                    std::memory_order_relaxed);
 }
 float LoopAudioProcessor::inputPeak() const noexcept {
   return inputPeak_.load(std::memory_order_relaxed);
@@ -478,8 +570,29 @@ float LoopAudioProcessor::loopPosition() const noexcept {
 float LoopAudioProcessor::capturedAmount() const noexcept {
   return capturedAmount_.load(std::memory_order_relaxed);
 }
+float LoopAudioProcessor::printingProgress() const noexcept {
+  return printingProgress_.load(std::memory_order_relaxed);
+}
+int LoopAudioProcessor::generation() const noexcept {
+  return generation_.load(std::memory_order_relaxed);
+}
+int LoopAudioProcessor::retainedGenerations() const noexcept {
+  return retainedGenerations_.load(std::memory_order_relaxed);
+}
+int LoopAudioProcessor::activeDeck() const noexcept {
+  return activeDeck_.load(std::memory_order_relaxed);
+}
 void LoopAudioProcessor::clearLoop() noexcept {
   clearRequested_.store(true, std::memory_order_release);
+}
+void LoopAudioProcessor::reloop() noexcept {
+  reloopRequested_.store(true, std::memory_order_release);
+}
+void LoopAudioProcessor::previousGeneration() noexcept {
+  generationNavigation_.store(-1, std::memory_order_release);
+}
+void LoopAudioProcessor::nextGeneration() noexcept {
+  generationNavigation_.store(1, std::memory_order_release);
 }
 
 int LoopAudioProcessor::factoryPresetCount() noexcept {
@@ -514,9 +627,10 @@ void LoopAudioProcessor::setStateInformation(const void* data, int size) {
   const auto xml = getXmlFromBinary(data, size);
   if (xml == nullptr) return;
   const auto restored = juce::ValueTree::fromXml(*xml);
+  const int schema = static_cast<int>(restored.getProperty("schema", -1));
   if (!restored.isValid() || restored.getType().toString() != kStateType ||
       restored.getProperty("product").toString() != kStateType ||
-      static_cast<int>(restored.getProperty("schema", -1)) != kStateSchema)
+      (schema != 1 && schema != kStateSchema))
     return;
   auto validated = state_.copyState();
   for (int index = 0; index < validated.getNumChildren(); ++index) {

@@ -4,6 +4,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -27,9 +28,12 @@ int render(const char* path) {
     audio[sample] = 0.35F * std::sin(static_cast<float>(sample) * 0.071F);
   }
   std::size_t offset{};
+  bool printed{};
   while (offset < frames) {
     const auto block = std::min(kBlock, frames - offset);
     parameters.capture = offset < 24000;
+    parameters.reloop = !printed && offset >= 24000;
+    printed = printed || parameters.reloop;
     processor.process(audio.data() + offset, nullptr, block, parameters);
     offset += block;
   }
@@ -55,17 +59,28 @@ int benchmark() {
   constexpr std::size_t seconds = 30;
   constexpr std::size_t frames = static_cast<std::size_t>(kRate) * seconds;
   aste::loop::Processor processor;
-  processor.prepare(kRate, 30.0);
+  processor.prepare(kRate, 16.0);
   aste::loop::Parameters parameters;
   parameters.capture = true;
+  parameters.loopLengthSeconds = 2.0F;
   parameters.pitchSemitones = 7;
   parameters.wow = parameters.flutter = parameters.drift = 1;
   parameters.amplifier = parameters.degradation = 1;
+  parameters.tapeSpeed = 0.5F;
   std::vector<float> left(kBlock, 0.2F), right(kBlock, -0.2F);
   const auto start = std::chrono::steady_clock::now();
   std::size_t offset{};
+  std::uint32_t requestedGeneration{};
   while (offset < frames) {
     const auto block = std::min(kBlock, frames - offset);
+    parameters.capture = offset < static_cast<std::size_t>(kRate) * 2U;
+    parameters.reloop = false;
+    const auto meters = processor.meters();
+    if (!parameters.capture && meters.generation > 0U &&
+        meters.generation != requestedGeneration && meters.printing == 0.0F) {
+      parameters.reloop = true;
+      requestedGeneration = meters.generation;
+    }
     processor.process(left.data(), right.data(), block, parameters);
     offset += block;
   }
