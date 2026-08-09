@@ -121,6 +121,8 @@ It builds:
 - `density_tests` — core correctness and property checks;
 - `density_lab` — offline rendering, measurement, comparison, and listening-pack
   generator.
+- `harmonic_lab` — pre-product nonlinear-EQ topology measurements; no Harmonic
+  production processor or VST3 exists yet.
 
 ### VST3, adapter tests, and standalone host
 

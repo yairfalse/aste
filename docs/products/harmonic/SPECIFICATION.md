@@ -88,6 +88,9 @@ sample rates and multiple drive levels:
 - variable-block identity and aggressive automation curvature;
 - five-run stereo CPU and fixed processing-state memory.
 
+Measurements, rejected approaches, and topology decisions are retained in
+[DSP_RESEARCH.md](DSP_RESEARCH.md).
+
 The lab must compare the production candidate with a double-precision or slower
 reference where one exists. Exact sample hashes are supplemental; magnitude,
 phase, harmonic, intermodulation, latency, and perceptual tolerances are the

@@ -81,6 +81,9 @@ add_executable(density_lab apps/dsp-lab/main.cpp)
 target_link_libraries(density_lab PRIVATE density_dsp)
 target_compile_options(density_lab PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
+add_executable(harmonic_lab apps/dsp-lab/harmonic.cpp)
+target_compile_options(harmonic_lab PRIVATE -Wall -Wextra -Wpedantic -Werror)
+
 enable_testing()
 find_package(Python3 COMPONENTS Interpreter)
 if(Python3_Interpreter_FOUND)
@@ -106,6 +109,9 @@ if(APPLE)
     COMMAND /bin/sh -n
             "${CMAKE_CURRENT_SOURCE_DIR}/tools/install_density_macos.sh")
 endif()
+add_test(NAME harmonic_reference_compare
+  COMMAND harmonic_lab --compare
+          "${CMAKE_CURRENT_BINARY_DIR}/harmonic-reference-compare.csv")
 add_test(NAME density_detector_compare
   COMMAND density_lab --detector-compare
           "${CMAKE_CURRENT_BINARY_DIR}/density_detector_compare.csv")

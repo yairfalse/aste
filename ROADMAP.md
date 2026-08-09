@@ -46,6 +46,10 @@ evidence. Loop and Impulse remain design consumers, not implementation work.
 Extract shared UI or amplifier code only when the second product needs the same
 behavior; transport and rhythm foundations wait for Loop or Impulse.
 
+Harmonic's linear reference is established. The first nonlinear residual
+candidate is rejected because full Harmonic collapses a +12 dB contour to about
++2.16 dB. The next lab cycle is the pre-emphasis/nonlinear/de-emphasis candidate.
+
 ## Explicitly deferred
 
 - No universal plugin engine.

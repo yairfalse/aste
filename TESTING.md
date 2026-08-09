@@ -13,6 +13,12 @@ signal path:
 - monotonic internal Density mappings;
 - no heap allocation inside `process`.
 
+`harmonic_lab --compare` is the separate pre-product research boundary for
+Harmonic H-01. Its first CTest report covers a double-precision peaking reference
+and a rejected residual-excitation candidate at all six sample rates. The CSV
+records center gain, phase, provisional bandwidth, H2/H3, and exact neutral
+null; a candidate cannot hide fundamental-gain loss behind added harmonics.
+
 CTest runs the check. `density_lab` renders a deterministic amplitude-stepped
 sine to CSV and prints machine-readable peak/RMS/gain-reduction measurements.
 Its `--benchmark` mode prints a machine-readable DSP-only CPU baseline under

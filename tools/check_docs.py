@@ -24,6 +24,7 @@ REQUIRED = (
     "TESTING.md",
     "UI_SYSTEM.md",
     "docs/products/harmonic/SPECIFICATION.md",
+    "docs/products/harmonic/DSP_RESEARCH.md",
     "docs/research/schematics/catalog.yaml",
 )
 LINK = re.compile(r"!?\[[^]]*]\(([^)]+)\)")
