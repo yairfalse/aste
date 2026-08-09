@@ -180,6 +180,29 @@ ctest --test-dir build-universal --output-on-failure
 The internal bundle receives an ad-hoc signature so its completed manifest and
 binary can be validated locally. It is not Developer ID signed or notarized.
 
+### Install on this Mac for DAW testing
+
+Quit Cubase and Ableton, then install the clean universal development build for
+the current macOS user:
+
+```sh
+./tools/install_density_macos.sh
+```
+
+The script verifies the bundle and both architectures, installs it at
+`~/Library/Audio/Plug-Ins/VST3/Density D-01.vst3`, and preserves an existing
+Density bundle as a timestamped backup. It uses no `sudo`. Reopen the DAW and
+run its VST3 rescan if Density is not listed. This remains an ad-hoc-signed,
+unnotarized internal build with the deliberately invalid placeholder bundle
+identifier; it is for local host validation only.
+
+An explicit bundle path may be supplied when testing another build:
+
+```sh
+./tools/install_density_macos.sh \
+  "build-universal/DensityD01_artefacts/Release/VST3/Density D-01.vst3"
+```
+
 ### Internal packaging rehearsal
 
 After building the universal tree, create and inspect the deterministic internal

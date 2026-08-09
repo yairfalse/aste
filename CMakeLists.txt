@@ -101,6 +101,11 @@ add_executable(density_tests tests/density_tests.cpp)
 target_link_libraries(density_tests PRIVATE density_dsp)
 target_compile_options(density_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 add_test(NAME density_tests COMMAND density_tests)
+if(APPLE)
+  add_test(NAME density_installer_syntax
+    COMMAND /bin/sh -n
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/install_density_macos.sh")
+endif()
 add_test(NAME density_detector_compare
   COMMAND density_lab --detector-compare
           "${CMAKE_CURRENT_BINARY_DIR}/density_detector_compare.csv")
