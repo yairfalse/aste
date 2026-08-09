@@ -37,6 +37,15 @@ checks finite output, exact neutral behavior, zero latency, stereo identity,
 deterministic reset, variable-block identity, clean cuts, monotonic canonical
 H3, and zero processing allocation at the required rates and block sizes.
 
+`sequence_lab` renders two seconds of the host-clocked production voice to CSV
+and reports peak, RMS, and finite status. Its `--benchmark` mode exercises the
+full monophonic voice with both filter structures active. `sequence_tests`
+covers MIDI synthesis, six rates, irregular and variable blocks, deterministic
+reset, absolute-PPQ step selection, hostile parameters, zero latency, monotonic
+Pressure mapping, and zero process allocation. The adapter suite locks all 83
+voice/pattern parameters, state recall/fuzz behavior, MIDI instrument buses,
+bypass silence, editor visibility/scaling, and the VST3 ABI.
+
 CTest runs the check. `density_lab` renders a deterministic amplitude-stepped
 sine to CSV and prints machine-readable peak/RMS/gain-reduction measurements.
 Its `--benchmark` mode prints a machine-readable DSP-only CPU baseline under
@@ -55,7 +64,7 @@ CTest also checks the required-document set, local Markdown links, and configure
 build provenance. CI records the same results as JUnit XML.
 
 CI checks every tracked C++ source against the repository `.clang-format` file.
-Apple Clang's path-sensitive static analyzer runs separately over both
+Apple Clang's path-sensitive static analyzer runs separately over all
 framework-independent production DSP targets with warnings treated as errors.
 The JUCE adapter retains strict compiler warnings and the independent runtime,
 fuzz, sanitizer, pluginval, and Steinberg validator boundaries described below.
@@ -100,7 +109,7 @@ dispositions, cross-checks the source and package pins, and fails after the
 security conclusion.
 
 `vst3_smoke_host` is the smallest repo-owned standalone host. Unlike the linked
-adapter tests, it discovers and loads either built bundle through VST3, then
+adapter tests, it discovers and loads each built bundle through VST3, then
 checks component identity, parameter count, latency, deterministic state, and
 finite stereo processing across six irregular block sizes. Optional
 `--write-state` and `--read-state` modes exchange one known non-default state

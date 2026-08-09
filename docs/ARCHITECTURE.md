@@ -19,7 +19,11 @@ harmonic_dsp <- harmonic_tests <- harmonic_lab
       ^
       +------ Harmonic JUCE adapter/UI <- harmonic_plugin_tests
 
-both VST3 bundles <- vst3_smoke_host (dynamic ABI load only)
+sequence_dsp <- sequence_tests
+      ^
+      +------ Sequence JUCE instrument/UI <- sequence_plugin_tests
+
+all VST3 bundles <- vst3_smoke_host (dynamic ABI load only)
 ```
 
 The JUCE VST3 targets adapt host buffers, automation, state, and UI to their
@@ -27,7 +31,7 @@ product DSP; the DSP libraries contain no JUCE headers. No universal plugin
 engine or speculative shared library tree exists.
 
 The standalone smoke host uses JUCE's headless VST3 loader and links neither
-product adapter nor either DSP library. It reaches both products only through
+product adapter nor any product DSP library. It reaches products only through
 their built VST3 ABI.
 
 ## Density D-01 graph
@@ -82,6 +86,21 @@ Harmonic owns its graph, parameters, schema, UI, presets, and regression
 fixtures. It does not link to Density. The only extracted runtime utility is
 strict decimal parsing, which now has two identical product consumers.
 
+## Sequence S-01 graph
+
+```text
+MIDI + host PPQ -> 16-step note/gate/accent/slide memory
+                 -> dual oscillators + sub -> driven mixer
+                 -> state low-pass <-> ladder-informed low-pass
+                 -> ADSR/VCA -> bounded output
+```
+
+Sequence is a no-input monophonic instrument. Host PPQ selects steps directly;
+MIDI transposes a running program and plays the voice when sequencing is
+inactive. Fixed arrays, oscillators, envelopes, filters, and MIDI scratch
+storage belong to the audio thread. The UI reads only lock-free meter and step
+snapshots. The product-local graph is zero-latency.
+
 ## Product philosophy
 
 The family exposes audible phenomena rather than circuit trivia. Interfaces
@@ -98,5 +117,5 @@ mastering limiter.
 ## Next product boundary
 
 Loop L-01 and Impulse I-01 remain specifications rather than source targets.
-Host transport, buffer, rhythm, resonator, and amplifier abstractions wait for a
-real product consumer; Harmonic's existence does not justify inventing them.
+Sequence consumes host transport locally; extraction waits for a second real
+consumer. Buffer, rhythm, resonator, and amplifier abstractions remain deferred.

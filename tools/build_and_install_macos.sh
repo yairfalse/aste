@@ -21,3 +21,5 @@ ctest --test-dir "$build_dir" --output-on-failure
   "$build_dir/DensityD01_artefacts/Release/VST3/Density D-01.vst3"
 "$repository_dir/tools/install_harmonic_macos.sh" \
   "$build_dir/HarmonicH01_artefacts/Release/VST3/Harmonic H-01.vst3"
+"$repository_dir/tools/install_sequence_macos.sh" \
+  "$build_dir/SequenceS01_artefacts/Release/VST3/Sequence S-01.vst3"

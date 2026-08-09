@@ -139,3 +139,15 @@ all four frequencies, and the Harmonic macro. The median was 0.682702% of one
 core, with a 0.671615–0.758637% range at 48 kHz / 128 samples. This passes the
 local provisional budget. It is not evidence for the oldest supported Apple
 Silicon machine, native Intel hardware, a loaded DAW, or UI-open performance.
+
+## Sequence S-01 baseline
+
+Sequence adopts a provisional budget below 1.0% of one performance core at
+48 kHz / 127 samples for the monophonic worst-case voice. Processing allocation,
+locks, filesystem access, logging, and reported latency must remain zero.
+
+On 2026-08-09, Release `sequence_lab --benchmark` rendered 30 seconds with
+Pressure at 100%, resonance at 85%, both filter structures active, stereo
+output, and the host-synchronised pattern. It measured 0.282010% of one M4 Pro
+performance core. This passes the local budget but is not evidence for native
+Intel, the oldest supported Apple Silicon, a loaded DAW, or the open editor.

@@ -55,9 +55,10 @@ int main(int argc, char** argv) {
   if (plugin == nullptr) {
     return fail("instantiation failed: " + error);
   }
-  if (plugin->getTotalNumInputChannels() != 2 ||
+  const int inputChannels = plugin->getTotalNumInputChannels();
+  if ((inputChannels != 0 && inputChannels != 2) ||
       plugin->getTotalNumOutputChannels() != 2) {
-    return fail("default bus layout is not stereo");
+    return fail("default bus layout is neither a stereo effect nor instrument");
   }
   if (plugin->getLatencySamples() != 0) {
     return fail("reported latency is not zero");
@@ -65,7 +66,9 @@ int main(int argc, char** argv) {
 
   const auto& parameters = plugin->getParameters();
   if (parameters.size() != expectedParameterCount) {
-    return fail("unexpected parameter count");
+    return fail("unexpected parameter count: expected " +
+                juce::String{expectedParameterCount} + ", received " +
+                juce::String{parameters.size()});
   }
   const auto portabilityEntry = std::find_if(
       parameters.begin(), parameters.end(), [&](const auto* parameter) {
@@ -122,6 +125,9 @@ int main(int argc, char** argv) {
   constexpr std::array blockSizes{1, 2, 7, 127, 511, maximumBlockSize};
   juce::AudioBuffer<float> audio{2, maximumBlockSize};
   juce::MidiBuffer midi;
+  if (inputChannels == 0) {
+    midi.addEvent(juce::MidiMessage::noteOn(1, 48, 0.8F), 0);
+  }
   double checksum = 0.0;
   std::uint64_t sampleOffset = 0;
   for (const int blockSize : blockSizes) {
@@ -131,10 +137,13 @@ int main(int argc, char** argv) {
         const double phase = static_cast<double>(sampleOffset + sample) *
                              (channel == 0 ? 0.013 : 0.017);
         audio.setSample(channel, sample,
-                        static_cast<float>(0.4 * std::sin(phase)));
+                        inputChannels == 0
+                            ? 0.0F
+                            : static_cast<float>(0.4 * std::sin(phase)));
       }
     }
     plugin->processBlock(audio, midi);
+    midi.clear();
     for (int channel = 0; channel < audio.getNumChannels(); ++channel) {
       for (int sample = 0; sample < blockSize; ++sample) {
         const float output = audio.getSample(channel, sample);

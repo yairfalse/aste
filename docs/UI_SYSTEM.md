@@ -8,8 +8,8 @@ Motion reports signal state only. No fake materials, fasteners, rack furniture,
 decorative animation, tabs, or hidden pages for essential controls are allowed.
 
 Product accents are deep burgundy for Density, warm ochre for Harmonic, oxidized
-teal for Loop, and restrained signal orange for Impulse. These are identifiers
-and state cues, not decoration.
+teal for Loop, restrained signal orange for Impulse, and cold laboratory blue
+for Sequence. These are identifiers and state cues, not decoration.
 
 ## Interaction contract
 
@@ -35,3 +35,12 @@ after the ten essential controls.
 Headless 1x/2x artifacts and paint timing are regression evidence, not a Retina
 or usability claim. Native DAW, VoiceOver, contrast, and first-time-use review
 remain release work.
+
+## Sequence S-01
+
+The 1280×760 editor scales from 960×600 to 1600×1000. All sixteen steps remain
+visible and directly expose pitch, gate, accent, and slide. Voice and filter
+controls occupy two rows above the program; Pressure and filter controls lead
+the keyboard order. The only motion is output level and the current host-clocked
+step. No sequencer page, modulation page, keyboard decoration, or circuit-brand
+switch exists.

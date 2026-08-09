@@ -11,6 +11,11 @@ state block. Product roots and schemas are deliberately independent:
 <harmonic-h01 schema="1" product="harmonic-h01">
   <PARAM id="harmonic" value="35.0"/>
 </harmonic-h01>
+
+<sequence-s01 schema="1" product="sequence-s01">
+  <PARAM id="pressure" value="35.0"/>
+  <PARAM id="step_01_note" value="0"/>
+</sequence-s01>
 ```
 
 Only stable parameter IDs and portable scalar values are stored. Unknown keys
@@ -41,3 +46,6 @@ Harmonic's first external boundary covers arbitrary bytes plus structured root,
 schema, product, identifier, duplicate, missing, non-finite, and extreme-value
 mutations. Its exact schema contract is in
 [docs/products/harmonic/STATE_FORMAT.md](products/harmonic/STATE_FORMAT.md).
+Sequence applies the same boundary to its voice and complete 16-step program;
+its exact contract is in
+[docs/products/sequence/STATE_FORMAT.md](products/sequence/STATE_FORMAT.md).

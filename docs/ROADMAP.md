@@ -1,6 +1,6 @@
 # Roadmap
 
-## Now — Density and Harmonic external validation
+## Now — Density, Harmonic, and Sequence external validation
 
 The first working VST3, DSP lab, state model, industrial editor, and automated
 foundation exist. A deterministic internal package rehearsal now checks bundle
@@ -53,9 +53,11 @@ evidence are also outstanding.
 
 ## Later — product family
 
-Loop and Impulse remain design consumers, not implementation work. Extract
-shared UI or amplifier code only when another product needs identical measured
-behavior; transport and rhythm foundations wait for Loop or Impulse.
+Sequence S-01 now has an independent working VST3 prototype. Its immediate gate
+is the music-machine checklist for MIDI, host restart/locate/loop, pattern
+recall, filter-form listening, and programming speed. Loop and Impulse remain
+design consumers, not implementation work. Extract shared UI, transport, or
+amplifier code only when another product needs identical measured behavior.
 
 ## Explicitly deferred
 

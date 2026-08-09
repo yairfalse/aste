@@ -11,8 +11,8 @@ engineering research, deterministic measurement, and unusually strict
 real-time testing. It is not a hardware-cloning exercise and does not use
 “analog” as a substitute for describing measurable behaviour.
 
-> **Project status:** Density D-01 and Harmonic H-01 are working internal-beta
-> VST3 plugins. Both have product-owned DSP, state, tests, and industrial UIs;
+> **Project status:** Density D-01, Harmonic H-01, and Sequence S-01 are working
+> internal-beta VST3 plugins. All have product-owned DSP, state, tests, and industrial UIs;
 > neither is a supported release. There is no Developer ID signature,
 > notarization, final company identity, or DAW compatibility claim yet.
 
@@ -22,10 +22,11 @@ real-time testing. It is not a hardware-cloning exercise and does not use
 |---|---|---|
 | **Density D-01** | Parallel hard mastering compressor | Working VST3 prototype; active validation |
 | **Harmonic H-01** | Equalizer with nonlinear band behaviour | Working VST3 internal beta; musical/host validation next |
+| **Sequence S-01** | Monophonic programmed-current synthesizer | Working VST3 internal beta; musical/host validation next |
 | **Loop L-01** | Tape-inspired playable memory instrument | Product definition only |
 | **Impulse I-01** | Generative rhythm and transient instrument | Product definition only |
 
-Density and Harmonic remain independent products. Shared code is extracted only
+Density, Harmonic, and Sequence remain independent products. Shared code is extracted only
 when two products genuinely need it or when correctness requires one
 implementation; neither processor links to the other.
 
@@ -113,6 +114,22 @@ actually useful. The stable internal-beta contract is in
 [docs/products/harmonic/PARAMETERS.md](docs/products/harmonic/PARAMETERS.md), and
 the topology decision is [ADR 0007](docs/adr/0007-harmonic-internal-beta-topology.md).
 
+## Sequence S-01
+
+Sequence is a monophonic programmed-current synthesizer with a directly visible
+16-step host-synchronised program. Each step owns note offset, gate, accent, and
+slide. MIDI plays the voice while stopped and transposes the pattern while the
+host runs.
+
+Its original voice combines two anti-aliased oscillators and a sub oscillator,
+a bounded driven mixer, and a continuous morph between a broad two-pole state
+low-pass and a heavier four-pole ladder-informed low-pass. The Pressure control
+coordinates mixer drive, filter-envelope depth, accent gain, and filter loading.
+It is topology-informed, not an emulation of a named synthesizer.
+
+The full internal-beta contract is
+[docs/products/sequence/SPECIFICATION.md](docs/products/sequence/SPECIFICATION.md).
+
 ## Requirements
 
 The tested development environment is macOS on Apple Silicon, with x86_64
@@ -151,6 +168,10 @@ It builds:
   its correctness/property checks;
 - `harmonic_lab` — candidate research, six-rate product reports, and the
   production-graph benchmark.
+- `sequence_dsp` and `sequence_tests` — independent MIDI voice, host-clocked
+  step program, filters, and correctness properties.
+- `sequence_lab` — deterministic host-clocked render and worst-case voice
+  benchmark.
 
 ### VST3, adapter tests, and standalone host
 
@@ -169,10 +190,11 @@ The plugin bundles are produced at:
 ```text
 build-plugin/DensityD01_artefacts/Release/VST3/Density D-01.vst3
 build-plugin/HarmonicH01_artefacts/Release/VST3/Harmonic H-01.vst3
+build-plugin/SequenceS01_artefacts/Release/VST3/Sequence S-01.vst3
 ```
 
 Each product has direct JUCE-adapter tests. The separate `vst3_smoke_host`
-links neither adapter nor either DSP; it discovers and loads each built bundle
+links no product adapter or DSP; it discovers and loads each built bundle
 through the actual VST3 ABI, restores state, and processes irregular blocks.
 
 To run that smoke host directly:
@@ -211,7 +233,7 @@ ctest --test-dir build-plugin-universal --output-on-failure
 The internal bundle receives an ad-hoc signature so its completed manifest and
 binary can be validated locally. It is not Developer ID signed or notarized.
 
-### Build and install both on a music Mac
+### Build and install all instruments on a music Mac
 
 Clone the repository on the music machine, quit Cubase and Ableton, then run:
 
@@ -220,7 +242,7 @@ Clone the repository on the music machine, quit Cubase and Ableton, then run:
 ```
 
 The script builds and tests universal arm64+x86_64 bundles, verifies both
-architectures and signatures, and installs Density and Harmonic under
+architectures and signatures, and installs Density, Harmonic, and Sequence under
 `~/Library/Audio/Plug-Ins/VST3`. Existing copies are preserved as timestamped
 backups, and no `sudo` is used. Reopen the DAW and rescan VST3 plugins.
 
@@ -228,7 +250,7 @@ These are ad-hoc-signed, unnotarized internal builds with deliberately invalid
 placeholder bundle identifiers. macOS may require locally allowing the bundle;
 they are for private host and musical validation, not distribution.
 
-For the prebuilt internal ZIP workflow, see
+For the plain transfer-folder workflow, see
 [INSTALL_MACOS.md](docs/INSTALL_MACOS.md).
 
 An explicit bundle path may be supplied when testing another build:
@@ -238,6 +260,8 @@ An explicit bundle path may be supplied when testing another build:
   "build-plugin-universal/DensityD01_artefacts/Release/VST3/Density D-01.vst3"
 ./tools/install_harmonic_macos.sh \
   "build-plugin-universal/HarmonicH01_artefacts/Release/VST3/Harmonic H-01.vst3"
+./tools/install_sequence_macos.sh \
+  "build-plugin-universal/SequenceS01_artefacts/Release/VST3/Sequence S-01.vst3"
 ```
 
 ### Internal packaging rehearsal
@@ -320,11 +344,12 @@ Current automated coverage includes:
 - arm64 Release, arm64 ASan/UBSan, and x86_64 Release test trees;
 - semantic state exchange between arm64 and x86_64 hosts.
 
-The current plugin test tree contains 43 CTest checks. Independent local
+The plugin test tree runs the complete deterministic CTest suite. Independent local
 validation has passed pluginval 1.0.4 at strictness 10 and the Steinberg VST3 SDK
 3.8.0 extensive suite at 537/537. Density has arm64 and Rosetta x86_64 validator
 history; Harmonic's current universal beta has arm64 validator evidence and
-separate two-slice/ABI verification.
+separate two-slice/ABI verification. Sequence has direct core, adapter, and
+repository ABI-host evidence; independent validator and DAW runs remain next.
 The exact run history is in [HOST_COMPATIBILITY.md](docs/HOST_COMPATIBILITY.md).
 
 GitHub Actions builds the core on arm64 and Intel runners, builds a universal
@@ -335,7 +360,7 @@ is [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
 ### Real-time rules
 
-Both production processors expose `noexcept` processing. Processing may not allocate, free,
+All production processors expose `noexcept` processing. Processing may not allocate, free,
 lock, wait, log, access files or networks, resize containers, trigger lazy
 initialization, call blocking OS services, or throw through the callback.
 Buffers and mutable DSP state are prepared in advance. Non-finite input is
@@ -363,11 +388,16 @@ samples while every band and its macro changed each block. This passes the
 local provisional 1% budget, but still requires older Apple Silicon and native
 Intel evidence.
 
+Sequence measured 0.282010% on the same machine at 48 kHz / 127 samples with
+Pressure at 100%, resonance at 85%, both filters active, and stereo output. It
+passes the local provisional 1% budget; native Intel, older Apple Silicon, and
+DAW/UI-open measurements remain external gates.
+
 ## Current release status
 
-Density and Harmonic are internal betas, not releases. Density has repository
+Density, Harmonic, and Sequence are internal betas, not releases. Density has repository
 evidence for 16 of its 25 release gates. Harmonic has the engineering boundary
-needed for first external tests; both still require people, DAWs, and target
+needed for first external tests; all three still require people, DAWs, and target
 hardware for:
 
 - Cubase 14, Ableton Live 13/beta, and one additional real-host matrix;
@@ -397,7 +427,11 @@ harmonic_dsp <- harmonic_tests <- harmonic_lab
       ^
       +------ Harmonic JUCE adapter/UI <- harmonic_plugin_tests
 
-both VST3 bundles <- vst3_smoke_host (dynamic ABI load only)
+sequence_dsp <- sequence_tests
+      ^
+      +------ Sequence JUCE instrument/UI <- sequence_plugin_tests
+
+all VST3 bundles <- vst3_smoke_host (dynamic ABI load only)
 ```
 
 The production DSP is ordinary C++20. JUCE is restricted to the VST3, host,
@@ -418,6 +452,7 @@ The expiring dependency-security review is
 apps/
   density/             production DSP, JUCE adapter, and editor
   harmonic/            independent four-band DSP, adapter, and editor
+  sequence/            monophonic voice, host sequencer, adapter, and editor
   dsp-lab/             offline renderer and measurement laboratory
   standalone-host/     minimal headless VST3 smoke host
 docs/

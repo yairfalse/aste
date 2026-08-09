@@ -124,13 +124,18 @@ Status meanings:
 ## Family boundary
 
 The repository architecture, visual language, historical-research policy, and
-product independence rules apply to all four instruments. Harmonic's
+product independence rules apply to all instruments. Harmonic's
 [research specification](products/harmonic/SPECIFICATION.md) is frozen;
 its lab algorithms remain **Later** than Density external validation. Loop and
 Impulse are deliberately later implementation milestones. Every product's DSP,
 parameters, state, UI, and regression fixtures remain product-owned. Density
 does not gain speculative transport, pitch, rhythm, modulation, or amplifier
 libraries to make the future directory tree look complete.
+
+Sequence S-01 is a separate, user-authorized addition to the family. Its first
+internal-beta evidence, limits, and external music-machine gates are recorded in
+[products/sequence/CYCLE_01.md](products/sequence/CYCLE_01.md) and do not alter
+Density's completion status.
 
 ## Internal-beta completion rule
 

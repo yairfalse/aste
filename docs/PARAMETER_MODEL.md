@@ -2,7 +2,7 @@
 
 Stable IDs use product-local ASCII names. Normalized host values map to physical
 ranges; ranges are provisional until musical validation, but IDs are treated as
-permanent from the first external build. Both products use the shared strict
+permanent from the first external build. Products use the shared strict
 decimal parser for text entry while retaining independent parameter layouts.
 
 ## Density D-01
@@ -59,3 +59,11 @@ input/output transitions are smoothed without topology changes.
 The complete ranges, defaults, text behavior, automation contract, and
 maintainer-visible macro mapping are in
 [docs/products/harmonic/PARAMETERS.md](products/harmonic/PARAMETERS.md).
+
+## Sequence S-01
+
+Sequence schema 1 contains 19 voice/clock controls and four stable controls for
+each of 16 visible steps, for 83 parameters total. Host MIDI-CC emulation is
+disabled so the VST3 publishes only this intentional contract. Complete ranges,
+defaults, smoothing, step IDs, and the Pressure mapping are in
+[docs/products/sequence/PARAMETERS.md](products/sequence/PARAMETERS.md).

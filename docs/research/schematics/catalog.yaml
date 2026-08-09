@@ -77,3 +77,36 @@ sources:
     relevant_circuit_section: "Attack, recovery and programme-dependent audibility measurements"
     engineering_concept_extracted: "Judge a limiter by dynamic response on representative programme, not only static curves"
     treatment: "studied"
+
+  - manufacturer: "R. A. Moog"
+    product: "Voltage-programmable transistor filter"
+    approximate_year: 1969
+    document_title: "US Patent 3,475,623"
+    document_origin: "Public patent record"
+    url: "https://patents.google.com/patent/US3475623A/en"
+    copyright_or_access_status: "Public patent publication; patent expired; link only"
+    relevant_circuit_section: "Cascaded bipolar-transistor low-pass stages with programmable cutoff"
+    engineering_concept_extracted: "Repeated poles, feedback, and device loading create a coupled response rather than a generic EQ curve"
+    treatment: "studied; no component values or branded response reproduced"
+
+  - manufacturer: "Norlin Music; R. A. Moog"
+    product: "Electronic music synthesizer"
+    approximate_year: 1977
+    document_title: "US Patent 4,050,343"
+    document_origin: "Public patent record"
+    url: "https://patents.google.com/patent/US4050343A/en"
+    copyright_or_access_status: "Public patent publication; patent expired; link only"
+    relevant_circuit_section: "Voltage-controlled oscillator, waveform generation, filters, amplifier, and contour controls"
+    engineering_concept_extracted: "Treat oscillator shape, filter contour, and amplifier contour as one playable control system"
+    treatment: "studied; architectural principle only"
+
+  - manufacturer: "Sonic Industries; W. H. Wetzel"
+    product: "Musical sequencer"
+    approximate_year: 1974
+    document_title: "US Patent 3,821,712"
+    document_origin: "Public patent record"
+    url: "https://patents.google.com/patent/US3821712A/en"
+    copyright_or_access_status: "Public patent publication; patent expired; link only"
+    relevant_circuit_section: "Rewrite memories and control-voltage sequencing"
+    engineering_concept_extracted: "A sequence is persistent playable control memory, not merely a row of clocked triggers"
+    treatment: "studied; modern host-synchronised behavior implemented independently"
