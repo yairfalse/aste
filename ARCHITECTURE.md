@@ -74,3 +74,12 @@ settings increase continuity while retaining the unprocessed transient path;
 strong settings make the crushed branch audible and physical. It is not a
 hardware clone and its current output stage is protection, not a true-peak
 mastering limiter.
+
+## Next product boundary
+
+Harmonic H-01 remains a lab-research product with no source target or dependency
+on Density. Its product behavior, candidate graphs, evidence requirements, and
+production-entry gates are frozen in
+[docs/products/harmonic/SPECIFICATION.md](docs/products/harmonic/SPECIFICATION.md).
+Only a winning measured algorithm justifies adding `apps/harmonic/` or extracting
+a shared foundation from Density.

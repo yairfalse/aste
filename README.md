@@ -20,7 +20,7 @@ real-time testing. It is not a hardware-cloning exercise and does not use
 | Product | Purpose | Status |
 |---|---|---|
 | **Density D-01** | Parallel hard mastering compressor | Working VST3 prototype; active validation |
-| **Harmonic H-01** | Equalizer with nonlinear band behaviour | Product definition only |
+| **Harmonic H-01** | Equalizer with nonlinear band behaviour | Research specification complete; DSP candidates next |
 | **Loop L-01** | Tape-inspired playable memory instrument | Product definition only |
 | **Impulse I-01** | Generative rhythm and transient instrument | Product definition only |
 

@@ -124,12 +124,13 @@ Status meanings:
 ## Family boundary
 
 The repository architecture, visual language, historical-research policy, and
-product independence rules apply to all four instruments. Harmonic, Loop, and
-Impulse are deliberately **Later** implementation milestones. Their product
-specifications must be frozen before implementation; their DSP, parameters,
-state, UI, and regression fixtures must remain product-owned. Density does not
-gain speculative transport, pitch, rhythm, modulation, or amplifier libraries
-to make the future directory tree look complete.
+product independence rules apply to all four instruments. Harmonic's
+[research specification](docs/products/harmonic/SPECIFICATION.md) is frozen;
+its lab algorithms remain **Later** than Density external validation. Loop and
+Impulse are deliberately later implementation milestones. Every product's DSP,
+parameters, state, UI, and regression fixtures remain product-owned. Density
+does not gain speculative transport, pitch, rhythm, modulation, or amplifier
+libraries to make the future directory tree look complete.
 
 ## Internal-beta completion rule
 

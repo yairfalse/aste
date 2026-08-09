@@ -38,10 +38,13 @@ Remaining release work:
 
 ## Later — product family
 
-Harmonic, Loop, and Impulse remain design consumers, not implementation work.
-Begin Harmonic only after Density is stable. Extract shared UI or amplifier code
-only when the second product needs the same behavior; transport and rhythm
-foundations wait for Loop or Impulse.
+Harmonic now has a frozen
+[research specification](docs/products/harmonic/SPECIFICATION.md). Its
+framework-independent lab candidates may proceed while Density completes
+external validation; its production VST3 waits for initial Cubase and Ableton
+evidence. Loop and Impulse remain design consumers, not implementation work.
+Extract shared UI or amplifier code only when the second product needs the same
+behavior; transport and rhythm foundations wait for Loop or Impulse.
 
 ## Explicitly deferred
 
