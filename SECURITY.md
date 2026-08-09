@@ -26,3 +26,9 @@ review method is recorded in
 The internal package embeds that exact ledger and binds its digest, review
 date, expiry, and disposition into `PACKAGE.json`. Rewriting the archive's own
 checksum inventory cannot replace the repository-reviewed digest.
+
+CI workflows treat remote actions as executable dependencies. Every `uses:`
+entry must reference a full 40-character commit; `tools/check_docs.py` rejects
+floating tags and branches. Human-readable version comments may accompany the
+pin, but do not replace it. The current `actions/checkout` commit was resolved
+from the official v7 tag on 2026-08-09.

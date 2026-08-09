@@ -104,7 +104,7 @@ Status meanings:
 | Plugin validation | Done | pluginval strictness 10 locally and pinned Steinberg extensive validation in CI. |
 | License/dependency audit | Done | SPDX package inventory, notices, exact pins, and expiring advisory review. |
 | Deterministic package rehearsal | Done | Reopened ZIP with immutable file inventory, provenance, signature, architecture, SBOM, and security-evidence checks. |
-| Immutable third-party CI action pins | Open | Pin every remote workflow action by full commit and enforce the policy. |
+| Immutable third-party CI action pins | Done | Every remote workflow action uses a full commit; repository policy rejects floating refs. |
 | Final company identity and bundle identifier | External | Requires the selected legal/product identity; neutral `aste`/`density-d01` remain internal. |
 | Developer ID signing and notarization | External | Requires Apple credentials and distribution approval. |
 

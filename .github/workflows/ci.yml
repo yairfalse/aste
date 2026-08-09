@@ -25,7 +25,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Repository policy
         run: python3 tools/check_docs.py .
       - name: Configure
@@ -42,7 +42,7 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Configure
         run: cmake -S . -B ci-vst3 -DASTE_BUILD_VST3=ON -DCMAKE_BUILD_TYPE=Release '-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64'
       - name: Build
@@ -54,7 +54,7 @@ jobs:
       - name: Verify universal binary
         run: lipo "ci-vst3/DensityD01_artefacts/Release/VST3/Density D-01.vst3/Contents/MacOS/Density D-01" -verify_arch arm64 x86_64
       - name: Checkout Steinberg VST3 SDK validator source
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: steinbergmedia/vst3sdk
           ref: 9fad9770f2ae8542ab1a548a68c1ad1ac690abe0
@@ -90,7 +90,7 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Configure
         run: cmake -S . -B ci-sanitize -DASTE_BUILD_VST3=ON -DASTE_SANITIZERS=ON -DCMAKE_BUILD_TYPE=Debug
       - name: Build

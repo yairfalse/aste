@@ -12,8 +12,8 @@ been reviewed.
 
 The authoritative master-brief audit is
 [SPECIFICATION_STATUS.md](SPECIFICATION_STATUS.md). Before external validation,
-close its four local `Open` rows: product presets, formatting, static analysis,
-and immutable workflow-action pins.
+close every local `Open` row; floating workflow-action refs are already closed
+and enforced by repository policy.
 
 Remaining release work:
 

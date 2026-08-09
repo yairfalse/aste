@@ -26,6 +26,7 @@ REQUIRED = (
     "docs/research/schematics/catalog.yaml",
 )
 LINK = re.compile(r"!?\[[^]]*]\(([^)]+)\)")
+ACTION_USE = re.compile(r"^\s*(?:-\s*)?uses:\s*([^\s#]+)", re.MULTILINE)
 
 
 def is_generated_build_file(document: Path, root: Path) -> bool:
@@ -37,10 +38,26 @@ def is_generated_build_file(document: Path, root: Path) -> bool:
     return False
 
 
+def check_workflow_action_pins(root: Path) -> list[str]:
+    errors = []
+    workflow_root = root / ".github" / "workflows"
+    for pattern in ("*.yml", "*.yaml"):
+        for workflow in workflow_root.glob(pattern):
+            for use in ACTION_USE.findall(workflow.read_text(encoding="utf-8")):
+                if use.startswith(("./", "docker://")):
+                    continue
+                _, separator, reference = use.rpartition("@")
+                if not separator or re.fullmatch(r"[0-9a-f]{40}", reference) is None:
+                    errors.append(
+                        f"unpinned workflow action: {workflow.relative_to(root)} -> {use}")
+    return errors
+
+
 def main() -> int:
     root = Path(sys.argv[1] if len(sys.argv) > 1 else ".").resolve()
     errors = [f"missing required document: {name}" for name in REQUIRED
               if not (root / name).exists()]
+    errors.extend(check_workflow_action_pins(root))
     for document in root.rglob("*.md"):
         if (any(part.startswith("build") or part == ".git"
                 for part in document.relative_to(root).parts)
