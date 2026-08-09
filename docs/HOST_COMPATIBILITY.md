@@ -33,7 +33,8 @@
 | 2026-08-09 | GitHub Actions hosted matrix | Loop L-01 commit `d3ca774` | Pass: arm64/Intel core, ASan/UBSan, universal signature/slices, Steinberg extensive validation |
 | 2026-08-09 | repository headless VST3 host | Impulse I-01 universal internal prototype | Pass, dynamic instrument load, 60-parameter state, MIDI synthesis, six irregular blocks |
 | 2026-08-09 | GitHub Actions hosted matrix | Impulse I-01 commit `0742d39` and complete five-product line | Pass: arm64/Intel core, ASan/UBSan, 61/61 tests, universal signatures/slices, Steinberg extensive validation |
-| 2026-08-10 | repository headless VST3 host | Loop L-01 generational-tape universal prototype, 20 parameters | Pass: dynamic load, schema-2 state, stereo processing, six irregular blocks; hosted validation pending |
+| 2026-08-10 | repository headless VST3 host | Loop L-01 generational-tape universal prototype, 20 parameters | Pass: dynamic load, schema-2 state, stereo processing, six irregular blocks |
+| 2026-08-10 | GitHub Actions hosted matrix | Loop L-01 generational-tape commit `18f4875` | Pass: arm64/Intel core, ASan/UBSan, 61/61 tests, universal signatures/slices, Steinberg extensive validation |
 
 The run included cold/warm loading, editor open during processing, state and
 state restoration, background-thread state, parameter thread safety and fuzzing,
