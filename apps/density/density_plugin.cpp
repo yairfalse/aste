@@ -31,6 +31,20 @@ bool parseFiniteFloat(const juce::var& value, float& result) {
   return std::isfinite(result);
 }
 
+juce::ValueTree migrateState(juce::ValueTree state) {
+  if (!state.isValid() || state.getType().toString() != kStateType ||
+      state.getProperty("product").toString() != kStateType) {
+    return {};
+  }
+
+  switch (static_cast<int>(state.getProperty("schema", -1))) {
+    case 1:
+      return state;
+    default:
+      return {};
+  }
+}
+
 juce::NormalisableRange<float> skewed(float minimum, float maximum,
                                       float centre, float interval) {
   juce::NormalisableRange<float> range{minimum, maximum, interval};
@@ -419,13 +433,11 @@ void DensityAudioProcessor::getStateInformation(juce::MemoryBlock& destination) 
 
 void DensityAudioProcessor::setStateInformation(const void* data, int size) {
   const auto xml = getXmlFromBinary(data, size);
-  if (xml == nullptr || !xml->hasTagName(kStateType)) {
+  if (xml == nullptr) {
     return;
   }
-  auto restored = juce::ValueTree::fromXml(*xml);
-  if (!restored.isValid() ||
-      static_cast<int>(restored.getProperty("schema", -1)) != kStateSchema ||
-      restored.getProperty("product").toString() != kStateType) {
+  const auto restored = migrateState(juce::ValueTree::fromXml(*xml));
+  if (!restored.isValid()) {
     return;
   }
 

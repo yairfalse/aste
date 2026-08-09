@@ -19,8 +19,10 @@ The VST3 adapter serializes JUCE's portable XML representation into its host
 state block. The root must be `density-d01` with integer `schema=1` and matching
 `product`; malformed or mismatched state leaves the current configuration
 unchanged. A round-trip test verifies deterministic bytes and equivalent values.
-Schema 1's explicit migration function is still required before the first
-external build.
+Every restored tree passes through `migrateState()` before parameter validation.
+Schema 1 is the current identity migration; unknown older or newer schemas are
+rejected without changing the active state. Future migrations belong in that
+single version switch and must produce the current schema before publication.
 
 Schema 1 contains no quality or oversampling field. The first external Density
 build has one fixed 1x, zero-latency topology under ADR 0002; no speculative

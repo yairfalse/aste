@@ -278,6 +278,17 @@ void testStateRoundTrip() {
   require(rawValue(restored, "density") == beforeMalformed,
           "Malformed state leaves current state unchanged");
 
+  auto futureSchema = source.state().copyState();
+  futureSchema.setProperty("schema", 2, nullptr);
+  futureSchema.setProperty("product", "density-d01", nullptr);
+  futureSchema.getChildWithProperty("id", "density")
+      .setProperty("value", 12.0, nullptr);
+  const auto futureBinary = binaryState(futureSchema);
+  restored.setStateInformation(futureBinary.getData(),
+                               static_cast<int>(futureBinary.getSize()));
+  require(rawValue(restored, "density") == beforeMalformed,
+          "Unknown state schemas are rejected at the migration boundary");
+
   auto invalidValue = source.state().copyState();
   invalidValue.setProperty("schema", 1, nullptr);
   invalidValue.setProperty("product", "density-d01", nullptr);
