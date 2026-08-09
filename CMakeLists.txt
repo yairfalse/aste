@@ -68,6 +68,9 @@ target_include_directories(harmonic_dsp PUBLIC apps/harmonic libs/parameters)
 add_library(sequence_dsp apps/sequence/sequence_processor.cpp)
 target_include_directories(sequence_dsp PUBLIC apps/sequence libs/parameters)
 
+add_library(loop_dsp apps/loop/loop_processor.cpp)
+target_include_directories(loop_dsp PUBLIC apps/loop libs/parameters)
+
 if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang")
   add_custom_target(density_static_analysis
     COMMAND "${CMAKE_CXX_COMPILER}" --analyze
@@ -93,9 +96,17 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang")
             "${CMAKE_CURRENT_SOURCE_DIR}/apps/sequence/sequence_processor.cpp"
     COMMENT "Running Clang static analysis on Sequence DSP"
     VERBATIM)
+  add_custom_target(loop_static_analysis
+    COMMAND "${CMAKE_CXX_COMPILER}" --analyze
+            -Xanalyzer -analyzer-output=text
+            -std=c++20 -Wall -Wextra -Wpedantic -Werror
+            -I"${CMAKE_CURRENT_SOURCE_DIR}/apps/loop"
+            "${CMAKE_CURRENT_SOURCE_DIR}/apps/loop/loop_processor.cpp"
+    COMMENT "Running Clang static analysis on Loop DSP"
+    VERBATIM)
 endif()
 
-foreach(target density_dsp harmonic_dsp sequence_dsp)
+foreach(target density_dsp harmonic_dsp sequence_dsp loop_dsp)
   target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endforeach()
 
@@ -110,6 +121,10 @@ target_compile_options(harmonic_lab PRIVATE -Wall -Wextra -Wpedantic -Werror)
 add_executable(sequence_lab apps/dsp-lab/sequence.cpp)
 target_link_libraries(sequence_lab PRIVATE sequence_dsp)
 target_compile_options(sequence_lab PRIVATE -Wall -Wextra -Wpedantic -Werror)
+
+add_executable(loop_lab apps/dsp-lab/loop.cpp)
+target_link_libraries(loop_lab PRIVATE loop_dsp)
+target_compile_options(loop_lab PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
 enable_testing()
 find_package(Python3 COMPONENTS Interpreter)
@@ -139,6 +154,10 @@ add_executable(sequence_tests tests/sequence_tests.cpp)
 target_link_libraries(sequence_tests PRIVATE sequence_dsp)
 target_compile_options(sequence_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 add_test(NAME sequence_tests COMMAND sequence_tests)
+add_executable(loop_tests tests/loop_tests.cpp)
+target_link_libraries(loop_tests PRIVATE loop_dsp)
+target_compile_options(loop_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+add_test(NAME loop_tests COMMAND loop_tests)
 if(APPLE)
   add_test(NAME density_installer_syntax
     COMMAND /bin/sh -n
@@ -149,6 +168,9 @@ if(APPLE)
   add_test(NAME sequence_installer_syntax
     COMMAND /bin/sh -n
             "${CMAKE_CURRENT_SOURCE_DIR}/tools/install_sequence_macos.sh")
+  add_test(NAME loop_installer_syntax
+    COMMAND /bin/sh -n
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/install_loop_macos.sh")
   add_test(NAME build_and_install_syntax
     COMMAND /bin/sh -n
             "${CMAKE_CURRENT_SOURCE_DIR}/tools/build_and_install_macos.sh")
@@ -170,6 +192,8 @@ add_test(NAME harmonic_product_report
           "${CMAKE_CURRENT_BINARY_DIR}/harmonic-product-report.csv")
 add_test(NAME sequence_product_render
   COMMAND sequence_lab "${CMAKE_CURRENT_BINARY_DIR}/sequence-product-render.csv")
+add_test(NAME loop_product_render
+  COMMAND loop_lab "${CMAKE_CURRENT_BINARY_DIR}/loop-product-render.csv")
 add_test(NAME density_detector_compare
   COMMAND density_lab --detector-compare
           "${CMAKE_CURRENT_BINARY_DIR}/density_detector_compare.csv")
@@ -312,6 +336,40 @@ if(ASTE_BUILD_VST3)
     )
   endif()
 
+  juce_add_plugin(LoopL01
+    VERSION ${PROJECT_VERSION}
+    COMPANY_NAME "Aste Internal"
+    BUNDLE_ID "invalid.aste.loop-l01"
+    IS_SYNTH FALSE
+    NEEDS_MIDI_INPUT TRUE
+    NEEDS_MIDI_OUTPUT FALSE
+    IS_MIDI_EFFECT FALSE
+    EDITOR_WANTS_KEYBOARD_FOCUS TRUE
+    COPY_PLUGIN_AFTER_BUILD FALSE
+    PLUGIN_MANUFACTURER_CODE Aste
+    PLUGIN_CODE Lop1
+    FORMATS VST3
+    VST3_CATEGORIES Fx Delay
+    PRODUCT_NAME "Loop L-01"
+  )
+  target_sources(LoopL01 PRIVATE apps/loop/loop_plugin.cpp)
+  target_include_directories(LoopL01 PRIVATE apps/loop)
+  target_link_libraries(LoopL01 PRIVATE loop_dsp juce::juce_audio_utils)
+  target_compile_definitions(LoopL01 PUBLIC
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_VST3_CAN_REPLACE_VST2=0
+    JUCE_VST3_EMULATE_MIDI_CC_WITH_PARAMETERS=0
+  )
+  target_compile_options(LoopL01 PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  if(APPLE)
+    add_custom_command(TARGET LoopL01_VST3 POST_BUILD
+      COMMAND codesign --force --deep --sign - "$<TARGET_BUNDLE_DIR:LoopL01_VST3>"
+      COMMENT "Applying final ad-hoc signature after Loop VST3 manifest generation"
+      VERBATIM
+    )
+  endif()
+
   juce_add_plugin(HarmonicH01
     VERSION ${PROJECT_VERSION}
     COMPANY_NAME "Aste Internal"
@@ -446,6 +504,28 @@ if(ASTE_BUILD_VST3)
     COMMAND sequence_plugin_tests --editor-artifacts
             "${CMAKE_CURRENT_BINARY_DIR}/sequence_editor_artifacts")
 
+  juce_add_console_app(loop_plugin_tests PRODUCT_NAME "Loop plugin tests")
+  if(APPLE)
+    target_link_libraries(loop_plugin_tests PRIVATE realtime_audit)
+  endif()
+  target_sources(loop_plugin_tests PRIVATE
+    apps/loop/loop_plugin.cpp
+    tests/loop_plugin_tests.cpp
+  )
+  target_include_directories(loop_plugin_tests PRIVATE apps/loop)
+  target_link_libraries(loop_plugin_tests PRIVATE loop_dsp juce::juce_audio_utils)
+  target_compile_definitions(loop_plugin_tests PRIVATE
+    ASTE_NO_PLUGIN_FACTORY=1
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+  )
+  target_compile_options(loop_plugin_tests PRIVATE
+    -Wall -Wextra -Wpedantic -Werror)
+  add_test(NAME loop_plugin_tests COMMAND loop_plugin_tests)
+  add_test(NAME loop_editor_artifacts
+    COMMAND loop_plugin_tests --editor-artifacts
+            "${CMAKE_CURRENT_BINARY_DIR}/loop_editor_artifacts")
+
   juce_add_console_app(vst3_smoke_host PRODUCT_NAME "VST3 smoke host")
   target_sources(vst3_smoke_host PRIVATE apps/standalone-host/main.cpp)
   target_link_libraries(vst3_smoke_host PRIVATE
@@ -462,7 +542,7 @@ if(ASTE_BUILD_VST3)
       -Wno-unnecessary-virtual-specifier)
   endif()
   add_dependencies(vst3_smoke_host DensityD01_VST3 HarmonicH01_VST3
-                   SequenceS01_VST3)
+                   SequenceS01_VST3 LoopL01_VST3)
   add_test(NAME density_vst3_host
     COMMAND vst3_smoke_host "$<TARGET_BUNDLE_DIR:DensityD01_VST3>"
             "Density D-01" "Drive" 11)
@@ -472,6 +552,9 @@ if(ASTE_BUILD_VST3)
   add_test(NAME sequence_vst3_host
     COMMAND vst3_smoke_host "$<TARGET_BUNDLE_DIR:SequenceS01_VST3>"
             "Sequence S-01" "Pressure" 83)
+  add_test(NAME loop_vst3_host
+    COMMAND vst3_smoke_host "$<TARGET_BUNDLE_DIR:LoopL01_VST3>"
+            "Loop L-01" "Capture" 19)
 
   if(Python3_Interpreter_FOUND AND APPLE)
     set(ASTE_DENSITY_PACKAGE

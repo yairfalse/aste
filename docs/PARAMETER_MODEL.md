@@ -67,3 +67,11 @@ each of 16 visible steps, for 83 parameters total. Host MIDI-CC emulation is
 disabled so the VST3 publishes only this intentional contract. Complete ranges,
 defaults, smoothing, step IDs, and the Pressure mapping are in
 [docs/products/sequence/PARAMETERS.md](products/sequence/PARAMETERS.md).
+
+## Loop L-01
+
+Loop schema 1 contains 19 stable product parameters. Synced beat length and free
+seconds are different IDs so unit meaning never changes with a mode switch.
+Percent values are exposed as 0–100 and converted only at the DSP boundary.
+Complete ranges, defaults, and musical roles are in
+[docs/products/loop/PARAMETERS.md](products/loop/PARAMETERS.md).

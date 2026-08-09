@@ -44,3 +44,11 @@ controls occupy two rows above the program; Pressure and filter controls lead
 the keyboard order. The only motion is output level and the current host-clocked
 step. No sequencer page, modulation page, keyboard decoration, or circuit-brand
 switch exists.
+
+## Loop L-01
+
+The 1160×650 editor scales from 920×540 to 1840×1080. Its left memory panel
+shows capture fill, playback position, input/output boundaries, and one explicit
+clear action. Capture, host sync, and reverse remain visible above a three-row
+control field. Oxidized teal marks active memory and values; motion is limited
+to signal levels and memory travel. All essential controls remain on one panel.

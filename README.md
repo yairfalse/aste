@@ -11,9 +11,9 @@ engineering research, deterministic measurement, and unusually strict
 real-time testing. It is not a hardware-cloning exercise and does not use
 “analog” as a substitute for describing measurable behaviour.
 
-> **Project status:** Density D-01, Harmonic H-01, and Sequence S-01 are working
-> internal-beta VST3 plugins. All have product-owned DSP, state, tests, and industrial UIs;
-> neither is a supported release. There is no Developer ID signature,
+> **Project status:** Density D-01, Harmonic H-01, Sequence S-01, and Loop L-01
+> are working internal VST3 prototypes. All have product-owned DSP, state,
+> tests, and industrial UIs; none is a supported release. There is no Developer ID signature,
 > notarization, final company identity, or DAW compatibility claim yet.
 
 ## The instrument family
@@ -23,7 +23,7 @@ real-time testing. It is not a hardware-cloning exercise and does not use
 | **Density D-01** | Parallel hard mastering compressor | Working VST3 prototype; active validation |
 | **Harmonic H-01** | Equalizer with nonlinear band behaviour | Working VST3 internal beta; musical/host validation next |
 | **Sequence S-01** | Monophonic programmed-current synthesizer | Working VST3 internal beta; musical/host validation next |
-| **Loop L-01** | Tape-inspired playable memory instrument | Product definition only |
+| **Loop L-01** | Tape-inspired playable memory instrument | Working VST3 prototype; memory-state validation next |
 | **Impulse I-01** | Generative rhythm and transient instrument | Product definition only |
 
 Density, Harmonic, and Sequence remain independent products. Shared code is extracted only
@@ -130,6 +130,19 @@ It is topology-informed, not an emulation of a named synthesizer.
 The full internal-beta contract is
 [docs/products/sequence/SPECIFICATION.md](docs/products/sequence/SPECIFICATION.md).
 
+## Loop L-01
+
+Loop captures mono or stereo audio into preallocated circular memory and makes
+that memory playable through varispeed, reverse, splice, a separate dual-head
+pitch mechanism, deterministic wow/flutter/drift, degradation, and bounded
+amplifier loading. Host-synced beat length and free seconds are separate stable
+parameters. MIDI notes hold capture with sample-offset event handling.
+
+The prototype reports zero latency and never allocates or locks while
+processing. Its schema-1 control state is deterministic, but captured audio is
+not yet serialized; session memory recall remains a stated release blocker. See
+[docs/products/loop/SPECIFICATION.md](docs/products/loop/SPECIFICATION.md).
+
 ## Requirements
 
 The tested development environment is macOS on Apple Silicon, with x86_64
@@ -172,6 +185,8 @@ It builds:
   step program, filters, and correctness properties.
 - `sequence_lab` — deterministic host-clocked render and worst-case voice
   benchmark.
+- `loop_dsp`, `loop_tests`, and `loop_lab` — capture/playback memory engine,
+  property tests, deterministic render, and worst-case benchmark.
 
 ### VST3, adapter tests, and standalone host
 
@@ -191,6 +206,7 @@ The plugin bundles are produced at:
 build-plugin/DensityD01_artefacts/Release/VST3/Density D-01.vst3
 build-plugin/HarmonicH01_artefacts/Release/VST3/Harmonic H-01.vst3
 build-plugin/SequenceS01_artefacts/Release/VST3/Sequence S-01.vst3
+build-plugin/LoopL01_artefacts/Release/VST3/Loop L-01.vst3
 ```
 
 Each product has direct JUCE-adapter tests. The separate `vst3_smoke_host`
@@ -242,7 +258,7 @@ Clone the repository on the music machine, quit Cubase and Ableton, then run:
 ```
 
 The script builds and tests universal arm64+x86_64 bundles, verifies both
-architectures and signatures, and installs Density, Harmonic, and Sequence under
+architectures and signatures, and installs Density, Harmonic, Sequence, and Loop under
 `~/Library/Audio/Plug-Ins/VST3`. Existing copies are preserved as timestamped
 backups, and no `sudo` is used. Reopen the DAW and rescan VST3 plugins.
 
@@ -262,6 +278,8 @@ An explicit bundle path may be supplied when testing another build:
   "build-plugin-universal/HarmonicH01_artefacts/Release/VST3/Harmonic H-01.vst3"
 ./tools/install_sequence_macos.sh \
   "build-plugin-universal/SequenceS01_artefacts/Release/VST3/Sequence S-01.vst3"
+./tools/install_loop_macos.sh \
+  "build-plugin-universal/LoopL01_artefacts/Release/VST3/Loop L-01.vst3"
 ```
 
 ### Internal packaging rehearsal
@@ -393,9 +411,14 @@ Pressure at 100%, resonance at 85%, both filters active, and stereo output. It
 passes the local provisional 1% budget; native Intel, older Apple Silicon, and
 DAW/UI-open measurements remain external gates.
 
+Loop measured a 0.369393% five-run median on the same machine at 48 kHz / 127 samples with pitch,
+all transport modulation, degradation, and amplifier stages at worst case. It
+passes the local provisional 1% budget; captured-memory recall, native Intel,
+older Apple Silicon, and DAW/UI-open measurements remain open.
+
 ## Current release status
 
-Density, Harmonic, and Sequence are internal betas, not releases. Density has repository
+Density, Harmonic, Sequence, and Loop are internal prototypes, not releases. Density has repository
 evidence for 16 of its 25 release gates. Harmonic has the engineering boundary
 needed for first external tests; all three still require people, DAWs, and target
 hardware for:
@@ -431,6 +454,10 @@ sequence_dsp <- sequence_tests
       ^
       +------ Sequence JUCE instrument/UI <- sequence_plugin_tests
 
+loop_dsp     <- loop_tests <- loop_lab
+      ^
+      +------ Loop JUCE effect/UI <- loop_plugin_tests
+
 all VST3 bundles <- vst3_smoke_host (dynamic ABI load only)
 ```
 
@@ -453,6 +480,7 @@ apps/
   density/             production DSP, JUCE adapter, and editor
   harmonic/            independent four-band DSP, adapter, and editor
   sequence/            monophonic voice, host sequencer, adapter, and editor
+  loop/                capture memory, adapter, and editor
   dsp-lab/             offline renderer and measurement laboratory
   standalone-host/     minimal headless VST3 smoke host
 docs/
@@ -467,6 +495,8 @@ tests/
   density_plugin_tests.cpp
   harmonic_tests.cpp
   harmonic_plugin_tests.cpp
+  sequence_tests.cpp / sequence_plugin_tests.cpp
+  loop_tests.cpp / loop_plugin_tests.cpp
   realtime_audit_mac.cpp
 tools/                  repository-policy and provenance checks
 ```
@@ -513,7 +543,6 @@ and the smallest next action in its product documentation directory.
 
 ## Contributing
 
-Density is the only implementation priority until its release gates close.
 Changes should identify a concrete musical or engineering failure, preserve the
 DSP/UI/state boundaries, add the smallest deterministic regression check, and
 include before/after measurements for DSP work. Golden data is never updated

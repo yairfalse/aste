@@ -28,6 +28,8 @@
 | 2026-08-09 | Steinberg VST3 SDK 3.8.0 clean source-built arm64 validator, extensive | signed universal VST3 | Pass, 537/537 tests; pinned CI gate added |
 | 2026-08-09 | Steinberg VST3 SDK 3.8.0 arm64 validator, extensive | Harmonic H-01 universal arm64+x86_64 VST3, 12 parameters | Pass, 537/537 tests |
 | 2026-08-09 | pluginval 1.0.4 arm64, seed `0xa501` | Harmonic H-01 universal arm64+x86_64 VST3 | Pass, strictness 10 |
+| 2026-08-09 | GitHub Actions hosted matrix | Sequence S-01 commit `095adcc` | Pass: arm64/Intel core, ASan/UBSan, universal signature/slices, Steinberg extensive validation |
+| 2026-08-09 | repository headless VST3 host | Loop L-01 universal internal prototype | Pass, dynamic effect load, 19-parameter state, stereo processing, six irregular blocks |
 
 The run included cold/warm loading, editor open during processing, state and
 state restoration, background-thread state, parameter thread safety and fuzzing,
@@ -76,9 +78,9 @@ Intel execution or DAW evidence.
 
 | Host | Version | Products | Status |
 |---|---|---|---|
-| Cubase | 14 | Density, Harmonic | Not installed; not yet tested |
-| Ableton Live | 13/beta | Density, Harmonic | Not installed; not yet tested |
-| Additional VST3 host | Pending selection | Density, Harmonic | None installed; not yet tested |
+| Cubase | 14 | Density, Harmonic, Sequence, Loop | Awaiting music-machine run |
+| Ableton Live | 13/beta | Density, Harmonic, Sequence, Loop | Awaiting music-machine run |
+| Additional VST3 host | Pending selection | Density, Harmonic, Sequence, Loop | Not yet tested |
 
 An application inventory on 2026-08-07 confirmed that no target or additional
 VST3 DAW is installed on the current test machine.

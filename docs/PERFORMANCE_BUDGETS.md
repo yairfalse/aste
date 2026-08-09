@@ -151,3 +151,18 @@ Pressure at 100%, resonance at 85%, both filter structures active, stereo
 output, and the host-synchronised pattern. It measured 0.282010% of one M4 Pro
 performance core. This passes the local budget but is not evidence for native
 Intel, the oldest supported Apple Silicon, a loaded DAW, or the open editor.
+
+## Loop L-01 baseline
+
+Loop adopts a provisional budget below 1.0% of one performance core at 48 kHz /
+127 samples with stereo memory, pitch heads, transport modulation, degradation,
+and amplifier stages active. Its 30-second stereo memory is prepared before
+processing; callback allocations, locks, file access, writes, and latency must
+remain zero.
+
+On 2026-08-09, Release `loop_lab --benchmark` rendered 30 seconds with pitch at
++7 semitones and wow, flutter, drift, degradation, and amplifier at maximum. It
+measured a 0.369393% median of one M4 Pro performance core across five runs
+(0.366017–0.378431%). This passes the local budget
+but is not native Intel, oldest-supported Apple Silicon, loaded-DAW, or open-UI
+evidence.

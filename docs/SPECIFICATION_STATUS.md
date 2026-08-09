@@ -126,8 +126,9 @@ Status meanings:
 The repository architecture, visual language, historical-research policy, and
 product independence rules apply to all instruments. Harmonic's
 [research specification](products/harmonic/SPECIFICATION.md) is frozen;
-its lab algorithms remain **Later** than Density external validation. Loop and
-Impulse are deliberately later implementation milestones. Every product's DSP,
+its lab algorithms remain product-owned. Loop now has an independent prototype;
+captured-memory state and external host validation remain open. Impulse is the
+next implementation milestone. Every product's DSP,
 parameters, state, UI, and regression fixtures remain product-owned. Density
 does not gain speculative transport, pitch, rhythm, modulation, or amplifier
 libraries to make the future directory tree look complete.

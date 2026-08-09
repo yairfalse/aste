@@ -49,3 +49,6 @@ mutations. Its exact schema contract is in
 Sequence applies the same boundary to its voice and complete 16-step program;
 its exact contract is in
 [docs/products/sequence/STATE_FORMAT.md](products/sequence/STATE_FORMAT.md).
+Loop applies the scalar boundary to 19 controls. Its schema-1 prototype does not
+serialize captured sample memory; the exact limitation and migration boundary
+are in [docs/products/loop/STATE_FORMAT.md](products/loop/STATE_FORMAT.md).

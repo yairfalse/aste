@@ -23,6 +23,10 @@ sequence_dsp <- sequence_tests
       ^
       +------ Sequence JUCE instrument/UI <- sequence_plugin_tests
 
+loop_dsp     <- loop_tests <- loop_lab
+      ^
+      +------ Loop JUCE effect/UI <- loop_plugin_tests
+
 all VST3 bundles <- vst3_smoke_host (dynamic ABI load only)
 ```
 
@@ -101,6 +105,22 @@ inactive. Fixed arrays, oscillators, envelopes, filters, and MIDI scratch
 storage belong to the audio thread. The UI reads only lock-free meter and step
 snapshots. The product-local graph is zero-latency.
 
+## Loop L-01 graph
+
+```text
+audio + MIDI capture -> circular memory -> start/splice
+                     -> varispeed/reverse -> dual pitch heads
+                     -> wow/flutter/drift -> degradation/amplifier
+live input + memory -> mix -> output
+```
+
+Loop is a mono/stereo effect with a preallocated 30-second stereo buffer. The
+audio thread owns memory writes, playback positions, modulation, and meters.
+Host BPM selects synced duration without changing the stable beat parameter;
+free duration has its own seconds parameter. MIDI capture changes are processed
+at event offsets. The graph reports zero latency. Schema 1 stores controls but
+not captured audio; ADR 0009 records that explicit prototype boundary.
+
 ## Product philosophy
 
 The family exposes audible phenomena rather than circuit trivia. Interfaces
@@ -116,6 +136,8 @@ mastering limiter.
 
 ## Next product boundary
 
-Loop L-01 and Impulse I-01 remain specifications rather than source targets.
-Sequence consumes host transport locally; extraction waits for a second real
-consumer. Buffer, rhythm, resonator, and amplifier abstractions remain deferred.
+Impulse I-01 remains the next product source target. Sequence and Loop consume
+host timing locally with different contracts, so transport extraction remains
+deferred. Rhythm and resonator abstractions also remain deferred. Loop's bounded
+amplifier stays product-local until a second product needs identical measured
+behavior.
