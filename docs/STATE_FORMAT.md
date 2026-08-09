@@ -40,4 +40,4 @@ stable state bytes, and process identical finite audio after reset.
 Harmonic's first external boundary covers arbitrary bytes plus structured root,
 schema, product, identifier, duplicate, missing, non-finite, and extreme-value
 mutations. Its exact schema contract is in
-[docs/products/harmonic/STATE_FORMAT.md](docs/products/harmonic/STATE_FORMAT.md).
+[docs/products/harmonic/STATE_FORMAT.md](products/harmonic/STATE_FORMAT.md).

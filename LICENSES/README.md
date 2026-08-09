@@ -2,7 +2,7 @@
 
 No third-party source, manual, schematic, impulse response, or sample library is
 redistributed from this directory. The internal VST3 build fetches JUCE under
-the terms recorded in [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md). The
+the terms recorded in [THIRD_PARTY_NOTICES.md](../docs/THIRD_PARTY_NOTICES.md). The
 Steinberg VST3 SDK MIT text is retained here for the pinned CI-only validator
 source.
 

@@ -21,4 +21,4 @@ They are validation tooling, are not linked into Density, and are not included
 in product artifacts.
 
 - Source: https://github.com/steinbergmedia/vst3sdk/tree/v3.8.0_build_66
-- Licence: [LICENSES/Steinberg-VST3-SDK-MIT.txt](LICENSES/Steinberg-VST3-SDK-MIT.txt)
+- Licence: [LICENSES/Steinberg-VST3-SDK-MIT.txt](../LICENSES/Steinberg-VST3-SDK-MIT.txt)

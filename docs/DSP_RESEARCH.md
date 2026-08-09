@@ -6,9 +6,9 @@ decision is perceptual. A successful build is not evidence of sonic quality.
 
 Density's experiments, measurements, limitations, and selected production
 behavior are recorded in
-[docs/products/density/DSP_RESEARCH.md](docs/products/density/DSP_RESEARCH.md).
+[docs/products/density/DSP_RESEARCH.md](products/density/DSP_RESEARCH.md).
 Harmonic's pre-product topology results are recorded separately in
-[docs/products/harmonic/DSP_RESEARCH.md](docs/products/harmonic/DSP_RESEARCH.md).
+[docs/products/harmonic/DSP_RESEARCH.md](products/harmonic/DSP_RESEARCH.md).
 Cycle reports in `docs/products/density/` retain the before/after evidence and
 decision sequence. The executable methods are documented in [TESTING.md](TESTING.md).
 

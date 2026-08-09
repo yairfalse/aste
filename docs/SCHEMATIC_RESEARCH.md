@@ -5,7 +5,7 @@ bias, bandwidth, feedback, loading, and overload. They are not product
 blueprints or permission to copy branding.
 
 The link-only source ledger is
-[docs/research/schematics/catalog.yaml](docs/research/schematics/catalog.yaml).
+[docs/research/schematics/catalog.yaml](research/schematics/catalog.yaml).
 Every entry records manufacturer, product, approximate year, document origin,
 access status, relevant section, extracted principle, and whether it was only
 studied or also adapted or measured.

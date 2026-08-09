@@ -58,4 +58,4 @@ input/output transitions are smoothed without topology changes.
 
 The complete ranges, defaults, text behavior, automation contract, and
 maintainer-visible macro mapping are in
-[docs/products/harmonic/PARAMETERS.md](docs/products/harmonic/PARAMETERS.md).
+[docs/products/harmonic/PARAMETERS.md](products/harmonic/PARAMETERS.md).

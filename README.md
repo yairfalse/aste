@@ -73,7 +73,7 @@ change.
 Host bypass is the eleventh stable parameter. Every continuous control supports
 host automation, exact text entry, reset, normalization, documented smoothing,
 and deterministic state recall. Parameter IDs are treated as release contracts;
-see [PARAMETER_MODEL.md](PARAMETER_MODEL.md).
+see [PARAMETER_MODEL.md](docs/PARAMETER_MODEL.md).
 
 ### Sound and interface
 
@@ -86,7 +86,7 @@ The current 980×540 editor scales from 760×420 to 1520×840. It uses a near-bl
 surface, off-white technical typography, a muted burgundy accent, explicit
 keyboard order, editable values, and signal-driven meters. There are no tabs,
 fake materials, rack decorations, or hidden essential controls. The full family
-language is documented in [UI_SYSTEM.md](UI_SYSTEM.md).
+language is documented in [UI_SYSTEM.md](docs/UI_SYSTEM.md).
 
 ## Harmonic H-01
 
@@ -229,7 +229,7 @@ placeholder bundle identifiers. macOS may require locally allowing the bundle;
 they are for private host and musical validation, not distribution.
 
 For the prebuilt internal ZIP workflow, see
-[INSTALL_MACOS.md](INSTALL_MACOS.md).
+[INSTALL_MACOS.md](docs/INSTALL_MACOS.md).
 
 An explicit bundle path may be supplied when testing another build:
 
@@ -293,7 +293,7 @@ Common entry points:
 Most report modes accept an optional output file or directory after the flag.
 CTest invokes every deterministic report with known paths. Measurement methods,
 tolerances, and the meaning of each output column live in
-[TESTING.md](TESTING.md); algorithm decisions and rejected candidates live in
+[TESTING.md](docs/TESTING.md); algorithm decisions and rejected candidates live in
 [docs/products/density/DSP_RESEARCH.md](docs/products/density/DSP_RESEARCH.md).
 
 ## Engineering guarantees and evidence
@@ -325,7 +325,7 @@ validation has passed pluginval 1.0.4 at strictness 10 and the Steinberg VST3 SD
 3.8.0 extensive suite at 537/537. Density has arm64 and Rosetta x86_64 validator
 history; Harmonic's current universal beta has arm64 validator evidence and
 separate two-slice/ABI verification.
-The exact run history is in [HOST_COMPATIBILITY.md](HOST_COMPATIBILITY.md).
+The exact run history is in [HOST_COMPATIBILITY.md](docs/HOST_COMPATIBILITY.md).
 
 GitHub Actions builds the core on arm64 and Intel runners, builds a universal
 VST3, verifies its architectures and ad-hoc signature, and runs an arm64
@@ -340,14 +340,14 @@ lock, wait, log, access files or networks, resize containers, trigger lazy
 initialization, call blocking OS services, or throw through the callback.
 Buffers and mutable DSP state are prepared in advance. Non-finite input is
 sanitized and output must remain finite. Thread ownership and the limits of the
-runtime audit are documented in [REALTIME_SAFETY.md](REALTIME_SAFETY.md).
+runtime audit are documented in [REALTIME_SAFETY.md](docs/REALTIME_SAFETY.md).
 
 ### State
 
 Each product uses its own portable, versioned XML state document containing
 stable parameter IDs and scalar values. Unknown parameters are ignored, missing
 parameters receive defaults, duplicate IDs are rejected, and malformed state
-leaves the current configuration unchanged. See [STATE_FORMAT.md](STATE_FORMAT.md).
+leaves the current configuration unchanged. See [STATE_FORMAT.md](docs/STATE_FORMAT.md).
 
 ### Performance
 
@@ -356,7 +356,7 @@ performance core at 48 kHz / 128 samples under worst-case block-rate automation.
 This is comfortably below the provisional 1% target on that machine, but it is
 not evidence for the oldest supported Apple Silicon or a native Intel Mac. Full
 measurements and rejected oversampling budgets are in
-[PERFORMANCE_BUDGETS.md](PERFORMANCE_BUDGETS.md).
+[PERFORMANCE_BUDGETS.md](docs/PERFORMANCE_BUDGETS.md).
 
 Harmonic measured 0.682702% on the same class of machine at 48 kHz / 128
 samples while every band and its macro changed each block. This passes the
@@ -382,8 +382,8 @@ hardware for:
   and sparse material;
 - final signing, notarization, packaging, identity, and licensing review.
 
-The authoritative ledger is [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), and
-the next permitted work is in [ROADMAP.md](ROADMAP.md). Do not turn a green build
+The authoritative ledger is [RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md), and
+the next permitted work is in [ROADMAP.md](docs/ROADMAP.md). Do not turn a green build
 into a compatibility or fidelity claim.
 
 ## Architecture
@@ -450,28 +450,28 @@ study as measured hardware emulation.
 
 Research metadata and access status are recorded in
 [docs/research/schematics/catalog.yaml](docs/research/schematics/catalog.yaml).
-The policy is in [SCHEMATIC_RESEARCH.md](SCHEMATIC_RESEARCH.md), and the broader
-measurement standard is in [DSP_RESEARCH.md](DSP_RESEARCH.md).
+The policy is in [SCHEMATIC_RESEARCH.md](docs/SCHEMATIC_RESEARCH.md), and the broader
+measurement standard is in [DSP_RESEARCH.md](docs/DSP_RESEARCH.md).
 
 ## Documentation index
 
 | Document | Purpose |
 |---|---|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Product boundaries, signal graph, and ownership |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Product boundaries, signal graph, and ownership |
 | [docs/PRODUCT_PHILOSOPHY.md](docs/PRODUCT_PHILOSOPHY.md) | Family character and design principles |
-| [PARAMETER_MODEL.md](PARAMETER_MODEL.md) | Stable IDs, ranges, defaults, mappings, and smoothing |
-| [STATE_FORMAT.md](STATE_FORMAT.md) | Schema, validation, and state guarantees |
-| [REALTIME_SAFETY.md](REALTIME_SAFETY.md) | Audio-thread policy and runtime audits |
-| [TESTING.md](TESTING.md) | Test layers, lab protocols, and measurement tolerances |
-| [HOST_COMPATIBILITY.md](HOST_COMPATIBILITY.md) | Validator and host evidence |
-| [PERFORMANCE_BUDGETS.md](PERFORMANCE_BUDGETS.md) | CPU, memory, latency, and UI budgets |
-| [UI_SYSTEM.md](UI_SYSTEM.md) | Shared visual and interaction language |
-| [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) | All 25 Density release gates |
-| [SPECIFICATION_STATUS.md](SPECIFICATION_STATUS.md) | Master-brief requirements mapped to evidence, decisions, and external gates |
-| [ROADMAP.md](ROADMAP.md) | Current sequencing and explicit deferrals |
-| [RESEARCH_LOG.md](RESEARCH_LOG.md) | Research chronology |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Change requirements |
-| [SECURITY.md](SECURITY.md) | Prototype security reporting policy |
+| [PARAMETER_MODEL.md](docs/PARAMETER_MODEL.md) | Stable IDs, ranges, defaults, mappings, and smoothing |
+| [STATE_FORMAT.md](docs/STATE_FORMAT.md) | Schema, validation, and state guarantees |
+| [REALTIME_SAFETY.md](docs/REALTIME_SAFETY.md) | Audio-thread policy and runtime audits |
+| [TESTING.md](docs/TESTING.md) | Test layers, lab protocols, and measurement tolerances |
+| [HOST_COMPATIBILITY.md](docs/HOST_COMPATIBILITY.md) | Validator and host evidence |
+| [PERFORMANCE_BUDGETS.md](docs/PERFORMANCE_BUDGETS.md) | CPU, memory, latency, and UI budgets |
+| [UI_SYSTEM.md](docs/UI_SYSTEM.md) | Shared visual and interaction language |
+| [RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) | All 25 Density release gates |
+| [SPECIFICATION_STATUS.md](docs/SPECIFICATION_STATUS.md) | Master-brief requirements mapped to evidence, decisions, and external gates |
+| [ROADMAP.md](docs/ROADMAP.md) | Current sequencing and explicit deferrals |
+| [RESEARCH_LOG.md](docs/RESEARCH_LOG.md) | Research chronology |
+| [CONTRIBUTING.md](docs/CONTRIBUTING.md) | Change requirements |
+| [SECURITY.md](docs/SECURITY.md) | Prototype security reporting policy |
 
 Each substantial engineering cycle records what changed, why, evidence, risks,
 and the smallest next action in its product documentation directory.
@@ -482,7 +482,7 @@ Density is the only implementation priority until its release gates close.
 Changes should identify a concrete musical or engineering failure, preserve the
 DSP/UI/state boundaries, add the smallest deterministic regression check, and
 include before/after measurements for DSP work. Golden data is never updated
-automatically. Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a change.
+automatically. Read [CONTRIBUTING.md](docs/CONTRIBUTING.md) before opening a change.
 
 ## Licensing and distribution
 
@@ -493,7 +493,7 @@ The opt-in VST3 build fetches JUCE 8.0.13. JUCE is available under its EULA or
 AGPLv3; a closed-source distributable requires the applicable JUCE licence and
 reviewed notices. No third-party manuals, firmware, impulse responses, samples,
 or commercial plugin code are included. See
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and
+[THIRD_PARTY_NOTICES.md](docs/THIRD_PARTY_NOTICES.md) and
 [LICENSES/README.md](LICENSES/README.md).
 
 Do not distribute a plugin build until the company identity, project licence,

@@ -2,9 +2,9 @@
 
 Density research is recorded as immutable development-cycle evidence under
 `docs/products/density/`. The current algorithm narrative lives in
-[docs/products/density/DSP_RESEARCH.md](docs/products/density/DSP_RESEARCH.md),
+[docs/products/density/DSP_RESEARCH.md](products/density/DSP_RESEARCH.md),
 historical sources in
-[docs/research/schematics/catalog.yaml](docs/research/schematics/catalog.yaml),
+[docs/research/schematics/catalog.yaml](research/schematics/catalog.yaml),
 and architectural decisions in `docs/adr/`.
 
 Harmonic research is recorded under `docs/products/harmonic/`. Its first cycle

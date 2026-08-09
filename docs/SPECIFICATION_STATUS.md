@@ -18,7 +18,7 @@ Status meanings:
 
 | Requirement | Status | Evidence or closing action |
 |---|---|---|
-| Original mastering-oriented parallel dynamics instrument | Done | Product boundary and philosophy in [ARCHITECTURE.md](ARCHITECTURE.md) and [docs/PRODUCT_PHILOSOPHY.md](docs/PRODUCT_PHILOSOPHY.md). |
+| Original mastering-oriented parallel dynamics instrument | Done | Product boundary and philosophy in [ARCHITECTURE.md](ARCHITECTURE.md) and [docs/PRODUCT_PHILOSOPHY.md](PRODUCT_PHILOSOPHY.md). |
 | Independent clean and crush branches | Done | `DensityProcessor` graph and production golden renders. |
 | Phase-aligned dry path | Done | Zero measured branch latency; differential dry-path tests. |
 | Host latency matches algorithmic latency | Done | Production reports and measures zero at all supported rates. |
@@ -31,7 +31,7 @@ Status meanings:
 | Stable image on adversarial stereo fixtures | Done | Objective correlation/polarity fixtures pass; perceptual A/B/C remains external. |
 | Saturation and controlled clipping | Done | Production stages, alias reports, and golden renders. |
 | Honest output-protection claim | Done | Explicitly sample-peak protection, not true-peak limiting. |
-| Production quality/oversampling behavior | Accepted | [ADR 0002](docs/adr/0002-density-quality-latency.md) fixes 1x/zero latency; measured 4x candidates remain lab-only because whole-instance CPU exceeds budget. |
+| Production quality/oversampling behavior | Accepted | [ADR 0002](adr/0002-density-quality-latency.md) fixes 1x/zero latency; measured 4x candidates remain lab-only because whole-instance CPU exceeds budget. |
 | Auto gain | Accepted | Omitted until a mapping is proven musically trustworthy. |
 | Amplifier stage | Accepted | Optional in Density; no unvalidated coloration stage was added. |
 
@@ -82,7 +82,7 @@ Status meanings:
 
 | Requirement | Status | Evidence or closing action |
 |---|---|---|
-| Lawful schematic source catalog with required metadata | Done | Link-only [catalog.yaml](docs/research/schematics/catalog.yaml). |
+| Lawful schematic source catalog with required metadata | Done | Link-only [catalog.yaml](research/schematics/catalog.yaml). |
 | 1970s/1980s compressor, limiter, line-amplifier, clipping references | Done | Source ledger and extracted engineering principles. |
 | No redistributed manuals, firmware, IR libraries, samples, or branding | Done | Repository policy and source inventory. |
 | Fidelity vocabulary tied to evidence | Done | No exact-emulation claim; measured production claims only. |
@@ -94,7 +94,7 @@ Status meanings:
 | Requirement | Status | Evidence or closing action |
 |---|---|---|
 | Modern C++20, CMake, strict warnings | Done | All product targets use C++20 and `-Wall -Wextra -Wpedantic -Werror`. |
-| Framework decision before integration | Done | [ADR 0001](docs/adr/0001-plugin-framework.md). |
+| Framework decision before integration | Done | [ADR 0001](adr/0001-plugin-framework.md). |
 | Independent VST3 binary | Done | Universal Density D-01 VST3 bundle. |
 | arm64 and x86_64 universal artifact | Done | CI slice and signature inspection. |
 | Formatting gate | Done | Tracked C++ is normalized by `.clang-format`; CI runs check-only verification. |
@@ -125,7 +125,7 @@ Status meanings:
 
 The repository architecture, visual language, historical-research policy, and
 product independence rules apply to all four instruments. Harmonic's
-[research specification](docs/products/harmonic/SPECIFICATION.md) is frozen;
+[research specification](products/harmonic/SPECIFICATION.md) is frozen;
 its lab algorithms remain **Later** than Density external validation. Loop and
 Impulse are deliberately later implementation milestones. Every product's DSP,
 parameters, state, UI, and regression fixtures remain product-owned. Density
