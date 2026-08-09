@@ -139,6 +139,29 @@ production topology or authorize parameter IDs. A harmonic bin that aliases
 exactly onto the test fundamental is marked unobservable and excluded from that
 row's H3 gate; it is not reported as clean or silently treated as a failure.
 
+### Candidate 3 advance gate
+
+Before rendering the stateful candidate, its lab graph and advance gate are
+fixed as follows:
+
+- use a topology-preserving state-variable band section at Q 0.9;
+- interpolate its band-integrator state continuously from linear to bounded
+  `tanh` behavior while Harmonic moves from 0 to 1;
+- move the bounded-stage drive continuously from 1 to 3;
+- add eight percent of the nonlinear-minus-linear band state to the unchanged
+  proportional-Q contour at full Harmonic;
+- apply the same centers, levels, gain, phase, macro-H3, cut, collision, folded
+  harmonic, and two-tone protocol as Candidate 2;
+- require exact neutral silence, finite impulse and overload output, and a
+  maximum tail below -120 dBFS during the final 100 ms after two seconds of
+  silent recovery from a 0.9-peak, 100 ms centered sine;
+- report maximum impulse and overload peak without inventing a preferred
+  ceiling before comparison evidence exists.
+
+Passing retains the topology for direct comparison with Candidate 2. It does
+not select the state-variable structure, its Q, the eight-percent mapping, or
+any anti-alias strategy for production.
+
 ## UI direction
 
 Harmonic uses the family matte-black surface, off-white typography, and a warm

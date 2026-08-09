@@ -116,6 +116,11 @@ add_test(NAME harmonic_preemphasis_compare
   COMMAND harmonic_lab --preemphasis
           "${CMAKE_CURRENT_BINARY_DIR}/harmonic-preemphasis-tone.csv"
           "${CMAKE_CURRENT_BINARY_DIR}/harmonic-preemphasis-imd.csv")
+add_test(NAME harmonic_stateful_compare
+  COMMAND harmonic_lab --stateful
+          "${CMAKE_CURRENT_BINARY_DIR}/harmonic-stateful-tone.csv"
+          "${CMAKE_CURRENT_BINARY_DIR}/harmonic-stateful-imd.csv"
+          "${CMAKE_CURRENT_BINARY_DIR}/harmonic-stateful-dynamics.csv")
 add_test(NAME density_detector_compare
   COMMAND density_lab --detector-compare
           "${CMAKE_CURRENT_BINARY_DIR}/density_detector_compare.csv")

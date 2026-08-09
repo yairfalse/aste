@@ -50,9 +50,12 @@ Harmonic's linear reference is established. The first nonlinear residual
 candidate is rejected because full Harmonic collapses a +12 dB contour to about
 +2.16 dB. The pre-emphasis/nonlinear/de-emphasis candidate passes its frozen
 six-rate advance gate while exposing roughly -41.4 dBc worst third-order IMD
-and -50.3 dBc worst folded-harmonic proxy. It remains a lab candidate. The next
-cycle is the stateful nonlinear-filter graph, followed by multi-band interaction
-and level-matched listening comparisons rather than a premature VST3 shell.
+and -50.3 dBc worst folded-harmonic proxy. The bounded state-variable candidate
+also passes, with 0.138 dB worst gated contour error, -55.1 dBc worst IMD, and a
+-57.4 dBc worst folded-harmonic proxy. Both remain lab candidates. The next
+cycle compares serial and parallel multi-band interaction, differential alias,
+automation, CPU, and level-matched listening rather than building a premature
+VST3 shell.
 
 ## Explicitly deferred
 

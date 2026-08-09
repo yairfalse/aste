@@ -10,7 +10,10 @@ and architectural decisions in `docs/adr/`.
 Harmonic research is recorded under `docs/products/harmonic/`. Its first cycle
 freezes the product boundary, the second establishes the linear reference and
 rejects residual excitation, and the third advances a pre-emphasis candidate
-through a frozen multi-rate gate while retaining its IMD and alias risks.
+through a frozen multi-rate gate while retaining its IMD and alias risks. Cycle
+four advances a bounded state-variable candidate with stronger initial contour,
+IMD, alias-proxy, step, and recovery evidence; neither survivor is production
+DSP.
 
 Recent sequence:
 

@@ -22,6 +22,10 @@ in CTest and write CSV. The second command reports measurement validity and the
 separate frozen-gate decision, so a rejected candidate remains reproducible
 evidence rather than a broken test. Harmonic collisions with the fundamental
 are marked unobservable instead of being misreported as distortion.
+`--stateful` applies that same matrix to the bounded state-variable candidate
+and adds neutral-silence, impulse, step, overload, two-second recovery, and
+steady-state error evidence. It also runs in CTest; the frozen advance decision
+is reported separately from finite measurement validity.
 
 CTest runs the check. `density_lab` renders a deterministic amplitude-stepped
 sine to CSV and prints machine-readable peak/RMS/gain-reduction measurements.

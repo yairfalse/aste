@@ -121,6 +121,69 @@ struct PreEmphasisExciter {
   }
 };
 
+struct StateVariableBand {
+  double g{};
+  double a1{};
+  double a2{};
+  double a3{};
+  double state1{};
+  double state2{};
+
+  static StateVariableBand make(double sampleRate, double frequency, double q) {
+    const double g = std::tan(std::numbers::pi * frequency / sampleRate);
+    const double k = 1.0 / q;
+    const double a1 = 1.0 / (1.0 + g * (g + k));
+    return {
+        .g = g,
+        .a1 = a1,
+        .a2 = g * a1,
+        .a3 = g * g * a1,
+    };
+  }
+
+  double process(double input, double amount) {
+    const double v3 = input - state2;
+    const double linearBand = a1 * state1 + a2 * v3;
+    const double drive = 1.0 + 2.0 * amount;
+    const double boundedBand = std::tanh(drive * linearBand) / drive;
+    const double band = linearBand + amount * (boundedBand - linearBand);
+    const double low = state2 + g * band;
+    state1 = 2.0 * band - state1;
+    state2 = 2.0 * low - state2;
+    return band;
+  }
+};
+
+struct StatefulExciter {
+  PeakFilter linearContour;
+  StateVariableBand linearBand;
+  StateVariableBand nonlinearBand;
+  double gainDb{};
+  double harmonic{};
+
+  static StatefulExciter make(double sampleRate, double frequency, double gain,
+                              double amount) {
+    return {
+        .linearContour =
+            PeakFilter::make(sampleRate, frequency, proportionalQ(gain), gain),
+        .linearBand = StateVariableBand::make(sampleRate, frequency, 0.9),
+        .nonlinearBand = StateVariableBand::make(sampleRate, frequency, 0.9),
+        .gainDb = gain,
+        .harmonic = amount,
+    };
+  }
+
+  double process(double input) {
+    const double linear = linearContour.process(input);
+    if (gainDb <= 0.0) {
+      return linear;
+    }
+    const double reference = linearBand.process(input, 0.0);
+    const double coloured = nonlinearBand.process(input, harmonic);
+    return linear + 0.08 * harmonic * (coloured - reference);
+  }
+};
+
 double decibels(double value) {
   return 20.0 * std::log10(std::max(value, 1.0e-15));
 }
@@ -431,9 +494,15 @@ struct CandidateResult {
   double canonicalThirdDbc{-300.0};
   double worstFoldedOddProxyDbc{-300.0};
   double worstImdDbc{-300.0};
+  double maximumImpulsePeak{};
+  double maximumOverloadPeak{};
+  double maximumStepSteadyError{};
+  double worstRecoveryDbfs{-300.0};
 };
 
-CandidateResult renderPreEmphasis(const char* tonePath, const char* imdPath) {
+template <typename Factory>
+CandidateResult renderCandidate(const char* tonePath, const char* imdPath,
+                                Factory makeProcessor) {
   constexpr std::array<double, 6> rates{44100.0, 48000.0,  88200.0,
                                         96000.0, 176400.0, 192000.0};
   constexpr std::array<double, 5> centres{80.0, 400.0, 1000.0, 4000.0, 12000.0};
@@ -454,8 +523,7 @@ CandidateResult renderPreEmphasis(const char* tonePath, const char* imdPath) {
 
   for (double sampleRate : rates) {
     for (double centre : centres) {
-      PreEmphasisExciter neutral =
-          PreEmphasisExciter::make(sampleRate, centre, 0.0, 1.0);
+      auto neutral = makeProcessor(sampleRate, centre, 0.0, 1.0);
       double neutralNull = 0.0;
       for (int sample = 0; sample < 1024; ++sample) {
         const double input = sample == 0 ? 1.0 : 0.0;
@@ -465,9 +533,9 @@ CandidateResult renderPreEmphasis(const char* tonePath, const char* imdPath) {
       result.valid = result.valid && neutralNull == 0.0;
 
       for (double level : levels) {
-        const auto spectrum = measureExtended(
-            PreEmphasisExciter::make(sampleRate, centre, 12.0, 1.0), sampleRate,
-            centre, level);
+        const auto spectrum =
+            measureExtended(makeProcessor(sampleRate, centre, 12.0, 1.0),
+                            sampleRate, centre, level);
         const double measuredGainDb = decibels(spectrum.fundamental / level);
         const double gainErrorDb = measuredGainDb - 12.0;
         const double phaseErrorDegrees = spectrum.phaseDegrees;
@@ -493,9 +561,9 @@ CandidateResult renderPreEmphasis(const char* tonePath, const char* imdPath) {
             std::max(result.worstFoldedOddProxyDbc, spectrum.foldedOddProxyDbc);
       }
 
-      const auto cut = measureExtended(
-          PreEmphasisExciter::make(sampleRate, centre, -12.0, 1.0), sampleRate,
-          centre, 0.5);
+      const auto cut =
+          measureExtended(makeProcessor(sampleRate, centre, -12.0, 1.0),
+                          sampleRate, centre, 0.5);
       const double cutGainDb = decibels(cut.fundamental / 0.5);
       const bool cutAdvances =
           cut.finite && (!cut.thirdObservable || cut.thirdDbc < -140.0);
@@ -510,9 +578,9 @@ CandidateResult renderPreEmphasis(const char* tonePath, const char* imdPath) {
 
     double previousThirdDbc = -301.0;
     for (double amount : amounts) {
-      const auto spectrum = measureExtended(
-          PreEmphasisExciter::make(sampleRate, kCentreHz, 12.0, amount),
-          sampleRate, kCentreHz, kInputPeak);
+      const auto spectrum =
+          measureExtended(makeProcessor(sampleRate, kCentreHz, 12.0, amount),
+                          sampleRate, kCentreHz, kInputPeak);
       const double measuredGainDb = decibels(spectrum.fundamental / kInputPeak);
       const bool monotonic = spectrum.thirdDbc >= previousThirdDbc - 0.01;
       const bool canonicalRange =
@@ -536,13 +604,13 @@ CandidateResult renderPreEmphasis(const char* tonePath, const char* imdPath) {
 
     for (double amount : {0.0, 1.0}) {
       const auto smpte =
-          measureImd(PreEmphasisExciter::make(sampleRate, 7000.0, 12.0, amount),
+          measureImd(makeProcessor(sampleRate, 7000.0, 12.0, amount),
                      sampleRate, 60.0, 0.32, 7000.0, 0.08, {6880.0, 7120.0});
       imd << sampleRate << ",smpte," << amount << ',' << smpte.productDbc << ','
           << smpte.finite << '\n';
       const auto ccif = measureImd(
-          PreEmphasisExciter::make(sampleRate, 19500.0, 12.0, amount),
-          sampleRate, 19000.0, 0.2, 20000.0, 0.2, {18000.0, 21000.0});
+          makeProcessor(sampleRate, 19500.0, 12.0, amount), sampleRate, 19000.0,
+          0.2, 20000.0, 0.2, {18000.0, 21000.0});
       imd << sampleRate << ",ccif," << amount << ',' << ccif.productDbc << ','
           << ccif.finite << '\n';
       result.valid = result.valid && smpte.finite && ccif.finite;
@@ -554,6 +622,134 @@ CandidateResult renderPreEmphasis(const char* tonePath, const char* imdPath) {
   }
 
   result.valid = result.valid && tones.good() && imd.good();
+  result.advances = result.advances && result.valid;
+  return result;
+}
+
+CandidateResult renderPreEmphasis(const char* tonePath, const char* imdPath) {
+  return renderCandidate(
+      tonePath, imdPath,
+      [](double sampleRate, double frequency, double gain, double amount) {
+        return PreEmphasisExciter::make(sampleRate, frequency, gain, amount);
+      });
+}
+
+CandidateResult renderStateful(const char* tonePath, const char* imdPath,
+                               const char* dynamicsPath) {
+  CandidateResult result = renderCandidate(
+      tonePath, imdPath,
+      [](double sampleRate, double frequency, double gain, double amount) {
+        return StatefulExciter::make(sampleRate, frequency, gain, amount);
+      });
+  constexpr std::array<double, 6> rates{44100.0, 48000.0,  88200.0,
+                                        96000.0, 176400.0, 192000.0};
+  constexpr std::array<double, 5> centres{80.0, 400.0, 1000.0, 4000.0, 12000.0};
+  std::ofstream dynamics{dynamicsPath};
+  if (!dynamics) {
+    result.valid = false;
+    result.advances = false;
+    return result;
+  }
+  dynamics << "sample_rate,test,centre_hz,peak,steady_error,tail_dbfs,finite,"
+              "advance_gate\n";
+
+  for (double sampleRate : rates) {
+    for (double centre : centres) {
+      auto neutral = StatefulExciter::make(sampleRate, centre, 0.0, 1.0);
+      double neutralPeak = 0.0;
+      for (int sample = 0; sample < 1024; ++sample) {
+        neutralPeak = std::max(neutralPeak, std::abs(neutral.process(0.0)));
+      }
+      const bool neutralAdvances = neutralPeak == 0.0;
+      dynamics << sampleRate << ",neutral," << centre << ',' << neutralPeak
+               << ",0,-300," << neutralAdvances << ',' << neutralAdvances
+               << '\n';
+
+      auto impulse = StatefulExciter::make(sampleRate, centre, 12.0, 1.0);
+      const std::size_t recoveryFrames =
+          static_cast<std::size_t>(sampleRate * 2.0);
+      const std::size_t tailFrames = static_cast<std::size_t>(sampleRate * 0.1);
+      double impulsePeak = 0.0;
+      double impulseTail = 0.0;
+      bool impulseFinite = true;
+      for (std::size_t sample = 0; sample < recoveryFrames; ++sample) {
+        const double output = impulse.process(sample == 0 ? 1.0 : 0.0);
+        impulseFinite = impulseFinite && std::isfinite(output);
+        impulsePeak = std::max(impulsePeak, std::abs(output));
+        if (sample >= recoveryFrames - tailFrames) {
+          impulseTail = std::max(impulseTail, std::abs(output));
+        }
+      }
+      const bool impulseAdvances = impulseFinite && impulseTail < 1.0e-6;
+      dynamics << sampleRate << ",impulse," << centre << ',' << impulsePeak
+               << ",0," << decibels(impulseTail) << ',' << impulseFinite << ','
+               << impulseAdvances << '\n';
+
+      auto step = StatefulExciter::make(sampleRate, centre, 12.0, 1.0);
+      const std::size_t stepFrames = static_cast<std::size_t>(sampleRate * 0.5);
+      double stepPeak = 0.0;
+      double stepSteadyError = 0.0;
+      double stepTail = 0.0;
+      bool stepFinite = true;
+      for (std::size_t sample = 0; sample < stepFrames + recoveryFrames;
+           ++sample) {
+        const double input = sample < stepFrames ? 0.5 : 0.0;
+        const double output = step.process(input);
+        stepFinite = stepFinite && std::isfinite(output);
+        stepPeak = std::max(stepPeak, std::abs(output));
+        if (sample >= stepFrames - tailFrames && sample < stepFrames) {
+          stepSteadyError = std::max(stepSteadyError, std::abs(output - input));
+        }
+        if (sample >= stepFrames + recoveryFrames - tailFrames) {
+          stepTail = std::max(stepTail, std::abs(output));
+        }
+      }
+      dynamics << sampleRate << ",step," << centre << ',' << stepPeak << ','
+               << stepSteadyError << ',' << decibels(stepTail) << ','
+               << stepFinite << ',' << stepFinite << '\n';
+
+      auto overload = StatefulExciter::make(sampleRate, centre, 12.0, 1.0);
+      const std::size_t drivenFrames =
+          static_cast<std::size_t>(sampleRate * 0.1);
+      double overloadPeak = 0.0;
+      double overloadTail = 0.0;
+      bool overloadFinite = true;
+      for (std::size_t sample = 0; sample < drivenFrames + recoveryFrames;
+           ++sample) {
+        const double input =
+            sample < drivenFrames
+                ? 0.9 * std::sin(2.0 * std::numbers::pi * centre *
+                                 static_cast<double>(sample) / sampleRate)
+                : 0.0;
+        const double output = overload.process(input);
+        overloadFinite = overloadFinite && std::isfinite(output);
+        overloadPeak = std::max(overloadPeak, std::abs(output));
+        if (sample >= drivenFrames + recoveryFrames - tailFrames) {
+          overloadTail = std::max(overloadTail, std::abs(output));
+        }
+      }
+      const bool overloadAdvances = overloadFinite && overloadTail < 1.0e-6;
+      dynamics << sampleRate << ",overload," << centre << ',' << overloadPeak
+               << ",0," << decibels(overloadTail) << ',' << overloadFinite
+               << ',' << overloadAdvances << '\n';
+
+      result.valid = result.valid && neutralAdvances && impulseFinite &&
+                     stepFinite && overloadFinite;
+      result.advances = result.advances && neutralAdvances && impulseAdvances &&
+                        stepFinite && overloadAdvances;
+      result.maximumImpulsePeak =
+          std::max(result.maximumImpulsePeak, impulsePeak);
+      result.maximumOverloadPeak =
+          std::max(result.maximumOverloadPeak, overloadPeak);
+      result.maximumStepSteadyError =
+          std::max(result.maximumStepSteadyError, stepSteadyError);
+      result.worstRecoveryDbfs =
+          std::max({result.worstRecoveryDbfs, decibels(impulseTail),
+                    decibels(stepTail), decibels(overloadTail)});
+    }
+  }
+
+  result.valid = result.valid && dynamics.good();
   result.advances = result.advances && result.valid;
   return result;
 }
@@ -581,7 +777,25 @@ int main(int argc, char** argv) {
               << ",\"worst_imd_dbc\":" << result.worstImdDbc << "}\n";
     return result.valid ? 0 : 1;
   }
+  if (argc == 5 && std::string_view{argv[1]} == "--stateful") {
+    const CandidateResult result = renderStateful(argv[2], argv[3], argv[4]);
+    std::cout << "{\"candidate\":\"stateful\",\"valid\":" << std::boolalpha
+              << result.valid << ",\"advances\":" << result.advances
+              << ",\"max_gain_error_db\":" << result.maximumGainErrorDb
+              << ",\"max_phase_error_deg\":" << result.maximumPhaseErrorDegrees
+              << ",\"canonical_h3_dbc\":" << result.canonicalThirdDbc
+              << ",\"worst_folded_odd_proxy_dbc\":"
+              << result.worstFoldedOddProxyDbc
+              << ",\"worst_imd_dbc\":" << result.worstImdDbc
+              << ",\"max_impulse_peak\":" << result.maximumImpulsePeak
+              << ",\"max_overload_peak\":" << result.maximumOverloadPeak
+              << ",\"max_step_steady_error\":" << result.maximumStepSteadyError
+              << ",\"worst_recovery_dbfs\":" << result.worstRecoveryDbfs
+              << "}\n";
+    return result.valid ? 0 : 1;
+  }
   std::cerr << "usage: harmonic_lab --compare OUTPUT.csv\n"
-               "       harmonic_lab --preemphasis TONE.csv IMD.csv\n";
+               "       harmonic_lab --preemphasis TONE.csv IMD.csv\n"
+               "       harmonic_lab --stateful TONE.csv IMD.csv DYNAMICS.csv\n";
   return 2;
 }

@@ -75,12 +75,43 @@ and folded proxy, and preserves the raw bin value. This prevents a linear cut
 from being falsely classified as 0 dBc distortion. Alias figures remain a
 coherent-bin proxy rather than a high-rate differential measurement.
 
+## Candidate 3 — bounded state-variable filter
+
+Status: advances through the frozen lab gate; retained beside Candidate 2, not
+selected for production.
+
+The candidate runs matching linear and nonlinear topology-preserving
+state-variable band sections at Q 0.9. Harmonic continuously interpolates the
+nonlinear section's band-integrator update from its linear value to a bounded
+`tanh` value while drive moves from 1 to 3. At full Harmonic, eight percent of
+the nonlinear-minus-linear band state is added over the unchanged
+proportional-Q contour. Cuts remain explicitly linear. This is a deliberately
+small behavioral experiment, not a circuit model or a formal zero-delay
+nonlinear solve.
+
+The shared Candidate 2 matrix gives a direct comparison. Through 0.5 peak,
+Candidate 3's worst center-gain error is 0.138 dB; its worst error at 0.9 peak
+is 0.145 dB. Worst phase error is 0.0316 degrees. Canonical full-macro H3 spans
+-62.47 to -61.24 dBc across rates and rises monotonically. Observable cut H3
+again remains below -206.5 dBc.
+
+Its worst folded odd-harmonic proxy is -57.42 dBc, 7.13 dB below Candidate 2's
+worst result. Active two-tone products span -119.60 to -55.12 dBc; the worst is
+13.75 dB below Candidate 2's -41.38 dBc result. These are coherent-bin proxy
+comparisons, not a production anti-alias decision.
+
+All 120 state rows are finite. Maximum impulse peak is 1.513 and maximum
+0.9-peak overload output is 3.542. After two seconds of silence, impulse, step,
+and overload tails fall below the -300 dBFS reporting floor. A 0.5-level step
+settles with at most `8.1e-12` absolute steady-state error. Neutral silence is
+exact. Two complete renders of all three CSV files are byte-identical.
+
 ## Decision
 
-Keep the linear filter as the reference and the second candidate as a live lab
-comparison. Do not promote or tune the first residual topology. Candidate 2
-passes its predeclared gate without post-measurement threshold changes, but its
-strong IMD and folded-harmonic results prevent a production decision. The next
-candidate is the stateful nonlinear-filter graph; both survivors then require
-multi-band interaction, differential alias measurement, and level-matched
-listening before selection.
+Keep the linear filter as the reference and Candidates 2 and 3 as live lab
+comparisons. Do not promote or tune the first residual topology. Candidate 3
+has the stronger initial objective result, but objective cleanliness alone does
+not establish the product's useful nonlinear identity. Both survivors now
+require serial and parallel multi-band interaction, differential alias
+measurement, automation and block-schedule tests, CPU measurement, and
+level-matched listening before selection.
