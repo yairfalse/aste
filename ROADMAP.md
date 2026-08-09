@@ -10,6 +10,11 @@ publishing an artifact. The exact packaged dependencies also have an offline,
 the archive. Do not add new production DSP until the current blind packs have
 been reviewed.
 
+The authoritative master-brief audit is
+[SPECIFICATION_STATUS.md](SPECIFICATION_STATUS.md). Before external validation,
+close its four local `Open` rows: product presets, formatting, static analysis,
+and immutable workflow-action pins.
+
 Remaining release work:
 
 1. Complete the automation, Density-macro, stereo-link, detector, and

@@ -394,6 +394,7 @@ measurement standard is in [DSP_RESEARCH.md](DSP_RESEARCH.md).
 | [PERFORMANCE_BUDGETS.md](PERFORMANCE_BUDGETS.md) | CPU, memory, latency, and UI budgets |
 | [UI_SYSTEM.md](UI_SYSTEM.md) | Shared visual and interaction language |
 | [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) | All 25 Density release gates |
+| [SPECIFICATION_STATUS.md](SPECIFICATION_STATUS.md) | Master-brief requirements mapped to evidence, decisions, and external gates |
 | [ROADMAP.md](ROADMAP.md) | Current sequencing and explicit deferrals |
 | [RESEARCH_LOG.md](RESEARCH_LOG.md) | Research chronology |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Change requirements |

@@ -19,6 +19,7 @@ REQUIRED = (
     "ROADMAP.md",
     "SCHEMATIC_RESEARCH.md",
     "SECURITY.md",
+    "SPECIFICATION_STATUS.md",
     "STATE_FORMAT.md",
     "TESTING.md",
     "UI_SYSTEM.md",
