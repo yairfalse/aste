@@ -15,13 +15,14 @@ Recent sequence:
 - Cycles 36–42: automation measurement and smoothing corrections.
 - Cycles 43–47: blind audition packs, stereo stability, Density monotonicity,
   and deterministic keyboard navigation.
-- Cycles 48–62: repository policies, CI foundation, complete parameter text
+- Cycles 48–63: repository policies, CI foundation, complete parameter text
   contracts, build provenance, x86_64/universal VST3 validation, standalone
   binary-host smoke testing, macOS 15 parser portability, and compiler-aware
   warning policy, public CI diagnostics, generated-tree policy isolation, and
   CI-enforced independent VST3 validation, followed by deterministic internal
   package inspection, deterministic SPDX dependency evidence, and an expiring
-  advisory review bound to the exact packaged dependency pins.
+  advisory review bound to the exact packaged dependency pins and carried into
+  the archive with a repository-known digest and expiry.
 
 New entries belong in a cycle report with the required What changed, Why,
 Evidence, Risks, and Next step sections. Chat history is not an engineering log.

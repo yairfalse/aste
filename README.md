@@ -194,7 +194,9 @@ python3 tools/package_density.py verify \
 The archive is explicitly marked `internal-development-only`. It is ad-hoc
 signed, uses the placeholder bundle identity, is not notarized, and must not be
 distributed. It includes a deterministic SPDX 2.3 SBOM for Density, pinned JUCE,
-and JUCE's bundled VST3 SDK. The format decisions are
+JUCE's bundled VST3 SDK, and the exact reviewed dependency-security ledger.
+`PACKAGE.json` binds the ledger's SHA-256, review date, expiry, and disposition;
+normal inspection rejects expired or altered evidence. The format decisions are
 [ADR 0004](docs/adr/0004-internal-package-format.md) and
 [ADR 0005](docs/adr/0005-spdx-sbom.md).
 

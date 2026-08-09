@@ -10,7 +10,8 @@ signing, notarization, or distribution approval. Its SPDX SBOM records
 unresolved licence conclusions as `NOASSERTION`.
 The packaged JUCE and VST3 SDK pins have no known affected advisories in the
 reviewed OSV, publisher, and NVD evidence current through 2026-11-07. This dated
-result is enforced by CTest and is not a vulnerability-free claim.
+result is enforced by CTest, embedded and digest-bound in the internal package,
+and is not a vulnerability-free claim.
 
 ## Gate ledger
 

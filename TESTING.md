@@ -53,6 +53,12 @@ The inspector also reconstructs the embedded SPDX 2.3 SBOM and requires exact
 Density, pinned JUCE, and JUCE-bundled VST3 SDK package identities plus their
 four reviewed relationships. Unresolved licence conclusions must remain
 `NOASSERTION`.
+The same inspector requires the exact embedded dependency-security ledger,
+reconstructs its `PACKAGE.json` digest/date/expiry/disposition fields, and
+re-runs its policy validation. Direct tampering is covered by the file
+inventory; even a rewritten inventory is rejected by the repository-known
+ledger digest. Default inspection uses the current date. `--as-of` is reserved
+for expiry tests and historical inspection, not release approval.
 
 CTest also validates the reviewed dependency-security ledger without network
 access. It requires OSV exact-commit, publisher-advisory, and NVD evidence for

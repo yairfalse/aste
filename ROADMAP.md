@@ -6,8 +6,9 @@ The first working VST3, DSP lab, state model, industrial editor, and automated
 foundation exist. A deterministic internal package rehearsal now checks bundle
 contents, provenance, and an SPDX dependency bill of materials without
 publishing an artifact. The exact packaged dependencies also have an offline,
-90-day expiring advisory review. Do not add new production DSP until the
-current blind packs have been reviewed.
+90-day expiring advisory review whose digest and validity window travel inside
+the archive. Do not add new production DSP until the current blind packs have
+been reviewed.
 
 Remaining release work:
 

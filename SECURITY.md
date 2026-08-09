@@ -23,3 +23,6 @@ pins and expires it after 90 days. "No known affected advisories" is a dated
 search result, not a claim that the dependencies are vulnerability-free. The
 review method is recorded in
 [ADR 0006](docs/adr/0006-expiring-dependency-security-review.md).
+The internal package embeds that exact ledger and binds its digest, review
+date, expiry, and disposition into `PACKAGE.json`. Rewriting the archive's own
+checksum inventory cannot replace the repository-reviewed digest.

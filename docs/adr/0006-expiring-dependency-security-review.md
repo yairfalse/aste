@@ -24,6 +24,11 @@ audited commit, missing historical advisories, future dates, or a review older
 than 90 days. CTest runs the checker offline. Updating a dependency or reaching
 the expiry date therefore requires a new network review and committed evidence.
 
+The package embeds the exact ledger bytes. Its policy record carries the
+ledger SHA-256, review date, expiry, and disposition, while the verifier pins
+the reviewed digest in repository code. Recomputing an archive's internal
+checksums therefore cannot substitute altered security evidence.
+
 This ledger covers packaged runtime dependencies only. The standalone
 validator checkout, GitHub Actions, build tools, and macOS system libraries are
 separate operational dependencies and are not represented as product contents.

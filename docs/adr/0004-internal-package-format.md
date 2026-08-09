@@ -13,8 +13,8 @@ could violate unresolved licensing requirements.
 
 The `density_package` target creates one uncompressed ZIP for internal CI use.
 It contains the signed universal VST3, build provenance, machine-readable
-package policy, third-party notices, an explicit non-distribution warning, and
-a SHA-256 inventory.
+package policy, third-party notices, the reviewed dependency-security ledger,
+an explicit non-distribution warning, and a SHA-256 inventory.
 
 The standard-library packager fixes entry order, timestamps, permissions, and
 compression method; rejects symlinks and unsafe paths; verifies bundle identity,
@@ -22,6 +22,12 @@ version, arm64/x86_64 slices, and ad-hoc signing; and renders twice before
 writing. CI independently reopens the archive, verifies every checksum, and
 requires a clean source commit. The archive is discarded after CI and is not
 uploaded as a release artifact.
+
+Package metadata carries the security ledger's repository-known SHA-256,
+review date, expiry, and disposition. Inspection validates the embedded ledger
+against that digest and the exact packaged dependency pins, and rejects it
+after expiry. The optional `--as-of` clock exists for deterministic negative
+tests and historical inspection; CI always uses the current date.
 
 ## Consequences
 

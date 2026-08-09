@@ -3,6 +3,7 @@
 
 import argparse
 from datetime import date, timedelta
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -46,7 +47,7 @@ def parse_day(value, field, errors):
         return date.min
 
 
-def validate(audit, root, today):
+def validate(audit, today):
     errors = []
     if not isinstance(audit, dict):
         return ["audit root must be an object"]
@@ -135,14 +136,21 @@ def validate(audit, root, today):
         if by_kind["nvd-keyword"].get("result_count") != len(advisories) + len(excluded):
             errors.append(f"{component_id} NVD result accounting is incomplete")
 
+    return errors
+
+
+def validate_source_pins(root, audit_bytes):
+    errors = []
     cmake = (root / "CMakeLists.txt").read_text(encoding="utf-8")
     package = (root / "tools/package_density.py").read_text(encoding="utf-8")
+    audit_digest = hashlib.sha256(audit_bytes).hexdigest()
     required_pins = (
         (cmake, rf'set\(ASTE_JUCE_COMMIT "{JUCE_COMMIT}"\)', "CMake JUCE commit"),
         (package, rf'JUCE_VERSION = "{EXPECTED["juce"][1]}"', "package JUCE version"),
         (package, rf'JUCE_COMMIT = "{JUCE_COMMIT}"', "package JUCE commit"),
         (package, rf'VST3_SDK_VERSION = "{EXPECTED["vst3-sdk"][1]}"', "package VST3 version"),
         (package, rf'VST3_SDK_UPSTREAM_COMMIT = "{VST3_COMMIT}"', "VST3 upstream commit"),
+        (package, rf'SECURITY_AUDIT_SHA256 = "{audit_digest}"', "security audit digest"),
     )
     for text, pattern, label in required_pins:
         if re.search(pattern, text) is None:
@@ -156,8 +164,9 @@ def main():
     parser.add_argument("root", type=Path)
     parser.add_argument("--as-of", type=date.fromisoformat, default=date.today())
     args = parser.parse_args()
-    audit = json.loads(args.audit.read_text(encoding="utf-8"))
-    errors = validate(audit, args.root, args.as_of)
+    audit_bytes = args.audit.read_bytes()
+    audit = json.loads(audit_bytes)
+    errors = validate(audit, args.as_of) + validate_source_pins(args.root, audit_bytes)
     if errors:
         print("\n".join(errors), file=sys.stderr)
         raise SystemExit(1)

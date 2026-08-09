@@ -2,7 +2,7 @@
 """Create and inspect deterministic internal Density development packages."""
 
 import argparse
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 import hashlib
 import io
 import json
@@ -15,6 +15,9 @@ import sys
 import tempfile
 import zipfile
 
+sys.dont_write_bytecode = True
+from check_dependency_security import validate as validate_security_audit
+
 
 PRODUCT = "Density D-01"
 BUNDLE = f"{PRODUCT}.vst3"
@@ -24,6 +27,7 @@ JUCE_VERSION = "8.0.13"
 JUCE_COMMIT = "7c9d3783b127263d72bb65fe0a7e2dc8a02a7ac2"
 VST3_SDK_VERSION = "3.8.0"
 VST3_SDK_UPSTREAM_COMMIT = "9fad9770f2ae8542ab1a548a68c1ad1ac690abe0"
+SECURITY_AUDIT_SHA256 = "9423a8e39443095417f73b0b1f180dd7202b45ded5c8387ffa846fe476d6c55d"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 DEVELOPMENT_NOTICE = """DENSITY D-01 — INTERNAL DEVELOPMENT BUILD
 
@@ -104,12 +108,33 @@ def inspect_bundle(bundle, metadata):
         fail("bundle has no VST3 moduleinfo.json")
 
 
-def package_record(metadata):
+def load_security_audit(data, as_of):
+    if hashlib.sha256(data).hexdigest() != SECURITY_AUDIT_SHA256:
+        fail("dependency security audit does not match the reviewed digest")
+    audit = json.loads(data)
+    errors = validate_security_audit(audit, as_of)
+    if errors:
+        fail("dependency security audit invalid: " + "; ".join(errors))
+    return audit
+
+
+def security_record(audit):
+    return {
+        "file": "DEPENDENCY-SECURITY.json",
+        "next_review_due": audit["next_review_due"],
+        "reviewed_on": audit["reviewed_on"],
+        "sha256": SECURITY_AUDIT_SHA256,
+        "status": "no_known_affected_advisories",
+    }
+
+
+def package_record(metadata, audit):
     return {
         "architectures": ARCHITECTURES,
         "bundle_identifier": BUNDLE_ID,
         "bundle_path": BUNDLE,
         "code_signature": "ad-hoc",
+        "dependency_security": security_record(audit),
         "distribution_allowed": False,
         "notarized": False,
         "product": PRODUCT,
@@ -237,11 +262,13 @@ def sbom_record(metadata, fingerprint):
     }
 
 
-def collect_files(bundle, metadata_bytes, notices_bytes, metadata):
+def collect_files(bundle, metadata_bytes, notices_bytes, security_bytes,
+                  metadata, audit):
     files = {
         "BUILD-METADATA.json": (metadata_bytes, 0o644),
+        "DEPENDENCY-SECURITY.json": (security_bytes, 0o644),
         "DEVELOPMENT_BUILD.txt": (DEVELOPMENT_NOTICE.encode(), 0o644),
-        "PACKAGE.json": (json_bytes(package_record(metadata)), 0o644),
+        "PACKAGE.json": (json_bytes(package_record(metadata, audit)), 0o644),
         "THIRD_PARTY_NOTICES.md": (notices_bytes, 0o644),
     }
     executable = PurePosixPath(BUNDLE) / "Contents" / "MacOS" / PRODUCT
@@ -294,7 +321,8 @@ def safe_archive_name(name):
     return bool(name) and not name.startswith("/") and "\\" not in name and ".." not in path.parts
 
 
-def verify_archive(path, require_clean=False):
+def verify_archive(path, require_clean=False, as_of=None):
+    as_of = as_of or date.today()
     with zipfile.ZipFile(path) as archive:
         infos = archive.infolist()
         names = [info.filename for info in infos]
@@ -319,10 +347,6 @@ def verify_archive(path, require_clean=False):
 
         metadata = load_metadata(
             archive.read(f"{root}/BUILD-METADATA.json"), require_clean=require_clean)
-        expected_record = package_record(metadata)
-        if record != expected_record:
-            fail("PACKAGE.json does not match build metadata or internal policy")
-
         relative_files = {
             name[len(root) + 1:]: archive.read(name)
             for name in names if not name.endswith("/")
@@ -345,6 +369,7 @@ def verify_archive(path, require_clean=False):
 
         bundle_prefix = f"{BUNDLE}/Contents/"
         required = {
+            "DEPENDENCY-SECURITY.json",
             "DEVELOPMENT_BUILD.txt",
             "SBOM.spdx.json",
             "THIRD_PARTY_NOTICES.md",
@@ -355,6 +380,9 @@ def verify_archive(path, require_clean=False):
         }
         if not required.issubset(relative_files):
             fail(f"package is missing required files: {sorted(required - relative_files.keys())}")
+        audit = load_security_audit(relative_files["DEPENDENCY-SECURITY.json"], as_of)
+        if record != package_record(metadata, audit):
+            fail("PACKAGE.json does not match build metadata or internal policy")
         expected_sbom = sbom_record(metadata, bundle_fingerprint({
             name: (data, 0) for name, data in relative_files.items()
         }))
@@ -379,10 +407,13 @@ def verify_archive(path, require_clean=False):
 def create(args):
     metadata_bytes = args.metadata.read_bytes()
     metadata = load_metadata(metadata_bytes)
+    security_bytes = args.security.read_bytes()
+    audit = load_security_audit(security_bytes, date.today())
     inspect_bundle(args.bundle, metadata)
     root = f"Density-D01-{metadata['version']}-internal-macos-universal"
     files = collect_files(
-        args.bundle, metadata_bytes, args.notices.read_bytes(), metadata)
+        args.bundle, metadata_bytes, args.notices.read_bytes(), security_bytes,
+        metadata, audit)
     first = render_archive(root, files)
     if first != render_archive(root, files):
         fail("archive construction is not deterministic")
@@ -398,15 +429,17 @@ def main():
     create_parser.add_argument("--bundle", type=Path, required=True)
     create_parser.add_argument("--metadata", type=Path, required=True)
     create_parser.add_argument("--notices", type=Path, required=True)
+    create_parser.add_argument("--security", type=Path, required=True)
     create_parser.add_argument("--output", type=Path, required=True)
     verify_parser = subparsers.add_parser("verify")
     verify_parser.add_argument("--archive", type=Path, required=True)
     verify_parser.add_argument("--require-clean", action="store_true")
+    verify_parser.add_argument("--as-of", type=date.fromisoformat, default=date.today())
     args = parser.parse_args()
     if args.command == "create":
         create(args)
     else:
-        verify_archive(args.archive, require_clean=args.require_clean)
+        verify_archive(args.archive, require_clean=args.require_clean, as_of=args.as_of)
 
 
 if __name__ == "__main__":

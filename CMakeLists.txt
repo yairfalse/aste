@@ -284,10 +284,13 @@ if(ASTE_BUILD_VST3)
               --bundle "$<TARGET_BUNDLE_DIR:DensityD01_VST3>"
               --metadata "${CMAKE_CURRENT_BINARY_DIR}/build-metadata.json"
               --notices "${CMAKE_CURRENT_SOURCE_DIR}/THIRD_PARTY_NOTICES.md"
+              --security "${CMAKE_CURRENT_SOURCE_DIR}/docs/security/dependency-audit.json"
               --output "${ASTE_DENSITY_PACKAGE}"
       BYPRODUCTS "${ASTE_DENSITY_PACKAGE}"
       DEPENDS DensityD01_VST3
               "${CMAKE_CURRENT_SOURCE_DIR}/tools/package_density.py"
+              "${CMAKE_CURRENT_SOURCE_DIR}/tools/check_dependency_security.py"
+              "${CMAKE_CURRENT_SOURCE_DIR}/docs/security/dependency-audit.json"
               "${CMAKE_CURRENT_SOURCE_DIR}/THIRD_PARTY_NOTICES.md"
       COMMENT "Creating deterministic internal Density development package"
       VERBATIM)
