@@ -1,0 +1,102 @@
+{
+  "components": [
+    {
+      "advisories": [
+        {
+          "affected_versions": "<6.1.5",
+          "aliases": [
+            "GHSA-qpj6-xj62-7c95"
+          ],
+          "disposition": "not_affected",
+          "id": "CVE-2021-23520",
+          "reason": "The packaged JUCE version is 8.0.13. NVD limits the affected range to versions before 6.1.5."
+        },
+        {
+          "affected_versions": "<6.1.5",
+          "aliases": [
+            "GHSA-cv9m-jw92-c3v3"
+          ],
+          "disposition": "not_affected",
+          "id": "CVE-2021-23521",
+          "reason": "The packaged JUCE version is 8.0.13. NVD limits the affected range to versions before 6.1.5."
+        }
+      ],
+      "excluded_matches": [
+        {
+          "id": "CVE-2002-2408",
+          "reason": "JUCE is an unrelated mail-filter acronym in this record."
+        },
+        {
+          "id": "CVE-2025-65843",
+          "reason": "The affected product is Aquarius Desktop; JUCE appears only in the implementation description."
+        }
+      ],
+      "id": "juce",
+      "name": "JUCE",
+      "source_commit": "7c9d3783b127263d72bb65fe0a7e2dc8a02a7ac2",
+      "sources": [
+        {
+          "checked_on": "2026-08-09",
+          "kind": "osv-commit",
+          "query": {
+            "commit": "7c9d3783b127263d72bb65fe0a7e2dc8a02a7ac2"
+          },
+          "result_count": 0,
+          "url": "https://api.osv.dev/v1/query"
+        },
+        {
+          "checked_on": "2026-08-09",
+          "kind": "publisher-advisories",
+          "result_count": 0,
+          "url": "https://api.github.com/repos/juce-framework/JUCE/security-advisories"
+        },
+        {
+          "checked_on": "2026-08-09",
+          "kind": "nvd-keyword",
+          "result_count": 4,
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?keywordSearch=JUCE"
+        }
+      ],
+      "status": "no_known_affected_advisories",
+      "version": "8.0.13"
+    },
+    {
+      "advisories": [],
+      "excluded_matches": [],
+      "id": "vst3-sdk",
+      "name": "Steinberg VST 3 SDK bundled by JUCE",
+      "source_commit": "7c9d3783b127263d72bb65fe0a7e2dc8a02a7ac2",
+      "sources": [
+        {
+          "checked_on": "2026-08-09",
+          "kind": "osv-commit",
+          "query": {
+            "commit": "9fad9770f2ae8542ab1a548a68c1ad1ac690abe0"
+          },
+          "result_count": 0,
+          "url": "https://api.osv.dev/v1/query"
+        },
+        {
+          "checked_on": "2026-08-09",
+          "kind": "publisher-advisories",
+          "result_count": 0,
+          "url": "https://api.github.com/repos/steinbergmedia/vst3sdk/security-advisories"
+        },
+        {
+          "checked_on": "2026-08-09",
+          "kind": "nvd-keyword",
+          "result_count": 0,
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?keywordSearch=Steinberg%20VST3%20SDK"
+        }
+      ],
+      "status": "no_known_affected_advisories",
+      "upstream_commit": "9fad9770f2ae8542ab1a548a68c1ad1ac690abe0",
+      "version": "3.8.0"
+    }
+  ],
+  "next_review_due": "2026-11-07",
+  "review_interval_days": 90,
+  "reviewed_on": "2026-08-09",
+  "schema": 1,
+  "scope": "density-d01-packaged-runtime-dependencies"
+}

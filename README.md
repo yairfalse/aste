@@ -198,6 +198,17 @@ and JUCE's bundled VST3 SDK. The format decisions are
 [ADR 0004](docs/adr/0004-internal-package-format.md) and
 [ADR 0005](docs/adr/0005-spdx-sbom.md).
 
+The packaged dependency pins also have a dated, expiring advisory review:
+
+```sh
+python3 tools/check_dependency_security.py \
+  docs/security/dependency-audit.json .
+```
+
+The check is offline and runs under CTest. Its evidence sources and limits are
+defined by
+[ADR 0006](docs/adr/0006-expiring-dependency-security-review.md).
+
 ## DSP laboratory
 
 `density_lab` generates its own deterministic signals, renders WAV/CSV output,
@@ -327,6 +338,8 @@ independent validation boundary is
 [ADR 0003](docs/adr/0003-independent-vst3-validator.md); and the internal-only
 package boundary is [ADR 0004](docs/adr/0004-internal-package-format.md).
 The package dependency boundary is [ADR 0005](docs/adr/0005-spdx-sbom.md).
+The expiring dependency-security review is
+[ADR 0006](docs/adr/0006-expiring-dependency-security-review.md).
 
 ## Repository map
 

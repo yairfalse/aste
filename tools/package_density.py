@@ -20,7 +20,10 @@ PRODUCT = "Density D-01"
 BUNDLE = f"{PRODUCT}.vst3"
 BUNDLE_ID = "invalid.aste.density-d01"
 ARCHITECTURES = ["arm64", "x86_64"]
+JUCE_VERSION = "8.0.13"
 JUCE_COMMIT = "7c9d3783b127263d72bb65fe0a7e2dc8a02a7ac2"
+VST3_SDK_VERSION = "3.8.0"
+VST3_SDK_UPSTREAM_COMMIT = "9fad9770f2ae8542ab1a548a68c1ad1ac690abe0"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 DEVELOPMENT_NOTICE = """DENSITY D-01 — INTERNAL DEVELOPMENT BUILD
 
@@ -188,7 +191,7 @@ def sbom_record(metadata, fingerprint):
                 "name": "JUCE",
                 "primaryPackagePurpose": "LIBRARY",
                 "supplier": "Organization: Raw Material Software Limited",
-                "versionInfo": "8.0.13",
+                "versionInfo": JUCE_VERSION,
             },
             {
                 "SPDXID": "SPDXRef-Package-VST3SDK",
@@ -205,7 +208,7 @@ def sbom_record(metadata, fingerprint):
                 "name": "Steinberg VST 3 SDK bundled by JUCE",
                 "primaryPackagePurpose": "LIBRARY",
                 "supplier": "Organization: Steinberg Media Technologies GmbH",
-                "versionInfo": "3.8.0",
+                "versionInfo": VST3_SDK_VERSION,
             },
         ],
         "relationships": [

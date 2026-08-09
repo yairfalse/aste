@@ -54,6 +54,13 @@ Density, pinned JUCE, and JUCE-bundled VST3 SDK package identities plus their
 four reviewed relationships. Unresolved licence conclusions must remain
 `NOASSERTION`.
 
+CTest also validates the reviewed dependency-security ledger without network
+access. It requires OSV exact-commit, publisher-advisory, and NVD evidence for
+both packaged dependencies, preserves the two historical JUCE CVE
+dispositions, cross-checks the source and package pins, and fails after the
+90-day review window. A dependency update therefore cannot reuse the previous
+security conclusion.
+
 `density_vst3_host` is the smallest repo-owned standalone host. Unlike the
 linked adapter tests, it discovers and loads the built bundle through VST3,
 then checks component identity, parameter count, latency, deterministic state,

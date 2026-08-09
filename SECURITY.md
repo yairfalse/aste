@@ -15,3 +15,11 @@ reproduction, and whether crafted data is required.
 The project does not currently provide a compatibility or embargo guarantee.
 Do not distribute a build until dependency licences, signing identity, package
 contents, and release checks have been reviewed.
+
+Packaged third-party dependencies have a reviewed advisory ledger at
+[`docs/security/dependency-audit.json`](docs/security/dependency-audit.json).
+The offline gate binds that evidence to the exact JUCE and bundled VST3 SDK
+pins and expires it after 90 days. "No known affected advisories" is a dated
+search result, not a claim that the dependencies are vulnerability-free. The
+review method is recorded in
+[ADR 0006](docs/adr/0006-expiring-dependency-security-review.md).

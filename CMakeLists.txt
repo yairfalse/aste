@@ -80,6 +80,11 @@ if(Python3_Interpreter_FOUND)
     COMMAND Python3::Interpreter
             "${CMAKE_CURRENT_SOURCE_DIR}/tools/check_build_metadata.py"
             "${CMAKE_CURRENT_BINARY_DIR}/build-metadata.json")
+  add_test(NAME dependency_security
+    COMMAND Python3::Interpreter
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/check_dependency_security.py"
+            "${CMAKE_CURRENT_SOURCE_DIR}/docs/security/dependency-audit.json"
+            "${CMAKE_CURRENT_SOURCE_DIR}")
 endif()
 add_executable(density_tests tests/density_tests.cpp)
 target_link_libraries(density_tests PRIVATE density_dsp)
