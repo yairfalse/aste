@@ -146,11 +146,12 @@ Sequence adopts a provisional budget below 1.0% of one performance core at
 48 kHz / 127 samples for the monophonic worst-case voice. Processing allocation,
 locks, filesystem access, logging, and reported latency must remain zero.
 
-On 2026-08-09, Release `sequence_lab --benchmark` rendered 30 seconds with
-Pressure at 100%, resonance at 85%, both filter structures active, stereo
-output, and the host-synchronised pattern. It measured 0.282010% of one M4 Pro
-performance core. This passes the local budget but is not evidence for native
-Intel, the oldest supported Apple Silicon, a loaded DAW, or the open editor.
+On 2026-08-10, five 30-second Release renders of the shared-state
+character-filter revision measured 0.288956–0.303562% of one M4 Pro performance
+core, with a 0.292424% median. Pressure was 100%, resonance was 85%, output was
+stereo, and the host-synchronised pattern ran throughout. This passes the local
+budget but is not evidence for native Intel, the oldest supported Apple Silicon,
+a loaded DAW, or the open editor.
 
 ## Loop L-01 baseline
 
@@ -176,12 +177,12 @@ new topology remains below its 1% local budget.
 
 ## Impulse I-01 baseline
 
-Impulse adopts a provisional budget below 1.0% of one performance core at 48
-kHz / 127 samples with all four voices and densest scheduler settings. Callback
+Impulse adopts a provisional budget below 2.0% of one performance core at 48
+kHz / 127 samples with all eight voices and densest scheduler settings. Callback
 allocation, locks, filesystem access, logging, and latency must remain zero.
 
-On 2026-08-09, five Release `impulse_lab --benchmark` runs used 32 active pulses
-on every track, 4× ratchets, 180 BPM, and maximum Energy, Variation, Mutation,
-and Drive. The median was 0.352056% of one M4 Pro performance core, with a
-0.339692–0.367345% range. This passes the local budget but is not native Intel,
-oldest-supported Apple Silicon, loaded-DAW, or open-UI evidence.
+The four-object cycle measured a 0.352056% median on 2026-08-09. On 2026-08-10,
+five eight-object Release stress renders with all 32 cells active measured
+1.23198–1.27919% of one M4 Pro performance core at 48 kHz / 127 samples, with a
+1.26032% median. This passes the revised eight-object budget but still requires
+native Intel, oldest-supported Apple Silicon, loaded-DAW, and open-UI evidence.

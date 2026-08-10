@@ -62,8 +62,8 @@ maintainer-visible macro mapping are in
 
 ## Sequence S-01
 
-Sequence schema 1 contains 19 voice/clock controls and four stable controls for
-each of 16 visible steps, for 83 parameters total. Host MIDI-CC emulation is
+Sequence schema 2 contains 21 voice/clock controls and four stable controls for
+each of 16 visible steps, for 85 parameters total. Host MIDI-CC emulation is
 disabled so the VST3 publishes only this intentional contract. Complete ranges,
 defaults, smoothing, step IDs, and the Pressure mapping are in
 [docs/products/sequence/PARAMETERS.md](products/sequence/PARAMETERS.md).
@@ -79,8 +79,9 @@ parameters. Complete ranges, defaults, and musical roles are in
 
 ## Impulse I-01
 
-Impulse schema 1 contains eight global parameters plus thirteen parameters for
-each of four rhythmic objects, for 60 stable IDs. Seed, cycles, probability,
-conditions, ratchets, and timing are ordinary scalar state rather than hidden
-sequencer data. The complete contract is
+Impulse schema 2 contains eight global parameters, thirteen sound/cycle
+parameters for each of eight objects, and 32 tri-state pattern cells for each
+object, for 368 stable IDs. Seed, cycles, probability, conditions, ratchets,
+timing, and the complete visible program are ordinary scalar state. The
+complete contract is
 [docs/products/impulse/PARAMETERS.md](products/impulse/PARAMETERS.md).

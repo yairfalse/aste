@@ -1,6 +1,6 @@
 # ADR 0008: Sequence voice and clock
 
-- Status: accepted for internal beta
+- Status: superseded by ADR 0012
 - Date: 2026-08-09
 
 ## Decision

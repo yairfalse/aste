@@ -78,11 +78,15 @@ juce::Component* findTitled(juce::Component& c, const juce::String& title) {
 }
 void testContractState() {
   Impulse source;
-  require(source.getParameters().size() == 60,
-          "Impulse exposes 60 stable parameters");
+  require(source.getParameters().size() == 368,
+          "Impulse exposes eight sounds and eight visible 32-step patterns");
   setValue(source, "seed", 4242);
   setValue(source, "kick_length", 15);
+  setValue(source, "kick_pulses", 1);
+  setValue(source, "kick_rotation", 3);
   setValue(source, "click_probability", 62.5F);
+  setValue(source, "kick_step_04", 2.0F);
+  setValue(source, "cut_step_32", 1.0F);
   juce::MemoryBlock state;
   source.getStateInformation(state);
   Impulse restored;
@@ -90,11 +94,40 @@ void testContractState() {
                                static_cast<int>(state.getSize()));
   require(value(restored, "seed") == 4242 &&
               value(restored, "kick_length") == 15 &&
-              std::abs(value(restored, "click_probability") - 62.5F) < 0.02F,
+              std::abs(value(restored, "click_probability") - 62.5F) < 0.02F &&
+              value(restored, "kick_step_04") == 2.0F &&
+              value(restored, "cut_step_32") == 1.0F,
           "Impulse state restores pattern and seed");
   juce::MemoryBlock repeated;
   restored.getStateInformation(repeated);
   require(repeated == state, "Impulse state bytes are deterministic");
+  const auto xml = juce::AudioProcessor::getXmlFromBinary(
+      state.getData(), static_cast<int>(state.getSize()));
+  require(xml != nullptr, "Impulse state exposes migration XML");
+  if (xml != nullptr) {
+    auto legacy = juce::ValueTree::fromXml(*xml);
+    legacy.setProperty("schema", 1, nullptr);
+    for (int index = legacy.getNumChildren(); --index >= 0;) {
+      const auto child = legacy.getChild(index);
+      const auto id = child.getProperty("id").toString();
+      if (id.contains("_step_") || id.startsWith("low_") ||
+          id.startsWith("crack_") || id.startsWith("metal_") ||
+          id.startsWith("cut_"))
+        legacy.removeChild(index, nullptr);
+    }
+    juce::MemoryBlock legacyBytes;
+    if (const auto legacyXml = legacy.createXml())
+      juce::AudioProcessor::copyXmlToBinary(*legacyXml, legacyBytes);
+    Impulse migrated;
+    migrated.setStateInformation(legacyBytes.getData(),
+                                 static_cast<int>(legacyBytes.getSize()));
+    require(value(migrated, "seed") == 4242 &&
+                value(migrated, "kick_length") == 15 &&
+                value(migrated, "low_level") == 72.0F &&
+                value(migrated, "kick_step_01") == 0.0F &&
+                value(migrated, "kick_step_13") == 1.0F,
+            "Schema 1 Impulse state reconstructs old Euclidean playback");
+  }
   constexpr char bad[] = "bad";
   restored.setStateInformation(bad, sizeof(bad));
   require(value(restored, "seed") == 4242,
@@ -122,7 +155,7 @@ void testProcessing() {
   juce::AudioBuffer<float> audio{2, 127};
   juce::MidiBuffer midi;
   midi.addEvent(juce::MidiMessage::noteOn(1, 36, 1.0F), 23);
-  midi.addEvent(juce::MidiMessage::noteOn(1, 39, 0.8F), 61);
+  midi.addEvent(juce::MidiMessage::noteOn(1, 43, 0.8F), 61);
   const auto before = allocations.load();
 #if JUCE_MAC
   asteRealtimeAuditReset();
@@ -158,7 +191,8 @@ void testEditor(const char* directory) {
   if (!editor) return;
   for (const char* title :
        std::array{"ENERGY", "VARIATION", "MUTATION", "SEQUENCE", "KICK LEVEL",
-                  "BODY ACCENT", "PRESETS"})
+                  "BODY ACCENT", "LOW TRACK", "METAL STEP 32", "CUT GENERATE",
+                  "PRESETS"})
     require(findTitled(*editor, title),
             "Impulse essential controls are visible");
   juce::Image image{juce::Image::RGB, editor->getWidth(), editor->getHeight(),

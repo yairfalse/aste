@@ -1,6 +1,6 @@
 # ADR 0010 — Impulse clock, seed, and object voices
 
-Status: accepted for internal prototype, 2026-08-09.
+Status: superseded by ADR 0013, 2026-08-10.
 
 Impulse owns four fixed rhythmic objects: Kick, Click, Burst, and Body. Each
 track has an independent 1–32-step length, Euclidean pulse count, rotation,

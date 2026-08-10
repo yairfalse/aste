@@ -138,6 +138,42 @@ void testPressureMapping() {
   }
 }
 
+float renderFilterWeight(float weight) {
+  constexpr std::size_t frames = 24000;
+  aste::sequence::Parameters parameters;
+  parameters.sequenceEnabled = false;
+  parameters.filterMorph = weight;
+  parameters.filterDrive = 0.65F;
+  parameters.cutoffHz = 720.0F;
+  parameters.resonance = 0.65F;
+  parameters.sustain = 1.0F;
+  aste::sequence::Processor processor;
+  processor.prepare(48000.0, parameters);
+  std::vector<float> audio(frames);
+  const std::array event{noteOn()};
+  processor.process(audio.data(), nullptr, audio.size(), parameters, {}, event);
+  double energy{};
+  for (std::size_t sample = 12000; sample < audio.size(); ++sample) {
+    energy += static_cast<double>(audio[sample]) * audio[sample];
+  }
+  return static_cast<float>(
+      std::sqrt(energy / static_cast<double>(audio.size() - 12000)));
+}
+
+void testCharacterFilterContinuity() {
+  const float open = renderFilterWeight(0.0F);
+  const float middle = renderFilterWeight(0.5F);
+  const float weight = renderFilterWeight(1.0F);
+  require(std::isfinite(open) && std::isfinite(middle) &&
+              std::isfinite(weight) && open > 0.0F && middle > 0.0F &&
+              weight > 0.0F,
+          "Every character-filter weight is finite and audible");
+  require(middle > 0.25F * std::min(open, weight),
+          "Filter Weight has no destructive midpoint level collapse");
+  require(std::abs(open - weight) > 1.0e-4F,
+          "Filter Weight reaches materially different responses");
+}
+
 void testSlideTransition() {
   aste::sequence::Parameters plain;
   for (auto& step : plain.steps) {
@@ -198,6 +234,7 @@ int main() {
   testBlockIndependenceAndReset();
   testHostSequence();
   testPressureMapping();
+  testCharacterFilterContinuity();
   testSlideTransition();
   testNumericalAndRealtimeSafety();
   if (failures == 0) {

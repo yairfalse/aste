@@ -74,6 +74,8 @@ class SequenceAudioProcessor final : public juce::AudioProcessor {
     division,
     sequenceEnabled,
     bypass,
+    pulseWidth,
+    filterDrive,
     mainParameterCount
   };
 

@@ -12,17 +12,17 @@ namespace aste::sequence::plugin {
 namespace {
 
 constexpr auto kStateType = "sequence-s01";
-constexpr int kStateSchema = 1;
+constexpr int kStateSchema = 2;
 constexpr auto kSurface = 0xff0d1114U;
 constexpr auto kPanel = 0xff171d21U;
 constexpr auto kInk = 0xffe7ece8U;
 constexpr auto kMuted = 0xff77858bU;
 constexpr auto kAccent = 0xff3f8fa8U;
-constexpr std::array<const char*, 19> kMainIds{
-    "pressure", "shape",     "osc_mix",     "detune",     "sub",
-    "cutoff",   "resonance", "filter_form", "env_amount", "attack",
-    "decay",    "sustain",   "release",     "glide",      "output",
-    "root",     "division",  "sequence",    "bypass"};
+constexpr std::array<const char*, 21> kMainIds{
+    "pressure",  "shape",       "osc_mix",     "detune", "sub",      "cutoff",
+    "resonance", "filter_form", "env_amount",  "attack", "decay",    "sustain",
+    "release",   "glide",       "output",      "root",   "division", "sequence",
+    "bypass",    "pulse_width", "filter_drive"};
 
 juce::String stepId(std::size_t step, const char* field) {
   return "step_" + juce::String{static_cast<int>(step + 1)}.paddedLeft('0', 2) +
@@ -47,7 +47,8 @@ bool parseFiniteFloat(const juce::var& value, float& result) {
 juce::ValueTree migrateState(juce::ValueTree state) {
   if (!state.isValid() || state.getType().toString() != kStateType ||
       state.getProperty("product").toString() != kStateType ||
-      static_cast<int>(state.getProperty("schema", -1)) != kStateSchema) {
+      (static_cast<int>(state.getProperty("schema", -1)) != 1 &&
+       static_cast<int>(state.getProperty("schema", -1)) != kStateSchema)) {
     return {};
   }
   return state;
@@ -80,29 +81,29 @@ struct FactoryPreset {
 
 constexpr std::array<FactoryPreset, 4> kPresets{{
     {"Default",
-     {35, 25, 45, 0.08F, 25, 900, 35, 45, 55, 3, 180, 55, 120, 70, -6, 36, 1, 1,
-      0},
+     {35, 25,  45, 0.08F, 25, 900, 35, 45, 55, 3, 180,
+      55, 120, 70, -6,    36, 1,   1,  0,  50, 25},
      {0, 0, 7, 0, 12, 7, 3, 0, 0, -5, 0, 7, 3, 0, -2, 0},
      0xdb77U,
      0x1111U,
      0x2222U},
     {"Low Current",
-     {48, 10, 38, -0.05F, 55, 420, 52, 72, 72, 2, 260, 48, 180, 110, -8, 31, 1,
-      1, 0},
+     {48, 10,  38,  -0.05F, 55, 420, 52, 72, 72, 2, 260,
+      48, 180, 110, -8,     31, 1,   1,  0,  42, 58},
      {0, 0, 3, 0, 7, 3, -2, 0, 0, -5, -2, 3, 0, -2, -5, 0},
      0xfff7U,
      0x1041U,
      0x4a22U},
     {"Open Form",
-     {24, 62, 54, 0.12F, 12, 2400, 28, 18, 38, 8, 340, 64, 260, 45, -7, 43, 1,
-      1, 0},
+     {24, 62,  54, 0.12F, 12, 2400, 28, 18, 38, 8, 340,
+      64, 260, 45, -7,    43, 1,    1,  0,  58, 18},
      {0, 4, 7, 11, 12, 7, 4, 0, 7, 11, 14, 11, 7, 4, 2, 0},
      0xffffU,
      0x1111U,
      0x8888U},
     {"Pressure Study",
-     {82, 42, 62, 0.18F, 38, 680, 66, 86, 82, 1, 120, 42, 90, 140, -10, 36, 2,
-      1, 0},
+     {82, 42, 62,  0.18F, 38, 680, 66, 86, 82, 1, 120,
+      42, 90, 140, -10,   36, 2,   1,  0,  36, 76},
      {0, 0, 12, 7, 3, 0, -5, 0, 12, 7, 3, 0, -2, -5, 7, 0},
      0xf7ffU,
      0x4921U,
@@ -266,20 +267,24 @@ class SequenceEditor final : public juce::AudioProcessorEditor,
         cutoff_{processor.state(), "cutoff", "CUTOFF", " Hz", 900, 2},
         resonance_{processor.state(), "resonance", "RESONANCE", " %", 35, 3},
         filterForm_{
-            processor.state(), "filter_form", "FILTER FORM", " %", 45, 4},
-        shape_{processor.state(), "shape", "SHAPE", " %", 25, 5},
-        oscillatorMix_{processor.state(), "osc_mix", "OSC MIX", " %", 45, 6},
-        detune_{processor.state(), "detune", "DETUNE", " st", 0.08, 7},
-        sub_{processor.state(), "sub", "SUB", " %", 25, 8},
+            processor.state(), "filter_form", "FILTER WEIGHT", " %", 45, 4},
+        filterDrive_{
+            processor.state(), "filter_drive", "FILTER DRIVE", " %", 25, 5},
+        shape_{processor.state(), "shape", "WAVE", " %", 25, 6},
+        pulseWidth_{
+            processor.state(), "pulse_width", "PULSE WIDTH", " %", 50, 7},
+        oscillatorMix_{processor.state(), "osc_mix", "OSC MIX", " %", 45, 8},
+        detune_{processor.state(), "detune", "DETUNE", " st", 0.08, 9},
+        sub_{processor.state(), "sub", "SUB", " %", 25, 10},
         envelopeAmount_{
-            processor.state(), "env_amount", "ENV AMOUNT", " %", 55, 9},
-        attack_{processor.state(), "attack", "ATTACK", " ms", 3, 10},
-        decay_{processor.state(), "decay", "DECAY", " ms", 180, 11},
-        sustain_{processor.state(), "sustain", "SUSTAIN", " %", 55, 12},
-        release_{processor.state(), "release", "RELEASE", " ms", 120, 13},
-        glide_{processor.state(), "glide", "GLIDE", " ms", 70, 14},
-        output_{processor.state(), "output", "OUTPUT", " dB", -6, 15},
-        root_{processor.state(), "root", "ROOT", " MIDI", 36, 16},
+            processor.state(), "env_amount", "ENV AMOUNT", " %", 55, 11},
+        attack_{processor.state(), "attack", "ATTACK", " ms", 3, 12},
+        decay_{processor.state(), "decay", "DECAY", " ms", 180, 13},
+        sustain_{processor.state(), "sustain", "SUSTAIN", " %", 55, 14},
+        release_{processor.state(), "release", "RELEASE", " ms", 120, 15},
+        glide_{processor.state(), "glide", "GLIDE", " ms", 70, 16},
+        output_{processor.state(), "output", "OUTPUT", " dB", -6, 17},
+        root_{processor.state(), "root", "ROOT", " MIDI", 36, 18},
         divisionAttachment_{processor.state(), "division", division_},
         sequenceAttachment_{processor.state(), "sequence", sequence_} {
     setLookAndFeel(&lookAndFeel_);
@@ -309,11 +314,13 @@ class SequenceEditor final : public juce::AudioProcessorEditor,
       steps_[index] = std::make_unique<StepCell>(processor_.state(), index);
       addAndMakeVisible(*steps_[index]);
     }
-    for (auto* component : std::array<juce::Component*, 19>{
-             &pressure_, &cutoff_, &resonance_, &filterForm_, &shape_,
-             &oscillatorMix_, &detune_, &sub_, &envelopeAmount_, &attack_,
-             &decay_, &sustain_, &release_, &glide_, &output_, &root_,
-             &division_, &sequence_, &preset_}) {
+    for (auto* component : std::array<juce::Component*, 21>{
+             &pressure_,    &cutoff_,  &resonance_,      &filterForm_,
+             &filterDrive_, &shape_,   &pulseWidth_,     &oscillatorMix_,
+             &detune_,      &sub_,     &envelopeAmount_, &attack_,
+             &decay_,       &sustain_, &release_,        &glide_,
+             &output_,      &root_,    &division_,       &sequence_,
+             &preset_}) {
       addAndMakeVisible(component);
     }
     setResizable(true, true);
@@ -360,14 +367,15 @@ class SequenceEditor final : public juce::AudioProcessorEditor,
     auto sequenceArea = area.removeFromBottom(
         std::max(205, static_cast<int>(area.getHeight() * 0.42F)));
     area.removeFromBottom(14);
-    const int columns = 8;
+    const int columns = 9;
     const int knobWidth = std::max(1, area.getWidth() / columns);
     const int knobHeight = std::max(1, area.getHeight() / 2);
-    const std::array<Knob*, 16> knobs{
-        &pressure_,       &cutoff_,        &resonance_, &filterForm_,
-        &shape_,          &oscillatorMix_, &detune_,    &sub_,
-        &envelopeAmount_, &attack_,        &decay_,     &sustain_,
-        &release_,        &glide_,         &output_,    &root_};
+    const std::array<Knob*, 18> knobs{
+        &pressure_,    &cutoff_,  &resonance_,      &filterForm_,
+        &filterDrive_, &shape_,   &pulseWidth_,     &oscillatorMix_,
+        &detune_,      &sub_,     &envelopeAmount_, &attack_,
+        &decay_,       &sustain_, &release_,        &glide_,
+        &output_,      &root_};
     for (std::size_t index = 0; index < knobs.size(); ++index) {
       const int column = static_cast<int>(index % columns);
       const int row = static_cast<int>(index / columns);
@@ -402,7 +410,9 @@ class SequenceEditor final : public juce::AudioProcessorEditor,
   Knob cutoff_;
   Knob resonance_;
   Knob filterForm_;
+  Knob filterDrive_;
   Knob shape_;
+  Knob pulseWidth_;
   Knob oscillatorMix_;
   Knob detune_;
   Knob sub_;
@@ -460,6 +470,10 @@ SequenceAudioProcessor::createParameterLayout() {
       juce::ParameterID{"sequence", 1}, "Sequence", true));
   layout.add(std::make_unique<juce::AudioParameterBool>(
       juce::ParameterID{"bypass", 1}, "Bypass", false));
+  addFloat(layout, "pulse_width", "Pulse Width", {10.0F, 90.0F, 0.01F}, 50.0F,
+           "%");
+  addFloat(layout, "filter_drive", "Filter Drive", {0.0F, 100.0F, 0.01F}, 25.0F,
+           "%");
   const Parameters defaults;
   for (std::size_t step = 0; step < kStepCount; ++step) {
     layout.add(std::make_unique<juce::AudioParameterInt>(
@@ -500,6 +514,8 @@ Parameters SequenceAudioProcessor::currentParameters() const noexcept {
       mainValues_[pressure]->load(std::memory_order_relaxed) * 0.01F;
   parameters.shape =
       mainValues_[shape]->load(std::memory_order_relaxed) * 0.01F;
+  parameters.pulseWidth =
+      mainValues_[pulseWidth]->load(std::memory_order_relaxed) * 0.01F;
   parameters.oscillatorMix =
       mainValues_[oscillatorMix]->load(std::memory_order_relaxed) * 0.01F;
   parameters.detuneSemitones =
@@ -511,6 +527,8 @@ Parameters SequenceAudioProcessor::currentParameters() const noexcept {
       mainValues_[resonance]->load(std::memory_order_relaxed) * 0.01F;
   parameters.filterMorph =
       mainValues_[filterMorph]->load(std::memory_order_relaxed) * 0.01F;
+  parameters.filterDrive =
+      mainValues_[filterDrive]->load(std::memory_order_relaxed) * 0.01F;
   parameters.envelopeAmount =
       mainValues_[envelopeAmount]->load(std::memory_order_relaxed) * 0.01F;
   parameters.attackMs = mainValues_[attack]->load(std::memory_order_relaxed);

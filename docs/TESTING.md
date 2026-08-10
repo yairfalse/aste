@@ -39,12 +39,19 @@ H3, and zero processing allocation at the required rates and block sizes.
 
 `sequence_lab` renders two seconds of the host-clocked production voice to CSV
 and reports peak, RMS, and finite status. Its `--benchmark` mode exercises the
-full monophonic voice with both filter structures active. `sequence_tests`
+full monophonic voice and nonlinear character filter. `sequence_tests`
 covers MIDI synthesis, six rates, irregular and variable blocks, deterministic
 reset, absolute-PPQ step selection, hostile parameters, zero latency, monotonic
-Pressure mapping, and zero process allocation. The adapter suite locks all 83
+Pressure mapping, shared-state filter continuity without midpoint collapse,
+and zero process allocation. The adapter suite locks all 85
 voice/pattern parameters, state recall/fuzz behavior, MIDI instrument buses,
 bypass silence, editor visibility/scaling, and the VST3 ABI.
+
+`impulse_tests` covers deterministic block partitioning, six sample rates,
+eight MIDI objects, exact manual-pattern scheduling, finite output, zero
+latency, and zero callback allocation. Adapter tests lock all 368 parameters,
+schema-1 migration, state fuzzing, real-time forbidden-operation traps, the
+always-visible 8×32 grid, selected sound controls, and the VST3 ABI.
 
 CTest runs the check. `density_lab` renders a deterministic amplitude-stepped
 sine to CSV and prints machine-readable peak/RMS/gain-reduction measurements.

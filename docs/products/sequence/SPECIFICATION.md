@@ -2,7 +2,8 @@
 
 Sequence is a monophonic programmed-current synthesizer. It takes the immediate
 musical role of a compact bass sequencer but uses an original dual-oscillator,
-dual-filter voice rather than reproducing a commercial instrument or panel.
+single-state character-filter voice rather than reproducing a commercial
+instrument or panel.
 
 ## Product phenomenon
 
@@ -17,19 +18,20 @@ topology.
 ```text
 MIDI / host PPQ -> 16-step note, gate, accent, slide program
                            |
-two polyBLEP oscillators + sub
+two polyBLEP oscillators + sub / saw-pulse-sine shaping
                            |
 bounded driven mixer
                            |
-12 dB state filter <-> 24 dB ladder-informed filter
+nonlinear four-stage filter: shared 12 dB <-> 24 dB outputs
                            |
 ADSR amplitude contour -> controlled output saturation
 ```
 
-The filter-form control is a continuous crossfade between two simultaneously
-running low-pass structures. `0%` is the broad two-pole state response; `100%`
-is the heavier four-pole ladder-informed response. It is not a switch and does
-not claim component-level emulation.
+Filter Weight continuously interpolates the second- and fourth-stage outputs
+of one state graph. `0%` is broad and open; `100%` has the heavier four-pole
+response. Resonance and loading compensation prevent a destructive midpoint
+level collapse. Filter Drive controls the bounded input nonlinearity. The
+control is not a switch and makes no component-level emulation claim.
 
 ## Performance model
 

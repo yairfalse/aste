@@ -18,12 +18,14 @@ struct Step {
 struct Parameters {
   float pressure{0.35F};
   float shape{0.25F};
+  float pulseWidth{0.5F};
   float oscillatorMix{0.45F};
   float detuneSemitones{0.08F};
   float subLevel{0.25F};
   float cutoffHz{900.0F};
   float resonance{0.35F};
   float filterMorph{0.45F};
+  float filterDrive{0.25F};
   float envelopeAmount{0.55F};
   float attackMs{3.0F};
   float decayMs{180.0F};
@@ -124,17 +126,10 @@ class Processor {
     float value_{};
   };
 
-  struct StateFilter {
+  struct CharacterFilter {
     [[nodiscard]] float process(float input, float cutoff, float resonance,
+                                float weight, float drive, float loading,
                                 double sampleRate) noexcept;
-    void reset() noexcept { state1_ = state2_ = 0.0F; }
-    float state1_{};
-    float state2_{};
-  };
-
-  struct LadderFilter {
-    [[nodiscard]] float process(float input, float cutoff, float resonance,
-                                float loading, double sampleRate) noexcept;
     void reset() noexcept { state_.fill(0.0F); }
     std::array<float, 4> state_{};
   };
@@ -156,16 +151,17 @@ class Processor {
   double subPhase_{};
   Smoother pressure_{};
   Smoother shape_{};
+  Smoother pulseWidth_{};
   Smoother mix_{};
   Smoother sub_{};
   Smoother cutoff_{};
   Smoother resonance_{};
   Smoother filterMorph_{};
+  Smoother filterDrive_{};
   Smoother output_{};
   Smoother frequency_{};
   Envelope envelope_{};
-  StateFilter stateFilter_{};
-  LadderFilter ladderFilter_{};
+  CharacterFilter characterFilter_{};
   std::array<bool, 128> heldNotes_{};
   float velocity_{1.0F};
   bool accented_{};

@@ -615,13 +615,13 @@ if(ASTE_BUILD_VST3)
             "Harmonic H-01" "Harmonic" 12)
   add_test(NAME sequence_vst3_host
     COMMAND vst3_smoke_host "$<TARGET_BUNDLE_DIR:SequenceS01_VST3>"
-            "Sequence S-01" "Pressure" 83)
+            "Sequence S-01" "Pressure" 85)
   add_test(NAME loop_vst3_host
     COMMAND vst3_smoke_host "$<TARGET_BUNDLE_DIR:LoopL01_VST3>"
             "Loop L-01" "Capture" 20)
   add_test(NAME impulse_vst3_host
     COMMAND vst3_smoke_host "$<TARGET_BUNDLE_DIR:ImpulseI01_VST3>"
-            "Impulse I-01" "Energy" 60)
+            "Impulse I-01" "Energy" 368)
 
   if(Python3_Interpreter_FOUND AND APPLE)
     set(ASTE_DENSITY_PACKAGE

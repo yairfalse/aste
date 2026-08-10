@@ -1,18 +1,21 @@
 # Sequence S-01 parameters
 
-Schema 1 exposes 83 stable scalar parameters: 19 voice/transport controls and
-four controls for each of 16 steps.
+Schema 2 exposes 85 stable scalar parameters: 21 voice/transport controls and
+four controls for each of 16 steps. Schema-1 IDs retain their original order;
+the two new IDs were appended.
 
 | ID | Range | Default | Smoothing / meaning |
 |---|---:|---:|---|
 | `pressure` | 0–100% | 35% | 10 ms coordinated macro |
-| `shape` | saw–pulse, 0–100% | 25% | 10 ms waveform morph |
+| `shape` | saw–pulse–sine, 0–100% | 25% | 10 ms waveform morph |
+| `pulse_width` | 10–90% | 50% | 10 ms pulse duty cycle |
 | `osc_mix` | 0–100% | 45% | 10 ms oscillator balance |
 | `detune` | -12–12 st | 0.08 st | frequency ratio per sample |
 | `sub` | 0–100% | 25% | 10 ms sub level |
 | `cutoff` | 30–18000 Hz | 900 Hz | skewed, 15 ms |
 | `resonance` | 0–100% | 35% | 15 ms |
-| `filter_form` | state–ladder, 0–100% | 45% | 20 ms continuous crossfade |
+| `filter_form` | open–weight, 0–100% | 45% | 20 ms shared-state pole weighting |
+| `filter_drive` | 0–100% | 25% | 10 ms nonlinear input loading |
 | `env_amount` | 0–100% | 55% | bounded five-octave contour |
 | `attack` | 0.2–2000 ms | 3 ms | envelope coefficient |
 | `decay` | 5–4000 ms | 180 ms | envelope coefficient |

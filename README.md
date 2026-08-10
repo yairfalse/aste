@@ -124,10 +124,12 @@ slide. MIDI plays the voice while stopped and transposes the pattern while the
 host runs.
 
 Its original voice combines two anti-aliased oscillators and a sub oscillator,
-a bounded driven mixer, and a continuous morph between a broad two-pole state
-low-pass and a heavier four-pole ladder-informed low-pass. The Pressure control
-coordinates mixer drive, filter-envelope depth, accent gain, and filter loading.
-It is topology-informed, not an emulation of a named synthesizer.
+a saw–pulse–sine wave path, pulse-width control, a bounded driven mixer, and one
+nonlinear four-stage filter whose Weight control moves continuously between its
+two- and four-pole outputs. This shared-state topology avoids the level and
+phase hollowing of parallel-filter crossfades. Pressure coordinates mixer
+drive, filter-envelope depth, accent gain, and filter loading. It is
+topology-informed, not an emulation of a named synthesizer.
 
 The full internal-beta contract is
 [docs/products/sequence/SPECIFICATION.md](docs/products/sequence/SPECIFICATION.md).
@@ -150,14 +152,16 @@ recall remains a stated release blocker. See
 
 ## Impulse I-01
 
-Impulse synthesizes Kick, Click, Burst, and Body objects from exciters,
-resonant bodies, and bounded amplifier stages. Each track owns an independent
-1–32-step Euclidean cycle, rotation, probability, ratchets, timing, condition,
-and accent. Stored seeds make probability, variation, and mutation reproducible
-from host PPQ across block partitions and project recall. MIDI C/C#/D/D# in any
-octave triggers the four objects directly.
+Impulse synthesizes eight objects—Kick, Click, Burst, Body, Low, Crack, Metal,
+and Cut—from exciters, resonant bodies, and bounded amplifier stages. Every
+track owns an always-visible 32-step Off/Hit/Accent row with an independent
+1–32-step cycle, probability, ratchets, timing, condition, and accent. Pulses
+and Rotation are an explicit pattern generator, never a hidden playback source.
+Stored seeds make probability, variation, and mutation reproducible from host
+PPQ across block partitions and project recall. MIDI pitch classes C through G
+trigger the eight objects directly.
 
-The default 15/23/11/16 cycles remain host-clocked while drifting against one
+The default polymetric lengths remain host-clocked while drifting against one
 another. No drum samples, genre kits, named circuit clone, or nondeterministic
 “analog” behavior defines the product. See
 [docs/products/impulse/SPECIFICATION.md](docs/products/impulse/SPECIFICATION.md).

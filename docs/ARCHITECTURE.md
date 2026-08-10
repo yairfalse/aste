@@ -99,7 +99,7 @@ strict decimal parsing, which now has two identical product consumers.
 ```text
 MIDI + host PPQ -> 16-step note/gate/accent/slide memory
                  -> dual oscillators + sub -> driven mixer
-                 -> state low-pass <-> ladder-informed low-pass
+                 -> shared-state 2-pole <-> 4-pole character filter
                  -> ADSR/VCA -> bounded output
 ```
 
@@ -130,16 +130,18 @@ not captured audio or generations; ADR 0011 records the generational boundary.
 ## Impulse I-01 graph
 
 ```text
-host PPQ + seed -> four polymetric schedulers ----+
-MIDI C/C#/D/D# -> direct excitation -------------+-> object voices
-                                                     -> bounded loading
-                                                     -> stereo output
+host PPQ + seed + eight visible patterns --+
+MIDI pitch classes C through G ------------+-> eight object voices
+                                               -> bounded loading
+                                               -> stereo output
 ```
 
-Impulse is a no-input instrument. Four fixed voices and pure hash decisions
+Impulse is a no-input instrument. Eight fixed voices and pure hash decisions
 belong to the audio thread; PPQ derives absolute steps and ratchet ticks without
 block accumulation. Stored seed, track, and absolute position fully determine
 probability and mutation. The UI reads only lock-free output and step snapshots.
+Pulses and rotation generate visible parameter state on the UI thread; the
+audio thread reads only the resulting fixed pattern arrays.
 The product-local graph reports zero latency; ADR 0010 owns the boundary.
 
 ## Product philosophy

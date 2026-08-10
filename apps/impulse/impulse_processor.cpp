@@ -57,15 +57,6 @@ float Processor::random01(std::uint32_t value) noexcept {
   return static_cast<float>(hash(value) >> 8U) * (1.0F / 16777216.0F);
 }
 
-bool Processor::euclidean(int step, int pulses, int length,
-                          int rotation) noexcept {
-  length = std::clamp(length, 1, 32);
-  pulses = std::clamp(pulses, 0, length);
-  if (pulses == 0) return false;
-  const int rotated = ((step + rotation) % length + length) % length;
-  return (rotated * pulses) % length < pulses;
-}
-
 void Processor::trigger(std::size_t track, float velocity,
                         const TrackParameters& parameters, float energy,
                         float variation, std::uint32_t random) noexcept {
@@ -75,7 +66,7 @@ void Processor::trigger(std::size_t track, float velocity,
   voice.phase = 0.0;
   voice.secondPhase = 0.0;
   voice.amplitude = bounded(velocity, 0.0F, 1.0F, 1.0F);
-  voice.pitchEnvelope = track == 0 ? 1.0F : 0.0F;
+  voice.pitchEnvelope = (track == 0 || track == 4) ? 1.0F : 0.0F;
   voice.noiseState = bipolar;
   voice.filterState = 0.0F;
   voice.level = bounded(parameters.level, 0.0F, 1.0F, 0.75F);
@@ -88,19 +79,22 @@ void Processor::trigger(std::size_t track, float velocity,
   voice.drive = bounded(parameters.drive, 0.0F, 1.0F, 0.25F) +
                 0.35F * bounded(energy, 0.0F, 1.0F, 0.45F);
   voice.pan =
-      std::clamp(bipolar * spread * (track == 0 ? 0.05F : 0.55F), -0.8F, 0.8F);
+      std::clamp(bipolar * spread * (track == 0 || track == 4 ? 0.05F : 0.55F),
+                 -0.8F, 0.8F);
 }
 
 float Processor::renderVoice(std::size_t track) noexcept {
   auto& voice = voices_[track];
   if (voice.amplitude < 1.0e-7F) return 0.0F;
-  const double pitch =
-      std::clamp(static_cast<double>(voice.pitch) *
-                     (track == 0 ? 1.0 + 2.8 * voice.pitchEnvelope : 1.0),
-                 20.0, 0.45 * sampleRate_);
+  const double pitch = std::clamp(
+      static_cast<double>(voice.pitch) *
+          (track == 0 ? 1.0 + 2.8 * voice.pitchEnvelope
+                      : (track == 4 ? 1.0 + 0.85 * voice.pitchEnvelope : 1.0)),
+      20.0, 0.45 * sampleRate_);
   voice.phase += pitch / sampleRate_;
   voice.phase -= std::floor(voice.phase);
-  voice.secondPhase += pitch * (track == 3 ? 1.618 : 1.37) / sampleRate_;
+  const double secondRatio = track == 3 ? 1.618 : (track == 6 ? 2.731 : 1.37);
+  voice.secondPhase += pitch * secondRatio / sampleRate_;
   voice.secondPhase -= std::floor(voice.secondPhase);
   voice.noiseState = clean(voice.noiseState * 3.9876543F + 0.1234567F);
   voice.noiseState -= std::floor(voice.noiseState);
@@ -121,8 +115,26 @@ float Processor::renderVoice(std::size_t track) noexcept {
     const float coefficient = 0.03F + 0.35F * voice.tone;
     voice.filterState += coefficient * (voice.noiseState - voice.filterState);
     sample = voice.filterState + 0.25F * second;
-  } else {
+  } else if (track == 3) {
     sample = sine + (0.25F + 0.45F * voice.tone) * second;
+  } else if (track == 4) {
+    const float edge = voice.pitchEnvelope > 0.6F ? voice.noiseState : 0.0F;
+    sample = 0.9F * sine + 0.12F * edge;
+    voice.pitchEnvelope *= 0.987F;
+  } else if (track == 5) {
+    const float coefficient = 0.08F + 0.52F * voice.tone;
+    const float previous = voice.filterState;
+    voice.filterState += coefficient * (voice.noiseState - voice.filterState);
+    sample = voice.noiseState - previous + 0.18F * second;
+  } else if (track == 6) {
+    const float third = std::sin(static_cast<float>(
+        (voice.phase + voice.secondPhase * 1.414) * 2.0 * std::numbers::pi));
+    sample = 0.55F * sine + 0.32F * second + 0.28F * voice.tone * third;
+  } else {
+    const float pulse = voice.phase < (0.01 + 0.08 * voice.tone) ? 1.0F : -0.2F;
+    const float high = pulse - voice.filterState;
+    voice.filterState += (0.04F + 0.25F * voice.tone) * high;
+    sample = high;
   }
   voice.amplitude *= voice.decay;
   const float driven = std::tanh(sample * (1.0F + 5.0F * voice.drive));
@@ -152,7 +164,7 @@ void Processor::process(float* left, float* right, std::size_t frames,
     while (midiIndex < midi.size() && midi[midiIndex].offset <= sampleIndex) {
       const auto& event = midi[midiIndex++];
       if (event.noteOn && event.velocity > 0.0F && event.note >= 36 &&
-          event.note < 40) {
+          event.note < 36 + static_cast<int>(kTrackCount)) {
         const auto track = static_cast<std::size_t>(event.note - 36);
         trigger(track, event.velocity, parameters.tracks[track],
                 parameters.energy, parameters.variation,
@@ -179,9 +191,9 @@ void Processor::process(float* left, float* right, std::size_t frames,
         lastTick_[track] = tick;
         const int cycle = static_cast<int>(absoluteStep / length);
         const int condition = std::clamp(trackParameters.condition, 1, 4);
-        bool active = euclidean(step, trackParameters.pulses, length,
-                                trackParameters.rotation) &&
-                      cycle % condition == 0;
+        const auto programmed =
+            trackParameters.pattern[static_cast<std::size_t>(step)];
+        bool active = programmed != 0U && cycle % condition == 0;
         const std::uint32_t eventKey =
             parameters.seed ^ static_cast<std::uint32_t>(track * 0x9e3779b9U) ^
             static_cast<std::uint32_t>(absoluteStep * 0x85ebca6bU) ^
@@ -192,8 +204,9 @@ void Processor::process(float* left, float* right, std::size_t frames,
         if (active && random01(eventKey) <= bounded(trackParameters.probability,
                                                     0.0F, 1.0F, 1.0F)) {
           const float accent =
-              step == 0 ? bounded(trackParameters.accent, 0.0F, 1.0F, 0.35F)
-                        : 0.0F;
+              programmed >= 2U
+                  ? bounded(trackParameters.accent, 0.0F, 1.0F, 0.35F)
+                  : 0.0F;
           trigger(track, 0.7F + 0.3F * accent, trackParameters,
                   parameters.energy, parameters.variation, eventKey);
           measured.triggered[track] = true;

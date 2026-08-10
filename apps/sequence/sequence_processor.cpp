@@ -140,43 +140,32 @@ void Processor::Envelope::reset() noexcept {
   value_ = 0.0F;
 }
 
-float Processor::StateFilter::process(float input, float cutoff,
-                                      float resonance,
-                                      double sampleRate) noexcept {
-  cutoff =
-      bounded(cutoff, 20.0F, static_cast<float>(sampleRate * 0.45), 900.0F);
-  resonance = bounded(resonance, 0.0F, 1.0F, 0.35F);
-  const float g = static_cast<float>(
-      std::tan(std::numbers::pi * static_cast<double>(cutoff) / sampleRate));
-  const float k = 2.0F - 1.92F * resonance;
-  const float a1 = 1.0F / (1.0F + g * (g + k));
-  const float a2 = g * a1;
-  const float v3 = input - state2_;
-  const float band = a1 * state1_ + a2 * v3;
-  const float low = state2_ + g * band;
-  state1_ = flush(2.0F * band - state1_);
-  state2_ = flush(2.0F * low - state2_);
-  return flush(low);
-}
-
-float Processor::LadderFilter::process(float input, float cutoff,
-                                       float resonance, float loading,
-                                       double sampleRate) noexcept {
+float Processor::CharacterFilter::process(float input, float cutoff,
+                                          float resonance, float weight,
+                                          float drive, float loading,
+                                          double sampleRate) noexcept {
   cutoff =
       bounded(cutoff, 20.0F, static_cast<float>(sampleRate * 0.42), 900.0F);
   resonance = bounded(resonance, 0.0F, 1.0F, 0.35F);
+  weight = bounded(weight, 0.0F, 1.0F, 0.45F);
+  drive = bounded(drive, 0.0F, 1.0F, 0.25F);
   loading = bounded(loading, 0.0F, 1.0F, 0.0F);
   const float coefficient =
       1.0F - static_cast<float>(
                  std::exp(-2.0 * std::numbers::pi * cutoff / sampleRate));
-  const float feedback = (3.55F + 0.25F * loading) * resonance;
-  float stage =
-      std::tanh((1.0F + 1.8F * loading) * (input - feedback * state_[3]));
+  const float feedback = (2.35F + 1.25F * weight + 0.25F * loading) * resonance;
+  const float inputGain = 1.0F + 5.0F * drive + 1.25F * loading;
+  float stage = std::tanh(inputGain * (input - feedback * state_[3]));
   for (auto& state : state_) {
     state = flush(state + coefficient * (stage - state));
     stage = state;
   }
-  return flush(state_[3]);
+  const float twoPole = state_[1];
+  const float fourPole = state_[3];
+  const float response = twoPole + weight * (fourPole - twoPole);
+  const float compensation =
+      (1.0F + resonance * (0.45F + 0.30F * weight)) / std::sqrt(inputGain);
+  return flush(response * compensation);
 }
 
 PressureMapping Processor::mapPressure(float amount) noexcept {
@@ -195,6 +184,8 @@ void Processor::prepare(double sampleRate, const Parameters& initial) noexcept {
   pressure_.prepare(sampleRate_, 0.010,
                     bounded(initial.pressure, 0.0F, 1.0F, 0.35F));
   shape_.prepare(sampleRate_, 0.010, bounded(initial.shape, 0.0F, 1.0F, 0.25F));
+  pulseWidth_.prepare(sampleRate_, 0.010,
+                      bounded(initial.pulseWidth, 0.1F, 0.9F, 0.5F));
   mix_.prepare(sampleRate_, 0.010,
                bounded(initial.oscillatorMix, 0.0F, 1.0F, 0.45F));
   sub_.prepare(sampleRate_, 0.010,
@@ -205,6 +196,8 @@ void Processor::prepare(double sampleRate, const Parameters& initial) noexcept {
                      bounded(initial.resonance, 0.0F, 1.0F, 0.35F));
   filterMorph_.prepare(sampleRate_, 0.020,
                        bounded(initial.filterMorph, 0.0F, 1.0F, 0.45F));
+  filterDrive_.prepare(sampleRate_, 0.010,
+                       bounded(initial.filterDrive, 0.0F, 1.0F, 0.25F));
   output_.prepare(sampleRate_, 0.005,
                   bounded(initial.outputDb, -24.0F, 6.0F, -6.0F));
   frequency_.prepare(sampleRate_, 0.001, midiFrequency(initial.rootNote));
@@ -216,8 +209,7 @@ void Processor::reset() noexcept {
   phase2_ = 0.17;
   subPhase_ = 0.0;
   envelope_.reset();
-  stateFilter_.reset();
-  ladderFilter_.reset();
+  characterFilter_.reset();
   heldNotes_.fill(false);
   velocity_ = 1.0F;
   accented_ = false;
@@ -363,7 +355,12 @@ float Processor::oscillator(double& phase, float frequency, float shape,
                       polyBlep(wrapped, increment);
   phase += increment;
   phase -= std::floor(phase);
-  return saw + bounded(shape, 0.0F, 1.0F, 0.25F) * (pulse - saw);
+  const float sine = std::sin(2.0F * std::numbers::pi_v<float> * current);
+  shape = bounded(shape, 0.0F, 1.0F, 0.25F);
+  if (shape < 0.5F) {
+    return saw + (shape * 2.0F) * (pulse - saw);
+  }
+  return pulse + ((shape - 0.5F) * 2.0F) * (sine - pulse);
 }
 
 void Processor::process(float* left, float* right, std::size_t frames,
@@ -377,11 +374,13 @@ void Processor::process(float* left, float* right, std::size_t frames,
   }
   pressure_.setTarget(bounded(parameters.pressure, 0.0F, 1.0F, 0.35F));
   shape_.setTarget(bounded(parameters.shape, 0.0F, 1.0F, 0.25F));
+  pulseWidth_.setTarget(bounded(parameters.pulseWidth, 0.1F, 0.9F, 0.5F));
   mix_.setTarget(bounded(parameters.oscillatorMix, 0.0F, 1.0F, 0.45F));
   sub_.setTarget(bounded(parameters.subLevel, 0.0F, 1.0F, 0.25F));
   cutoff_.setTarget(bounded(parameters.cutoffHz, 30.0F, 18000.0F, 900.0F));
   resonance_.setTarget(bounded(parameters.resonance, 0.0F, 1.0F, 0.35F));
   filterMorph_.setTarget(bounded(parameters.filterMorph, 0.0F, 1.0F, 0.45F));
+  filterDrive_.setTarget(bounded(parameters.filterDrive, 0.0F, 1.0F, 0.25F));
   output_.setTarget(bounded(parameters.outputDb, -24.0F, 6.0F, -6.0F));
   const bool sequencerRunning =
       parameters.sequenceEnabled && transport.valid && transport.playing;
@@ -401,12 +400,13 @@ void Processor::process(float* left, float* right, std::size_t frames,
     const float pressure = pressure_.next();
     const auto mapping = mapPressure(pressure);
     const float shape = shape_.next();
-    const float osc1 = oscillator(phase1_, frequency, shape, 0.50F);
+    const float pulseWidth = pulseWidth_.next();
+    const float osc1 = oscillator(phase1_, frequency, shape, pulseWidth);
     const float detune =
         bounded(parameters.detuneSemitones, -12.0F, 12.0F, 0.08F);
     const float osc2 =
         oscillator(phase2_, frequency * std::exp2(detune / 12.0F), shape,
-                   0.42F + 0.14F * shape);
+                   1.0F - pulseWidth);
     const float mix = mix_.next();
     const float subFrequency = frequency * 0.5F;
     const float subOsc = oscillator(subPhase_, subFrequency, 1.0F, 0.5F);
@@ -420,12 +420,10 @@ void Processor::process(float* left, float* right, std::size_t frames,
         cutoff_.next() *
         std::exp2(5.0F * envelope * envelopeAmount * mapping.envelopeDepth);
     const float resonance = resonance_.next();
-    const float state =
-        stateFilter_.process(source, cutoff, resonance, sampleRate_);
-    const float ladder = ladderFilter_.process(
-        source, cutoff, resonance, mapping.filterLoading, sampleRate_);
-    const float morph = filterMorph_.next();
-    float output = state + morph * (ladder - state);
+    const float outputFromFilter = characterFilter_.process(
+        source, cutoff, resonance, filterMorph_.next(), filterDrive_.next(),
+        mapping.filterLoading, sampleRate_);
+    float output = outputFromFilter;
     const float accent = accented_ ? mapping.accentGain : 0.0F;
     output *= envelope * velocity_ * (1.0F + accent) * dbToGain(output_.next());
     output = flush(std::tanh(1.35F * output) / std::tanh(1.35F));

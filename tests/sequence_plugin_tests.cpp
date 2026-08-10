@@ -93,13 +93,15 @@ juce::Component* findTitled(juce::Component& component,
 
 void testParameterAndStateContract() {
   Sequence source;
-  require(source.getParameters().size() == 83,
+  require(source.getParameters().size() == 85,
           "Sequence exposes its exact stable parameter set");
-  for (const char* id : std::array<const char*, 19>{
-           "pressure", "shape", "osc_mix", "detune", "sub", "cutoff",
-           "resonance", "filter_form", "env_amount", "attack", "decay",
-           "sustain", "release", "glide", "output", "root", "division",
-           "sequence", "bypass"}) {
+  for (const char* id : std::array<const char*, 21>{
+           "pressure",    "shape",    "osc_mix",   "detune",
+           "sub",         "cutoff",   "resonance", "filter_form",
+           "env_amount",  "attack",   "decay",     "sustain",
+           "release",     "glide",    "output",    "root",
+           "division",    "sequence", "bypass",    "pulse_width",
+           "filter_drive"}) {
     require(source.state().getParameter(id) != nullptr,
             "Every main Sequence parameter ID is stable");
   }
@@ -120,6 +122,31 @@ void testParameterAndStateContract() {
   restored.getStateInformation(repeated);
   require(repeated == state,
           "Sequence state bytes round-trip deterministically");
+
+  const auto xml = juce::AudioProcessor::getXmlFromBinary(
+      state.getData(), static_cast<int>(state.getSize()));
+  require(xml != nullptr, "Sequence state exposes valid migration XML");
+  if (xml != nullptr) {
+    auto legacy = juce::ValueTree::fromXml(*xml);
+    legacy.setProperty("schema", 1, nullptr);
+    for (const char* id : {"pulse_width", "filter_drive"}) {
+      const auto child = legacy.getChildWithProperty("id", id);
+      if (child.isValid()) {
+        legacy.removeChild(child, nullptr);
+      }
+    }
+    juce::MemoryBlock legacyBytes;
+    if (const auto legacyXml = legacy.createXml()) {
+      juce::AudioProcessor::copyXmlToBinary(*legacyXml, legacyBytes);
+    }
+    Sequence migrated;
+    migrated.setStateInformation(legacyBytes.getData(),
+                                 static_cast<int>(legacyBytes.getSize()));
+    require(std::abs(rawValue(migrated, "pressure") - 71.25F) < 0.011F &&
+                rawValue(migrated, "pulse_width") == 50.0F &&
+                rawValue(migrated, "filter_drive") == 25.0F,
+            "Schema 1 Sequence state migrates with stable new defaults");
+  }
 
   constexpr char malformed[] = "not-sequence-state";
   restored.setStateInformation(malformed, static_cast<int>(sizeof(malformed)));
@@ -209,9 +236,10 @@ void testEditorContract() {
   if (editor == nullptr) {
     return;
   }
-  for (const char* title : std::array<const char*, 9>{
-           "PRESSURE", "CUTOFF", "FILTER FORM", "OUTPUT", "DIVISION",
-           "SEQUENCE", "PRESETS", "Step 01 Program", "Step 16 Program"}) {
+  for (const char* title : std::array<const char*, 11>{
+           "PRESSURE", "CUTOFF", "FILTER WEIGHT", "FILTER DRIVE", "WAVE",
+           "PULSE WIDTH", "OUTPUT", "DIVISION", "SEQUENCE", "Step 01 Program",
+           "Step 16 Program"}) {
     require(findTitled(*editor, title) != nullptr,
             "Every essential Sequence control is visible and titled");
   }

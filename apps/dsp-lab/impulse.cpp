@@ -47,6 +47,7 @@ int benchmark() {
   parameters.energy = parameters.variation = parameters.mutation = 1;
   for (auto& track : parameters.tracks) {
     track.pulses = track.length = 32;
+    track.pattern.fill(1U);
     track.ratchet = 4;
     track.drive = 1;
   }

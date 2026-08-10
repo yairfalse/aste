@@ -80,24 +80,46 @@ void testRatesMidiAndRealtime() {
     processor.prepare(rate, parameters);
     std::array<float, 127> left{}, right{};
     constexpr std::array midi{aste::impulse::MidiEvent{23, 36, 1, true},
-                              aste::impulse::MidiEvent{61, 39, 0.8F, true}};
+                              aste::impulse::MidiEvent{61, 43, 0.8F, true}};
     const auto before = allocations.load();
     processor.process(left.data(), right.data(), left.size(), parameters,
                       {false, 120, 0}, midi);
     require(allocations.load() == before, "Impulse process allocates nothing");
-    require(processor.meters().triggered[0] && processor.meters().triggered[3],
-            "Impulse applies MIDI triggers at sample offsets");
+    require(processor.meters().triggered[0] && processor.meters().triggered[7],
+            "Impulse applies all eight MIDI object triggers at sample offsets");
     for (std::size_t i = 0; i < left.size(); ++i)
       require(std::isfinite(left[i]) && std::isfinite(right[i]),
               "Impulse hostile mode remains finite");
     require(processor.latencySamples() == 0, "Impulse reports zero latency");
   }
 }
+
+void testVisiblePatternIsPlaybackSource() {
+  aste::impulse::Parameters parameters;
+  for (auto& track : parameters.tracks) track.pattern.fill(0U);
+  parameters.tracks[0].length = 16;
+  parameters.tracks[0].pattern[3] = 2U;
+  aste::impulse::Processor processor;
+  processor.prepare(48000.0, parameters);
+  std::vector<float> audio(24000);
+  processor.process(audio.data(), nullptr, audio.size(), parameters,
+                    {true, 120.0, 0.0});
+  std::size_t first = audio.size();
+  for (std::size_t sample = 0; sample < audio.size(); ++sample) {
+    if (std::abs(audio[sample]) > 1.0e-7F) {
+      first = sample;
+      break;
+    }
+  }
+  require(first >= 17990U && first < 18100U,
+          "The visible manual step pattern directly schedules playback");
+}
 }  // namespace
 
 int main() {
   testDeterminismAndBlocks();
   testRatesMidiAndRealtime();
+  testVisiblePatternIsPlaybackSource();
   if (failures == 0) std::cout << "impulse_tests: ok\n";
   return failures == 0 ? 0 : 1;
 }

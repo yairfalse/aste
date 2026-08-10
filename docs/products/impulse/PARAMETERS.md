@@ -1,7 +1,8 @@
 # Impulse I-01 parameter contract
 
-Schema 1 contains 60 stable parameters: eight global controls and thirteen for
-each of four tracks.
+Schema 2 contains 368 stable parameters: eight global controls, thirteen sound
+and cycle controls for each of eight tracks, and 32 pattern cells for each
+track. The original 60 IDs remain unchanged.
 
 Global IDs:
 
@@ -16,7 +17,8 @@ Global IDs:
 | `sequence` | off/on | on | host-clocked generation |
 | `bypass` | off/on | off | silent instrument bypass |
 
-Track prefixes are `kick`, `click`, `burst`, and `body`. Every prefix owns:
+Track prefixes are `kick`, `click`, `burst`, `body`, `low`, `crack`, `metal`,
+and `cut`. Every prefix owns:
 
 | Suffix | Range | Meaning |
 |---|---:|---|
@@ -26,13 +28,17 @@ Track prefixes are `kick`, `click`, `burst`, and `body`. Every prefix owns:
 | `_tone` | 0–100% | exciter/body balance |
 | `_drive` | 0–100% | bounded amplifier loading |
 | `_length` | 1–32 steps | independent cycle length |
-| `_pulses` | 0–32 | Euclidean event count, bounded by length |
-| `_rotation` | 0–31 steps | pattern phase |
+| `_pulses` | 0–32 | event count used by explicit generator |
+| `_rotation` | 0–31 steps | explicit generator rotation |
 | `_probability` | 0–100% | seeded event acceptance |
 | `_ratchet` | 1–4 | subdivisions per active step |
 | `_timing` | -49–49% step | track microtiming |
 | `_condition` | 1–4 cycles | fires every N cycles |
-| `_accent` | 0–100% | first-step cycle emphasis |
+| `_accent` | 0–100% | level added by Accent cells |
+
+Every prefix also owns `_step_01` through `_step_32`. Values are `0` Off, `1`
+Hit, and `2` Accent. These automatable integer parameters are the actual
+playback pattern and are always visible in the editor.
 
 All controls support host automation, numeric entry, fine drag, reset, and
 portable state. Direct parameters are deliberately playable and can produce

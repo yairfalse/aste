@@ -64,6 +64,8 @@ class ImpulseAudioProcessor final : public juce::AudioProcessor {
   std::array<std::atomic<float>*, kGlobalCount> globals_{};
   std::array<std::array<std::atomic<float>*, kTrackParameterCount>, kTrackCount>
       tracks_{};
+  std::array<std::array<std::atomic<float>*, kPatternSteps>, kTrackCount>
+      patterns_{};
   std::array<MidiEvent, 256> midiScratch_{};
   std::size_t midiCount_{};
   std::atomic<float> outputPeak_{};
