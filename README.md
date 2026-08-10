@@ -15,9 +15,9 @@ real-time testing. It is not a hardware-cloning exercise and does not use
 > Impulse I-01, and Field F-01 are complete working internal VST3 prototypes.
 > All six have
 > product-owned DSP, state, tests, industrial UIs, and universal macOS bundles.
-> The local 67-test, sanitizer, universal signature/slice, and ABI-host gates
-> pass; hosted arm64/Intel and Steinberg validation are wired for the sixth
-> product and await this commit. None is a supported release: Developer ID
+> The local and hosted 67-test, sanitizer, universal signature/slice, ABI-host,
+> and Steinberg extensive-validation gates pass for the six-product line. None
+> is a supported release: Developer ID
 > signing, notarization, final company identity, and DAW compatibility remain open.
 
 ## The instrument family

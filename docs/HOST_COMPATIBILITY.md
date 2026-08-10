@@ -36,6 +36,7 @@
 | 2026-08-10 | repository headless VST3 host | Loop L-01 generational-tape universal prototype, 20 parameters | Pass: dynamic load, schema-2 state, stereo processing, six irregular blocks |
 | 2026-08-10 | GitHub Actions hosted matrix | Loop L-01 generational-tape commit `18f4875` | Pass: arm64/Intel core, ASan/UBSan, 61/61 tests, universal signatures/slices, Steinberg extensive validation |
 | 2026-08-10 | repository headless VST3 host and local universal matrix | Field F-01 universal prototype, 9 parameters | Pass: 67/67 Release tests, targeted ASan/UBSan, dynamic load/state/irregular blocks, signature, arm64+x86_64 slices |
+| 2026-08-10 | GitHub Actions hosted matrix | Field F-01 commit `b715a05` and complete six-product line | Pass: arm64/Intel core, ASan/UBSan, 67/67 tests, universal signatures/slices, Steinberg extensive validation |
 
 The run included cold/warm loading, editor open during processing, state and
 state restoration, background-thread state, parameter thread safety and fuzzing,
