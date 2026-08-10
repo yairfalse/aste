@@ -80,6 +80,10 @@ void testStrictDecimalParsing() {
 
 void testDensityMapping() {
   auto previous = aste::density::mapDensity(0.0F);
+  require(previous.thresholdDb == -2.0F && previous.ratio == 3.0F &&
+              previous.saturationDrive == 1.0F &&
+              previous.releaseCurve == 1.0F && previous.crushMakeupDb == 0.0F,
+          "Minimum Density preserves the documented character boundary");
   for (int step = 1; step <= 100; ++step) {
     const auto current =
         aste::density::mapDensity(static_cast<float>(step) / 100.0F);
@@ -94,6 +98,28 @@ void testDensityMapping() {
             "Density makeup is monotonic");
     previous = current;
   }
+  require(previous.thresholdDb == -30.0F && previous.ratio == 60.0F &&
+              previous.saturationDrive == 9.0F &&
+              previous.releaseCurve == 5.0F && previous.crushMakeupDb == 10.0F,
+          "Maximum Density reaches the documented character boundary");
+}
+
+void testCrushCharacterMapping() {
+  float previous{};
+  for (int step = 0; step <= 100; ++step) {
+    const float amount = static_cast<float>(step) / 100.0F;
+    const float current = aste::density::mapCrushSaturation(amount, 1.0F, 0.0F);
+    require(current >= previous,
+            "Density increases crush saturation monotonically");
+    previous = current;
+  }
+  require(aste::density::mapCrushSaturation(1.0F, 1.0F, 24.0F) > 15.0F,
+          "Maximum Density and Drive reach the assertive character range");
+  require(aste::density::mapCrushSaturation(1.0F, 0.0F, 24.0F) < 0.002F,
+          "Zero Crush removes the Density saturation contribution");
+  require(aste::density::mapCrushSaturation(0.7F, 1.0F, 24.0F) >
+              aste::density::mapCrushSaturation(0.7F, 1.0F, 0.0F),
+          "Positive Drive increases audible crush-path character");
 }
 
 void testNonlinearNumericalSafety() {
@@ -305,6 +331,7 @@ void testNoProcessAllocation() {
 int main() {
   testStrictDecimalParsing();
   testDensityMapping();
+  testCrushCharacterMapping();
   testNonlinearNumericalSafety();
   testOversamplerRealtimeBoundary();
   testDryAndLatency();

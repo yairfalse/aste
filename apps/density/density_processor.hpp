@@ -33,6 +33,8 @@ struct MeterSnapshot {
 };
 
 [[nodiscard]] DensityMapping mapDensity(float density) noexcept;
+[[nodiscard]] float mapCrushSaturation(float density, float crush,
+                                       float driveDb) noexcept;
 [[nodiscard]] float saturateSample(float sample, float drive) noexcept;
 [[nodiscard]] float controlledClipSample(float sample) noexcept;
 

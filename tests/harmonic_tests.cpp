@@ -168,13 +168,13 @@ void testCutsRemainLinear() {
           "Equal cuts remain independent of the Harmonic macro");
 }
 
-double thirdHarmonic(double amount) {
+double thirdHarmonic(double amount, float gainDb = 12.0F) {
   constexpr double sampleRate = 48000.0;
   constexpr double frequency = 1000.0;
   constexpr std::size_t warmup = 24000;
   constexpr std::size_t frames = 48000;
   aste::harmonic::Parameters parameters;
-  parameters.presenceGainDb = 12.0F;
+  parameters.presenceGainDb = gainDb;
   parameters.presenceFrequencyHz = 1000.0F;
   parameters.harmonic = static_cast<float>(amount);
   aste::harmonic::Processor processor;
@@ -204,14 +204,27 @@ double thirdHarmonic(double amount) {
 
 void testHarmonicMacro() {
   double previous = -1.0;
+  std::array<double, 4> ratios{};
+  std::size_t index = 0U;
   for (double amount : {0.0, 0.25, 0.5, 1.0}) {
     const double measured = thirdHarmonic(amount);
     require(std::isfinite(measured) && measured >= previous,
             "Harmonic macro increases H3 monotonically");
+    ratios[index++] = measured;
     previous = measured;
   }
-  require(previous > 1.0e-4,
-          "Full Harmonic produces measurable nonlinear participation");
+  std::cout << "{\"harmonic_h3_ratio_0\":" << ratios[0]
+            << ",\"harmonic_h3_ratio_25\":" << ratios[1]
+            << ",\"harmonic_h3_ratio_50\":" << ratios[2]
+            << ",\"harmonic_h3_ratio_100\":" << ratios[3] << "}\n";
+  require(ratios[1] > 1.0e-4,
+          "Quarter Harmonic produces measurable nonlinear participation");
+  require(previous > 1.0e-2,
+          "Full Harmonic reaches a clearly audible nonlinear range");
+  const double modestBoost = thirdHarmonic(1.0, 3.0F);
+  std::cout << "{\"harmonic_h3_ratio_plus_3_db\":" << modestBoost << "}\n";
+  require(modestBoost > 3.0e-3,
+          "A modest boost engages the assertive character range");
 }
 
 void testNoProcessAllocation() {

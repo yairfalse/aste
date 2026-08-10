@@ -127,7 +127,7 @@ float Processor::StateVariableBand::process(float input,
   amount = bounded(amount, 0.0F, 1.0F, 0.0F);
   const float v3 = input - state2_;
   const float linearBand = current_.a1 * state1_ + current_.a2 * v3;
-  const float drive = 1.0F + 2.0F * amount;
+  const float drive = 1.0F + 5.0F * amount;
   const float boundedBand = std::tanh(drive * linearBand) / drive;
   const float band = linearBand + amount * (boundedBand - linearBand);
   const float low = state2_ + current_.g * band;
@@ -169,8 +169,9 @@ float Processor::Band::process(float input, float harmonic,
   const float linear = contour_.process(input);
   const float reference = reference_.process(input, 0.0F);
   const float coloured = nonlinear_.process(input, harmonic);
+  const float boostParticipation = std::sqrt(boost_.next());
   const float contribution =
-      0.08F * harmonic * boost_.next() * (coloured - reference);
+      1.1F * harmonic * boostParticipation * (coloured - reference);
   activity = std::max(activity, std::abs(contribution));
   return flush(linear + contribution);
 }

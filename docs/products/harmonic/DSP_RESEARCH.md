@@ -115,3 +115,22 @@ not establish the product's useful nonlinear identity. Both survivors now
 require serial and parallel multi-band interaction, differential alias
 measurement, automation and block-schedule tests, CPU measurement, and
 level-matched listening before selection.
+
+## Production character revision
+
+ADR 0014 retains Candidate 3's topology but deliberately exceeds its original
+conservative advance-gate mapping. Production drive now moves from 1 to 6, and
+the nonlinear-state difference is weighted by
+`1.1 * Harmonic * sqrt(positive gain / 12 dB)`.
+
+At +12 dB Presence with a 0.5-peak 1 kHz sine, product H3 ratios at Harmonic
+0/25/50/100% are `4.70642e-8`, `0.00202372`, `0.00595257`, and `0.0127941`.
+The sequence is monotonic and full scale is about -37.9 dBc. Equal cuts remain
+sample-identical at Harmonic 0 and 100%. At +3 dB and full Harmonic the same
+test measures `0.0197981`, about -34.1 dBc, confirming the square-root law's
+early participation. Six-rate product fixtures remain finite with zero latency;
+a five-run 48 kHz automation benchmark has a 0.718134% median.
+
+These results supersede Candidate 3's original production character amount but
+not its historical candidate measurements. Differential alias and listening
+fatigue at the stronger mapping remain open release gates.

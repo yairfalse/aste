@@ -7,8 +7,9 @@ foundation exist. A deterministic internal package rehearsal now checks bundle
 contents, provenance, and an SPDX dependency bill of materials without
 publishing an artifact. The exact packaged dependencies also have an offline,
 90-day expiring advisory review whose digest and validity window travel inside
-the archive. Do not add new production DSP until the current blind packs have
-been reviewed.
+the archive. Density and Harmonic now contain one explicitly measured character
+revision prompted by music-machine feedback; further range changes require the
+updated blind and DAW checks.
 
 The authoritative master-brief audit is
 [SPECIFICATION_STATUS.md](SPECIFICATION_STATUS.md). Before external validation,
@@ -40,9 +41,10 @@ Density's remaining release work:
 
 Harmonic now has an independent four-band production DSP, 12-parameter schema,
 six factory starting points, VST3 adapter, industrial editor, product report,
-and automated core/adapter/ABI-host boundaries. Candidate 3 remains provisional:
-repository evidence justifies putting it in a DAW, not claiming the sound is
-finished.
+and automated core/adapter/ABI-host boundaries. Candidate 3 remains provisional.
+Its stronger 1-to-6 drive and square-root boost participation are measured and
+automated, but repository evidence only justifies putting it in a DAW, not
+claiming the sound is finished.
 
 The next Harmonic gate is the music-machine checklist: Cubase and Ableton load,
 save/reopen, automation, mono/stereo, offline/real-time bounce, scaling, and

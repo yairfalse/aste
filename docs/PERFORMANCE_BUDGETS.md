@@ -126,6 +126,12 @@ runs measure 0.262276–0.286155% of one M4 Pro core, with a 0.266210% median
 under the same benchmark. The additional stage is locally negligible and the
 oldest supported Apple Silicon and Intel measurements remain outstanding.
 
+Cycle 70 widens the internal character laws without adding processing stages.
+Five Release runs measure 0.275783–0.288113% of one M4 Pro core, with a
+0.283874% median under the same 48 kHz / 128-sample benchmark. The default path
+therefore retains substantial local margin below 1%; target-hardware and
+UI-open measurements remain outstanding.
+
 ## Harmonic H-01 baseline
 
 Harmonic adopts the same provisional default-quality budget: less than 1.0% of
@@ -133,12 +139,14 @@ one performance core at 48 kHz / 128 samples, stereo, with worst-case block-rate
 automation. Its processing state must remain below 256 KiB and its callback
 allocation, lock, filesystem, logging, and reported latency counts must be zero.
 
-On 2026-08-09, Release `harmonic_lab --product-benchmark` rendered 30 seconds
+On 2026-08-10, Release `harmonic_lab --product-benchmark` rendered 30 seconds
 five times on an Apple M4 Pro MacBook Pro. Every block changed all four gains,
 all four frequencies, and the Harmonic macro. The median was 0.682702% of one
-core, with a 0.671615–0.758637% range at 48 kHz / 128 samples. This passes the
-local provisional budget. It is not evidence for the oldest supported Apple
-Silicon machine, native Intel hardware, a loaded DAW, or UI-open performance.
+core before the character-range revision. After increasing nonlinear drive and
+boost participation, the median is 0.718134%, with a 0.711658–0.743789% range
+at 48 kHz / 128 samples. This passes the local provisional budget. It is not
+evidence for the oldest supported Apple Silicon machine, native Intel hardware,
+a loaded DAW, or UI-open performance.
 
 ## Sequence S-01 baseline
 

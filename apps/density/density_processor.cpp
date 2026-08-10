@@ -298,12 +298,20 @@ void CrushOversampler4xHalfBand::process(float* samples, std::size_t frames,
 DensityMapping mapDensity(float density) noexcept {
   const float d = bounded(density, 0.0F, 1.0F, 0.5F);
   return {
-      .thresholdDb = -3.0F - 21.0F * d,
-      .ratio = 4.0F + 36.0F * d,
-      .saturationDrive = 1.0F + 4.0F * d,
-      .releaseCurve = 1.0F + 2.0F * d,
-      .crushMakeupDb = 9.0F * d,
+      .thresholdDb = -2.0F - 28.0F * d,
+      .ratio = 3.0F + 57.0F * d,
+      .saturationDrive = 1.0F + 8.0F * d,
+      .releaseCurve = 1.0F + 4.0F * d,
+      .crushMakeupDb = 10.0F * d,
   };
+}
+
+float mapCrushSaturation(float density, float crush, float driveDb) noexcept {
+  const auto mapping = mapDensity(density);
+  crush = bounded(crush, 0.0F, 1.0F, 0.65F);
+  driveDb = bounded(driveDb, -12.0F, 24.0F, 0.0F);
+  const float pushed = 1.0F + 0.75F * std::max(driveDb, 0.0F) / 24.0F;
+  return 1.0e-3F + crush * (mapping.saturationDrive * pushed - 1.0e-3F);
 }
 
 void Processor::Smoother::prepare(double sampleRate, double seconds,
@@ -529,15 +537,16 @@ void Processor::process(float* left, float* right, std::size_t frames,
       compressedGain[channel] = dbToGain(-reductionDb[channel]);
     }
     const float makeupGain = dbToGain(mapping.crushMakeupDb * crush);
+    const float saturationDrive = mapCrushSaturation(density, crush, driveDb);
     float crushedLeft = drivenLeft * compressedGain[0] * makeupGain;
     float crushedRight = drivenRight * compressedGain[1] * makeupGain;
     float alignedDryLeft = dryLeft;
     float alignedDryRight = dryRight;
     if (oversamplingPrototype_) {
-      crushedLeft = crushOversamplers_[0].processSample(
-          crushedLeft, mapping.saturationDrive);
-      crushedRight = crushOversamplers_[1].processSample(
-          crushedRight, mapping.saturationDrive);
+      crushedLeft =
+          crushOversamplers_[0].processSample(crushedLeft, saturationDrive);
+      crushedRight =
+          crushOversamplers_[1].processSample(crushedRight, saturationDrive);
       alignedDryLeft = dryDelay_[0][dryDelayWrite_];
       alignedDryRight = dryDelay_[1][dryDelayWrite_];
       dryDelay_[0][dryDelayWrite_] = dryLeft;
@@ -545,10 +554,10 @@ void Processor::process(float* left, float* right, std::size_t frames,
       dryDelayWrite_ =
           dryDelayWrite_ + 1U == dryDelay_[0].size() ? 0U : dryDelayWrite_ + 1U;
     } else {
-      crushedLeft = controlledClipSample(
-          saturateSample(crushedLeft, mapping.saturationDrive));
-      crushedRight = controlledClipSample(
-          saturateSample(crushedRight, mapping.saturationDrive));
+      crushedLeft =
+          controlledClipSample(saturateSample(crushedLeft, saturationDrive));
+      crushedRight =
+          controlledClipSample(saturateSample(crushedRight, saturationDrive));
     }
 
     float blend = blend_.next();

@@ -425,3 +425,25 @@ non-intuitive result is retained for listening rather than normalized away.
 | Programme memory | Current-like depth; release follows event duration |
 | Hybrid feed-forward | Intermediate transient depth; fastest recovery |
 | Feedback-inspired | Hardest isolated impulse; lighter burst; current-like sustained recovery |
+
+## Cycle 70 — character range and detector recalibration
+
+ADR 0014 widens the product Density law while retaining the peak detector. At
+Density 70%, the tracked detector comparison now measures 15.181 dB sustained,
+6.899 dB impulse, 19.176 dB burst, and 740.396 ms short-burst release for the
+production path. The deliberately slower dual-time candidate requires
+961.604 ms to fall below 1 dB after sustained input, so the independent-event
+fixture was extended to six seconds rather than hiding residual detector state.
+
+The feedback-inspired research candidate's sidechain calibration is now 5.745
+at this one operating point. It matches production sustained reduction within
+0.002 dB and sustained release within 0.042 ms; its 10.993 dB impulse and
+17.207 dB burst remain intentionally different. This constant is lab-only and
+does not enter product processing.
+
+The production macro audition now reaches 26.317–32.340 dB maximum gain
+reduction at 100% Density across the four musical fixtures. All steps remain
+monotonic and exactly level matched by the audition renderer. Because the
+stronger saturation mapping changes nonlinear operating level, prior alias
+tables remain historical baselines; fresh production differential-alias
+measurement is required before making a release claim.

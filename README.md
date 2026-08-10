@@ -62,7 +62,7 @@ change.
 
 | Control | Range | Default | Role |
 |---|---:|---:|---|
-| Drive | -12 to +24 dB | 0 dB | Pushes the crush audio and detector |
+| Drive | -12 to +24 dB | 0 dB | Pushes the crush audio, detector, and positive-drive saturation |
 | Crush | 0–100% | 65% | Sets the hard-compression contribution |
 | Attack | 0.02–30 ms | 1 ms | Shapes transient entry |
 | Release | 20–1200 ms | 180 ms | Sets recovery time |
@@ -81,9 +81,11 @@ see [PARAMETER_MODEL.md](docs/PARAMETER_MODEL.md).
 ### Sound and interface
 
 At restrained settings Density is intended to increase presence and continuity
-while keeping the transient-bearing dry path intact. At stronger settings the
-crush branch becomes deliberately hard, close, and physical. The output stage
-is protective sample-peak clipping, **not** a true-peak mastering limiter.
+while keeping the transient-bearing dry path intact. Crush now also controls
+nonlinear participation, while positive Drive pushes saturation by up to 75%.
+At stronger settings the expanded -30 dB / 60:1 macro range becomes
+deliberately hard, close, and physical. The output stage is protective
+sample-peak clipping, **not** a true-peak mastering limiter.
 
 The current 980×540 editor scales from 760×420 to 1520×840. It uses a near-black
 surface, off-white technical typography, a muted burgundy accent, explicit
@@ -95,8 +97,10 @@ language is documented in [UI_SYSTEM.md](docs/UI_SYSTEM.md).
 
 Harmonic is a four-band broad equalizer whose boost behavior includes a bounded
 dynamic nonlinear component. Cuts stay clean; boosts progressively add a
-stateful harmonic contribution without switching topology. The provisional
-serial graph is:
+stateful harmonic contribution without switching topology. Its revised
+square-root boost participation makes even modest positive boosts respond,
+while the full Harmonic range reaches an intentionally obvious nonlinear
+region. The serial graph is:
 
 ```text
 input -> Foundation -> Body -> Presence -> Air -> output
@@ -422,22 +426,22 @@ leaves the current configuration unchanged. See [STATE_FORMAT.md](docs/STATE_FOR
 
 ### Performance
 
-The current production graph measured a 0.266210% median of one M4 Pro
+The current production graph measured a 0.283874% median of one M4 Pro
 performance core at 48 kHz / 128 samples under worst-case block-rate automation.
 This is comfortably below the provisional 1% target on that machine, but it is
 not evidence for the oldest supported Apple Silicon or a native Intel Mac. Full
 measurements and rejected oversampling budgets are in
 [PERFORMANCE_BUDGETS.md](docs/PERFORMANCE_BUDGETS.md).
 
-Harmonic measured 0.682702% on the same class of machine at 48 kHz / 128
+Harmonic measured 0.718134% on the same class of machine at 48 kHz / 128
 samples while every band and its macro changed each block. This passes the
 local provisional 1% budget, but still requires older Apple Silicon and native
 Intel evidence.
 
-Sequence measured 0.282010% on the same machine at 48 kHz / 127 samples with
-Pressure at 100%, resonance at 85%, both filters active, and stereo output. It
-passes the local provisional 1% budget; native Intel, older Apple Silicon, and
-DAW/UI-open measurements remain external gates.
+Sequence measured 0.292424% on the same machine at 48 kHz / 127 samples with
+Pressure at 100%, resonance at 85%, the shared-state character filter active,
+and stereo output. It passes the local provisional 1% budget; native Intel,
+older Apple Silicon, and DAW/UI-open measurements remain external gates.
 
 Loop's generational topology measured a 0.526622% five-run median on the same
 machine at 48 kHz / 127 samples while continuously printing through pitch,
@@ -445,10 +449,11 @@ transport modulation, Record, and Loss at worst case. It passes the local
 provisional 1% budget; captured-memory recall, native Intel, older Apple
 Silicon, and DAW/UI-open measurements remain open.
 
-Impulse measured a 0.352056% five-run median on the same machine at 48 kHz /
-127 samples with 32-pulse tracks, 4× ratchets, 180 BPM, maximum Energy,
-Variation, Mutation, and Drive. It passes the local provisional 1% budget;
-native Intel, older Apple Silicon, DAW, and open-UI evidence remain external.
+Impulse measured a 1.26032% five-run median on the same machine at 48 kHz /
+127 samples with all eight objects and every visible pattern cell active, 4×
+ratchets, 180 BPM, maximum Energy, Variation, Mutation, and Drive. It passes
+its 2% eight-object stress budget; native Intel, older Apple Silicon, DAW, and
+open-UI evidence remain external.
 
 ## Current release status
 

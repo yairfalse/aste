@@ -1,8 +1,9 @@
 # Harmonic H-01 — product and research specification
 
-Status: internal-beta implementation contract, 2026-08-09. ADR 0007 promotes
-Candidate 3 into the first testable four-band VST3. Parameter identifiers and
-schema 1 are frozen; host compatibility and musical preference remain unproven.
+Status: internal-beta implementation contract, revised 2026-08-10. ADR 0007
+promotes Candidate 3 into the first testable four-band VST3; ADR 0014 widens
+its production character mapping. Parameter identifiers and schema 1 are
+frozen; host compatibility and musical preference remain unproven.
 
 ## Purpose
 
@@ -31,22 +32,21 @@ named product topology or panel is a target.
 
 ## Product behavior
 
-The initial research target is four broad overlapping regions: Foundation,
-Body, Presence, and Air. Names describe audible regions, not circuit sections.
-Each region has a constrained frequency choice and one bipolar contour control.
-The final number of regions, frequency steps, and ranges remain uncommitted
-until the listening and measurement programme is complete.
+The product owns four broad overlapping regions: Foundation, Body, Presence,
+and Air. Names describe audible regions, not circuit sections. Each region has
+a constrained continuous frequency range and one bipolar contour control.
 
-Candidate global controls are Input, Harmonic, Bias, Compensation, and Output.
-`Harmonic` is the candidate hero macro: clockwise motion must monotonically
-increase audible nonlinear participation on boosted material without changing
-the meaning of band gain. `Bias` may move continuously between predominantly
-odd and even behavior only if level and DC remain controlled. Compensation must
-be optional and must never disguise a large output change as improved quality.
+Global controls are Input, Harmonic, and Output. `Harmonic` is the hero macro:
+clockwise motion monotonically increases nonlinear participation on boosted
+material. The production mapping moves bounded-stage drive from 1 to 6 and
+uses square-root positive-gain participation so modest boosts respond clearly.
+Cuts and neutral bands remain linear. Bias and Compensation are omitted because
+no measured behavior yet justifies either control.
 
-No stable host parameter ID is reserved by this document. IDs become permanent
-only after the winning topology, useful ranges, text conversion, smoothing, and
-automation behavior are tested together.
+The twelve schema-1 host parameter IDs are frozen in
+[PARAMETERS.md](PARAMETERS.md). Internal musical mappings may be revised with
+an ADR, measurements, golden review where applicable, and unchanged state
+semantics.
 
 ## Candidate signal graphs
 

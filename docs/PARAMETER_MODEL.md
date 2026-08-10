@@ -24,10 +24,13 @@ decimal parser for text entry while retaining independent parameter layouts.
 Drag, fine adjustment, reset, typed entry, and text conversion belong to the
 JUCE adapter. Exact parsing rejects trailing junk and non-finite values.
 
-Density continuously lowers threshold while increasing ratio, saturation drive,
-program-dependent release curvature, and crushed-path make-up. There are no
-topology switches. `mapDensity()` is the maintainer-visible mapping and has a
-monotonicity test.
+Density continuously lowers threshold from -2 to -30 dB while increasing ratio
+from 3:1 to 60:1, saturation drive from 1 to 9, release curvature from 1 to 5,
+and crushed-path make-up from 0 to 10 dB. Crush scales the nonlinear
+participation as well as the gain computer. Positive Drive raises saturation
+drive by up to 75%, so it remains a timbral gesture after compression. There
+are no topology switches. `mapDensity()` and `mapCrushSaturation()` are the
+maintainer-visible mappings and have monotonicity and boundary tests.
 
 ## Factory starting points
 

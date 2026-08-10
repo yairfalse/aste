@@ -20,6 +20,8 @@ and reset.
 | `bypass` | Host bypass | off/on | off | boolean | host transition |
 
 Band order is Foundation, Body, Presence, Air. Harmonic moves the bounded-stage
-drive continuously from 1 to 3 and the state-difference contribution from zero
-to the measured full amount. Positive gain scales nonlinear participation;
-zero and negative gain remain linear. No parameter changes topology or latency.
+drive continuously from 1 to 6. At each boosted band the nonlinear-state
+contribution is `1.1 * Harmonic * sqrt(positive gain / 12 dB)`. The square-root
+participation law makes small positive boosts responsive instead of reserving
+most character for the final few decibels. Zero and negative gain remain
+linear. No parameter changes topology or latency.
