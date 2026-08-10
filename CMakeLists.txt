@@ -74,6 +74,9 @@ target_include_directories(loop_dsp PUBLIC apps/loop libs/parameters)
 add_library(impulse_dsp apps/impulse/impulse_processor.cpp)
 target_include_directories(impulse_dsp PUBLIC apps/impulse libs/parameters)
 
+add_library(field_dsp apps/field/field_processor.cpp)
+target_include_directories(field_dsp PUBLIC apps/field libs/parameters)
+
 if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang")
   add_custom_target(density_static_analysis
     COMMAND "${CMAKE_CXX_COMPILER}" --analyze
@@ -115,9 +118,18 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang")
             "${CMAKE_CURRENT_SOURCE_DIR}/apps/impulse/impulse_processor.cpp"
     COMMENT "Running Clang static analysis on Impulse DSP"
     VERBATIM)
+  add_custom_target(field_static_analysis
+    COMMAND "${CMAKE_CXX_COMPILER}" --analyze
+            -Xanalyzer -analyzer-output=text
+            -std=c++20 -Wall -Wextra -Wpedantic -Werror
+            -I"${CMAKE_CURRENT_SOURCE_DIR}/apps/field"
+            "${CMAKE_CURRENT_SOURCE_DIR}/apps/field/field_processor.cpp"
+    COMMENT "Running Clang static analysis on Field DSP"
+    VERBATIM)
 endif()
 
-foreach(target density_dsp harmonic_dsp sequence_dsp loop_dsp impulse_dsp)
+foreach(target density_dsp harmonic_dsp sequence_dsp loop_dsp impulse_dsp
+               field_dsp)
   target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endforeach()
 
@@ -140,6 +152,10 @@ target_compile_options(loop_lab PRIVATE -Wall -Wextra -Wpedantic -Werror)
 add_executable(impulse_lab apps/dsp-lab/impulse.cpp)
 target_link_libraries(impulse_lab PRIVATE impulse_dsp)
 target_compile_options(impulse_lab PRIVATE -Wall -Wextra -Wpedantic -Werror)
+
+add_executable(field_lab apps/dsp-lab/field.cpp)
+target_link_libraries(field_lab PRIVATE field_dsp)
+target_compile_options(field_lab PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
 enable_testing()
 find_package(Python3 COMPONENTS Interpreter)
@@ -177,6 +193,10 @@ add_executable(impulse_tests tests/impulse_tests.cpp)
 target_link_libraries(impulse_tests PRIVATE impulse_dsp)
 target_compile_options(impulse_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 add_test(NAME impulse_tests COMMAND impulse_tests)
+add_executable(field_tests tests/field_tests.cpp)
+target_link_libraries(field_tests PRIVATE field_dsp)
+target_compile_options(field_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+add_test(NAME field_tests COMMAND field_tests)
 if(APPLE)
   add_test(NAME density_installer_syntax
     COMMAND /bin/sh -n
@@ -193,6 +213,9 @@ if(APPLE)
   add_test(NAME impulse_installer_syntax
     COMMAND /bin/sh -n
             "${CMAKE_CURRENT_SOURCE_DIR}/tools/install_impulse_macos.sh")
+  add_test(NAME field_installer_syntax
+    COMMAND /bin/sh -n
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/install_field_macos.sh")
   add_test(NAME build_and_install_syntax
     COMMAND /bin/sh -n
             "${CMAKE_CURRENT_SOURCE_DIR}/tools/build_and_install_macos.sh")
@@ -218,6 +241,8 @@ add_test(NAME loop_product_render
   COMMAND loop_lab "${CMAKE_CURRENT_BINARY_DIR}/loop-product-render.csv")
 add_test(NAME impulse_product_render
   COMMAND impulse_lab "${CMAKE_CURRENT_BINARY_DIR}/impulse-product-render.csv")
+add_test(NAME field_product_render
+  COMMAND field_lab "${CMAKE_CURRENT_BINARY_DIR}/field-product-render.csv")
 add_test(NAME density_detector_compare
   COMMAND density_lab --detector-compare
           "${CMAKE_CURRENT_BINARY_DIR}/density_detector_compare.csv")
@@ -489,6 +514,40 @@ if(ASTE_BUILD_VST3)
     )
   endif()
 
+  juce_add_plugin(FieldF01
+    VERSION ${PROJECT_VERSION}
+    COMPANY_NAME "Aste Internal"
+    BUNDLE_ID "invalid.aste.field-f01"
+    IS_SYNTH FALSE
+    NEEDS_MIDI_INPUT TRUE
+    NEEDS_MIDI_OUTPUT FALSE
+    IS_MIDI_EFFECT FALSE
+    EDITOR_WANTS_KEYBOARD_FOCUS TRUE
+    COPY_PLUGIN_AFTER_BUILD FALSE
+    PLUGIN_MANUFACTURER_CODE Aste
+    PLUGIN_CODE Fie1
+    FORMATS VST3
+    VST3_CATEGORIES Fx Reverb
+    PRODUCT_NAME "Field F-01"
+  )
+  target_sources(FieldF01 PRIVATE apps/field/field_plugin.cpp)
+  target_include_directories(FieldF01 PRIVATE apps/field)
+  target_link_libraries(FieldF01 PRIVATE field_dsp juce::juce_audio_utils)
+  target_compile_definitions(FieldF01 PUBLIC
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_VST3_CAN_REPLACE_VST2=0
+    JUCE_VST3_EMULATE_MIDI_CC_WITH_PARAMETERS=0
+  )
+  target_compile_options(FieldF01 PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  if(APPLE)
+    add_custom_command(TARGET FieldF01_VST3 POST_BUILD
+      COMMAND codesign --force --deep --sign - "$<TARGET_BUNDLE_DIR:FieldF01_VST3>"
+      COMMENT "Applying final ad-hoc signature after Field VST3 manifest generation"
+      VERBATIM
+    )
+  endif()
+
   juce_add_console_app(density_plugin_tests PRODUCT_NAME "Density plugin tests")
   if(APPLE)
     add_library(realtime_audit SHARED tests/realtime_audit_mac.cpp)
@@ -590,6 +649,27 @@ if(ASTE_BUILD_VST3)
   add_test(NAME impulse_plugin_tests COMMAND impulse_plugin_tests)
   add_test(NAME impulse_editor_artifacts COMMAND impulse_plugin_tests --editor-artifacts "${CMAKE_CURRENT_BINARY_DIR}/impulse_editor_artifacts")
 
+  juce_add_console_app(field_plugin_tests PRODUCT_NAME "Field plugin tests")
+  if(APPLE)
+    target_link_libraries(field_plugin_tests PRIVATE realtime_audit)
+  endif()
+  target_sources(field_plugin_tests PRIVATE
+    apps/field/field_plugin.cpp
+    tests/field_plugin_tests.cpp)
+  target_include_directories(field_plugin_tests PRIVATE apps/field)
+  target_link_libraries(field_plugin_tests PRIVATE
+    field_dsp juce::juce_audio_utils)
+  target_compile_definitions(field_plugin_tests PRIVATE
+    ASTE_NO_PLUGIN_FACTORY=1
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0)
+  target_compile_options(field_plugin_tests PRIVATE
+    -Wall -Wextra -Wpedantic -Werror)
+  add_test(NAME field_plugin_tests COMMAND field_plugin_tests)
+  add_test(NAME field_editor_artifacts
+    COMMAND field_plugin_tests --editor-artifacts
+            "${CMAKE_CURRENT_BINARY_DIR}/field_editor_artifacts")
+
   juce_add_console_app(vst3_smoke_host PRODUCT_NAME "VST3 smoke host")
   target_sources(vst3_smoke_host PRIVATE apps/standalone-host/main.cpp)
   target_link_libraries(vst3_smoke_host PRIVATE
@@ -606,7 +686,8 @@ if(ASTE_BUILD_VST3)
       -Wno-unnecessary-virtual-specifier)
   endif()
   add_dependencies(vst3_smoke_host DensityD01_VST3 HarmonicH01_VST3
-                   SequenceS01_VST3 LoopL01_VST3 ImpulseI01_VST3)
+                   SequenceS01_VST3 LoopL01_VST3 ImpulseI01_VST3
+                   FieldF01_VST3)
   add_test(NAME density_vst3_host
     COMMAND vst3_smoke_host "$<TARGET_BUNDLE_DIR:DensityD01_VST3>"
             "Density D-01" "Drive" 11)
@@ -622,6 +703,9 @@ if(ASTE_BUILD_VST3)
   add_test(NAME impulse_vst3_host
     COMMAND vst3_smoke_host "$<TARGET_BUNDLE_DIR:ImpulseI01_VST3>"
             "Impulse I-01" "Energy" 368)
+  add_test(NAME field_vst3_host
+    COMMAND vst3_smoke_host "$<TARGET_BUNDLE_DIR:FieldF01_VST3>"
+            "Field F-01" "Forever" 9)
 
   if(Python3_Interpreter_FOUND AND APPLE)
     set(ASTE_DENSITY_PACKAGE

@@ -35,6 +35,7 @@
 | 2026-08-09 | GitHub Actions hosted matrix | Impulse I-01 commit `0742d39` and complete five-product line | Pass: arm64/Intel core, ASan/UBSan, 61/61 tests, universal signatures/slices, Steinberg extensive validation |
 | 2026-08-10 | repository headless VST3 host | Loop L-01 generational-tape universal prototype, 20 parameters | Pass: dynamic load, schema-2 state, stereo processing, six irregular blocks |
 | 2026-08-10 | GitHub Actions hosted matrix | Loop L-01 generational-tape commit `18f4875` | Pass: arm64/Intel core, ASan/UBSan, 61/61 tests, universal signatures/slices, Steinberg extensive validation |
+| 2026-08-10 | repository headless VST3 host and local universal matrix | Field F-01 universal prototype, 9 parameters | Pass: 67/67 Release tests, targeted ASan/UBSan, dynamic load/state/irregular blocks, signature, arm64+x86_64 slices |
 
 The run included cold/warm loading, editor open during processing, state and
 state restoration, background-thread state, parameter thread safety and fuzzing,
@@ -83,9 +84,9 @@ Intel execution or DAW evidence.
 
 | Host | Version | Products | Status |
 |---|---|---|---|
-| Cubase | 14 | Complete five-product line | Awaiting music-machine run |
-| Ableton Live | 13/beta | Complete five-product line | Awaiting music-machine run |
-| Additional VST3 host | Pending selection | Complete five-product line | Not yet tested |
+| Cubase | 14 | Complete six-product line | Awaiting music-machine run |
+| Ableton Live | 13/beta | Complete six-product line | Awaiting music-machine run |
+| Additional VST3 host | Pending selection | Complete six-product line | Not yet tested |
 
 An application inventory on 2026-08-07 confirmed that no target or additional
 VST3 DAW is installed on the current test machine.

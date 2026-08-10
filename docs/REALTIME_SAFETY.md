@@ -1,6 +1,6 @@
 # Real-time safety
 
-`DensityProcessor::process` and `harmonic::Processor::process` are `noexcept`
+Every product processor, including `field::Processor::process`, is `noexcept`
 and perform no allocation, release, locking, I/O, logging, container resizing,
 lazy initialization, or system call. Their state is fixed-size and prepared
 before processing. Global allocation counters cover production cores and full JUCE
@@ -24,9 +24,14 @@ Rules for future processing code:
 - Do not assume `std::atomic<T>` is lock-free; verify the exact type/platform
   before using it between audio and UI threads.
 
-Current DSP ownership is single-audio-thread only. Each adapter publishes three
-meter snapshots through `std::atomic<float>` guarded by a compile-time lock-free
+Current DSP ownership is single-audio-thread only. Each adapter publishes a
+small fixed meter snapshot through `std::atomic<float>` guarded by a compile-time lock-free
 assertion on supported targets; UI-side decay occurs on the message thread.
+
+Field owns approximately 1.2 MiB of fixed delay and pitch memory per instance.
+It is value-initialized and cleared during prepare/reset, never resized or
+allocated inside processing. Its deterministic pseudo-random grain state is
+audio-thread local and uses no shared generator or entropy service.
 
 On macOS, plugin tests link a test-only dynamic library using dyld
 interposition. A thread-scoped guard counts POSIX mutex/rwlock/condition waits,

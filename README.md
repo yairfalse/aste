@@ -12,10 +12,12 @@ real-time testing. It is not a hardware-cloning exercise and does not use
 “analog” as a substitute for describing measurable behaviour.
 
 > **Project status:** Density D-01, Harmonic H-01, Sequence S-01, Loop L-01,
-> and Impulse I-01 are complete working internal VST3 prototypes. All five have
+> Impulse I-01, and Field F-01 are complete working internal VST3 prototypes.
+> All six have
 > product-owned DSP, state, tests, industrial UIs, and universal macOS bundles.
-> The hosted arm64/Intel, sanitizer, 61-test, signature, architecture, and
-> Steinberg validation gates pass. None is a supported release: Developer ID
+> The local 67-test, sanitizer, universal signature/slice, and ABI-host gates
+> pass; hosted arm64/Intel and Steinberg validation are wired for the sixth
+> product and await this commit. None is a supported release: Developer ID
 > signing, notarization, final company identity, and DAW compatibility remain open.
 
 ## The instrument family
@@ -27,8 +29,9 @@ real-time testing. It is not a hardware-cloning exercise and does not use
 | **Sequence S-01** | Monophonic programmed-current synthesizer | Complete internal prototype; musical/DAW validation next |
 | **Loop L-01** | Tape-inspired playable memory instrument | Complete internal prototype; captured-memory recall next |
 | **Impulse I-01** | Generative rhythm and transient instrument | Complete internal prototype; musical/DAW validation next |
+| **Field F-01** | Playable reverb and stored-spatial-energy instrument | Complete internal prototype; musical/DAW validation next |
 
-All five products remain independent. Shared code is extracted only when two
+All six products remain independent. Shared code is extracted only when two
 products genuinely need identical behavior or when correctness requires one
 implementation; no product processor links to another product.
 
@@ -170,6 +173,21 @@ another. No drum samples, genre kits, named circuit clone, or nondeterministic
 “analog” behavior defines the product. See
 [docs/products/impulse/SPECIFICATION.md](docs/products/impulse/SPECIFICATION.md).
 
+## Field F-01
+
+Field is a heavy reverb conceived as stored spatial energy rather than a room
+simulation. Its eight moving feedback lines, deterministic grain motion, and
+two internal dual-head pitch voices form one recirculating instrument. Audio or
+sample-offset MIDI notes can excite the field. The large **FOREVER** control
+smoothly holds and animates its memory; press it again to release back into the
+Mass-controlled decay.
+
+Mass, Grain, Pitch, Motion, Distance, Blend, and Output remain on one panel.
+There is no IR, named room, hidden quality page, decorative animation,
+nondeterministic drift, or hardware-emulation claim. Field reports zero latency
+and its live audio memory intentionally starts empty after session reload. See
+[docs/products/field/SPECIFICATION.md](docs/products/field/SPECIFICATION.md).
+
 ## Requirements
 
 The tested development environment is macOS on Apple Silicon, with x86_64
@@ -216,6 +234,8 @@ It builds:
   property tests, deterministic render, and worst-case benchmark.
 - `impulse_dsp`, `impulse_tests`, and `impulse_lab` — physical-event voices,
   deterministic polymetric scheduling, render, and benchmark.
+- `field_dsp`, `field_tests`, and `field_lab` — stored-energy field, grain and
+  pitch feedback, six-rate report, and worst-case benchmark.
 
 ### VST3, adapter tests, and standalone host
 
@@ -237,6 +257,7 @@ build-plugin/HarmonicH01_artefacts/Release/VST3/Harmonic H-01.vst3
 build-plugin/SequenceS01_artefacts/Release/VST3/Sequence S-01.vst3
 build-plugin/LoopL01_artefacts/Release/VST3/Loop L-01.vst3
 build-plugin/ImpulseI01_artefacts/Release/VST3/Impulse I-01.vst3
+build-plugin/FieldF01_artefacts/Release/VST3/Field F-01.vst3
 ```
 
 Each product has direct JUCE-adapter tests. The separate `vst3_smoke_host`
@@ -288,7 +309,7 @@ Clone the repository on the music machine, quit Cubase and Ableton, then run:
 ```
 
 The script builds and tests universal arm64+x86_64 bundles, verifies both
-architectures and signatures, and installs the complete five-product line under
+architectures and signatures, and installs the complete six-product line under
 `~/Library/Audio/Plug-Ins/VST3`. Existing copies are preserved as timestamped
 backups, and no `sudo` is used. Reopen the DAW and rescan VST3 plugins.
 
@@ -312,6 +333,8 @@ An explicit bundle path may be supplied when testing another build:
   "build-plugin-universal/LoopL01_artefacts/Release/VST3/Loop L-01.vst3"
 ./tools/install_impulse_macos.sh \
   "build-plugin-universal/ImpulseI01_artefacts/Release/VST3/Impulse I-01.vst3"
+./tools/install_field_macos.sh \
+  "build-plugin-universal/FieldF01_artefacts/Release/VST3/Field F-01.vst3"
 ```
 
 ### Internal packaging rehearsal
@@ -455,11 +478,18 @@ ratchets, 180 BPM, maximum Energy, Variation, Mutation, and Drive. It passes
 its 2% eight-object stress budget; native Intel, older Apple Silicon, DAW, and
 open-UI evidence remain external.
 
+Field's five-run worst-case Release benchmark measured a 0.320727% median of
+one M4 Pro performance core at 48 kHz / 127 samples with FOREVER, Mass, Grain,
+Pitch, Motion, Distance, and Blend at maximum. Its fixed processing state is
+1,180,056 bytes, below the product-specific 1.5 MiB budget. Native Intel,
+oldest-supported Apple Silicon, loaded-DAW, long-held-energy, and open-UI
+measurements remain external.
+
 ## Current release status
 
-The five-product line consists of internal prototypes, not releases. Density
+The six-product line consists of internal prototypes, not releases. Density
 has repository evidence for 16 of its 25 release gates. Harmonic has the
-engineering boundary needed for first external tests; all five still require
+engineering boundary needed for first external tests; all six still require
 people, DAWs, and target hardware for:
 
 - Cubase 14, Ableton Live 13/beta, and one additional real-host matrix;
@@ -501,6 +531,10 @@ impulse_dsp  <- impulse_tests <- impulse_lab
       ^
       +------ Impulse JUCE instrument/UI <- impulse_plugin_tests
 
+field_dsp    <- field_tests <- field_lab
+      ^
+      +------ Field JUCE effect/UI <- field_plugin_tests
+
 all VST3 bundles <- vst3_smoke_host (dynamic ABI load only)
 ```
 
@@ -515,6 +549,8 @@ package boundary is [ADR 0004](docs/adr/0004-internal-package-format.md).
 The package dependency boundary is [ADR 0005](docs/adr/0005-spdx-sbom.md).
 The expiring dependency-security review is
 [ADR 0006](docs/adr/0006-expiring-dependency-security-review.md).
+Field's fixed stored-energy topology and memory exception are
+[ADR 0015](docs/adr/0015-field-stored-energy-topology.md).
 
 ## Repository map
 
@@ -525,12 +561,14 @@ apps/
   sequence/            monophonic voice, host sequencer, adapter, and editor
   loop/                capture memory, adapter, and editor
   impulse/             rhythmic objects, polymetric clock, adapter, and editor
+  field/               moving feedback field, pitch memory, adapter, and editor
   dsp-lab/             offline renderer and measurement laboratory
   standalone-host/     minimal headless VST3 smoke host
 docs/
   adr/                 accepted engineering decisions
   products/density/    cycle reports and Density research evidence
   products/harmonic/   Harmonic contract, research, and test handoff
+  products/field/      Field contract, state, cycle evidence, and test handoff
   research/            lawful historical-reference metadata
   testing/             listening protocols
 tests/
@@ -542,6 +580,7 @@ tests/
   sequence_tests.cpp / sequence_plugin_tests.cpp
   loop_tests.cpp / loop_plugin_tests.cpp
   impulse_tests.cpp / impulse_plugin_tests.cpp
+  field_tests.cpp / field_plugin_tests.cpp
   realtime_audit_mac.cpp
 tools/                  repository-policy and provenance checks
 ```

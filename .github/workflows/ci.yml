@@ -33,7 +33,7 @@ jobs:
       - name: Configure
         run: cmake -S . -B ci-core -DCMAKE_BUILD_TYPE=Release
       - name: Static analysis
-        run: cmake --build ci-core --target density_static_analysis harmonic_static_analysis sequence_static_analysis loop_static_analysis impulse_static_analysis
+        run: cmake --build ci-core --target density_static_analysis harmonic_static_analysis sequence_static_analysis loop_static_analysis impulse_static_analysis field_static_analysis
       - name: Build
         run: cmake --build ci-core --parallel 3
       - name: Test
@@ -60,6 +60,7 @@ jobs:
           codesign --verify --strict --deep "ci-vst3/SequenceS01_artefacts/Release/VST3/Sequence S-01.vst3"
           codesign --verify --strict --deep "ci-vst3/LoopL01_artefacts/Release/VST3/Loop L-01.vst3"
           codesign --verify --strict --deep "ci-vst3/ImpulseI01_artefacts/Release/VST3/Impulse I-01.vst3"
+          codesign --verify --strict --deep "ci-vst3/FieldF01_artefacts/Release/VST3/Field F-01.vst3"
       - name: Verify universal binary
         run: |
           lipo "ci-vst3/DensityD01_artefacts/Release/VST3/Density D-01.vst3/Contents/MacOS/Density D-01" -verify_arch arm64 x86_64
@@ -67,6 +68,7 @@ jobs:
           lipo "ci-vst3/SequenceS01_artefacts/Release/VST3/Sequence S-01.vst3/Contents/MacOS/Sequence S-01" -verify_arch arm64 x86_64
           lipo "ci-vst3/LoopL01_artefacts/Release/VST3/Loop L-01.vst3/Contents/MacOS/Loop L-01" -verify_arch arm64 x86_64
           lipo "ci-vst3/ImpulseI01_artefacts/Release/VST3/Impulse I-01.vst3/Contents/MacOS/Impulse I-01" -verify_arch arm64 x86_64
+          lipo "ci-vst3/FieldF01_artefacts/Release/VST3/Field F-01.vst3/Contents/MacOS/Field F-01" -verify_arch arm64 x86_64
       - name: Checkout Steinberg VST3 SDK validator source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -96,6 +98,7 @@ jobs:
           ci-validator/bin/Release/validator -e "ci-vst3/SequenceS01_artefacts/Release/VST3/Sequence S-01.vst3"
           ci-validator/bin/Release/validator -e "ci-vst3/LoopL01_artefacts/Release/VST3/Loop L-01.vst3"
           ci-validator/bin/Release/validator -e "ci-vst3/ImpulseI01_artefacts/Release/VST3/Impulse I-01.vst3"
+          ci-validator/bin/Release/validator -e "ci-vst3/FieldF01_artefacts/Release/VST3/Field F-01.vst3"
       - name: Build deterministic internal package
         run: cmake --build ci-vst3 --target density_package
       - name: Inspect internal package

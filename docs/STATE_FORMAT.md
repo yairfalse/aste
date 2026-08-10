@@ -16,6 +16,11 @@ state block. Product roots and schemas are deliberately independent:
   <PARAM id="pressure" value="35.0"/>
   <PARAM id="step_01_note" value="0"/>
 </sequence-s01>
+
+<field-f01 schema="1" product="field-f01">
+  <PARAM id="forever" value="0"/>
+  <PARAM id="mass" value="62.0"/>
+</field-f01>
 ```
 
 Only stable parameter IDs and portable scalar values are stored. Unknown keys
@@ -56,3 +61,6 @@ are in [docs/products/loop/STATE_FORMAT.md](products/loop/STATE_FORMAT.md).
 Impulse stores every object, cycle, probability, mutation, and seed value as 60
 portable scalars. Its deterministic pattern contract is in
 [docs/products/impulse/STATE_FORMAT.md](products/impulse/STATE_FORMAT.md).
+Field stores nine control scalars but deliberately excludes live delay memory;
+its validation and empty-memory recall contract is in
+[docs/products/field/STATE_FORMAT.md](products/field/STATE_FORMAT.md).

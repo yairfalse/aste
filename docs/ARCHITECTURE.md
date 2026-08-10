@@ -31,6 +31,10 @@ impulse_dsp  <- impulse_tests <- impulse_lab
       ^
       +------ Impulse JUCE instrument/UI <- impulse_plugin_tests
 
+field_dsp    <- field_tests <- field_lab
+      ^
+      +------ Field JUCE effect/UI <- field_plugin_tests
+
 all VST3 bundles <- vst3_smoke_host (dynamic ABI load only)
 ```
 
@@ -144,6 +148,25 @@ Pulses and rotation generate visible parameter state on the UI thread; the
 audio thread reads only the resulting fixed pattern arrays.
 The product-local graph reports zero latency; ADR 0010 owns the boundary.
 
+## Field F-01 graph
+
+```text
+audio + sample-offset MIDI excitation -> distance input filter
+     -> eight moving delay lines -> Householder feedback -> damping --+
+             ^                                                     |
+             +---- dual-head fifth/octave pitch return <-----------+
+     -> stereo field -> equal-power dry/wet blend -> output
+```
+
+Field is a mono/stereo effect with fixed preallocated delay and pitch memory.
+The audio thread owns delay writes, pitch-head phases, deterministic grain
+state, MIDI excitation, smoothers, and meters. FOREVER changes retention
+continuously and never swaps topology. The adapter publishes four lock-free
+meter values and handles MIDI at event offsets. No other product links to the
+Field graph; it reports zero latency.
+ADR 0015 records the topology, memory-budget exception, and rejected room/IR
+alternatives.
+
 ## Product philosophy
 
 The family exposes audible phenomena rather than circuit trivia. Interfaces
@@ -159,7 +182,7 @@ mastering limiter.
 
 ## Next product boundary
 
-All five product source targets now exist. Sequence, Loop, and Impulse consume
+All six product source targets now exist. Sequence, Loop, Impulse, and Field consume
 host timing locally with different contracts, so transport extraction remains
 deferred until identical behavior is proven. Loop and Impulse amplifier stages
 also remain product-local because their measured jobs differ.

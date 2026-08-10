@@ -88,3 +88,11 @@ object, for 368 stable IDs. Seed, cycles, probability, conditions, ratchets,
 timing, and the complete visible program are ordinary scalar state. The
 complete contract is
 [docs/products/impulse/PARAMETERS.md](products/impulse/PARAMETERS.md).
+
+## Field F-01
+
+Field schema 1 contains nine stable IDs: Forever, Mass, Grain, Pitch, Motion,
+Distance, Blend, Output, and Bypass. The single hero button changes retention
+continuously; it is serialized like any other automatable parameter. Complete
+ranges, defaults, smoothing, and internal coordinated mappings are in
+[docs/products/field/PARAMETERS.md](products/field/PARAMETERS.md).

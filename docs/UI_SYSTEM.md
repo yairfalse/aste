@@ -8,8 +8,9 @@ Motion reports signal state only. No fake materials, fasteners, rack furniture,
 decorative animation, tabs, or hidden pages for essential controls are allowed.
 
 Product accents are deep burgundy for Density, warm ochre for Harmonic, oxidized
-teal for Loop, restrained signal orange for Impulse, and cold laboratory blue
-for Sequence. These are identifiers and state cues, not decoration.
+teal for Loop, restrained signal orange for Impulse, cold laboratory blue for
+Sequence, and desaturated horizon blue for Field. These are identifiers and
+state cues, not decoration.
 
 ## Interaction contract
 
@@ -60,3 +61,12 @@ row; Variation, Mutation, Seed, Output, Division, Sequence, and Snapshots remain
 visible. Four equal object strips expose all thirteen sound and cycle controls
 without tabs. Signal orange communicates parameter amount and each track's
 current host-clocked step; output level is the only other motion.
+
+## Field F-01
+
+The 1080×620 editor scales from 900×520 to 1800×1040. FOREVER occupies the
+largest central hit target and communicates held state through fill, outline,
+and text rather than animation. Input/output, stored energy, and retention are
+the only moving displays. Mass, Grain, Pitch, Motion, Distance, Blend, Output,
+and the compact preset menu remain visible on the single panel with explicit
+keyboard order and editable numeric fields.

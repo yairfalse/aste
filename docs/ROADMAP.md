@@ -64,6 +64,16 @@ gate is deterministic music-machine transport and deep-kick validation. Extract
 shared UI, transport, or amplifier code only after identical behavior is
 measured in two products.
 
+## Current — Field F-01 validation
+
+Field now has an independent moving feedback field, deterministic grain motion,
+dual pitch return, sample-offset MIDI excitation, one-button FOREVER behavior,
+state schema, editor, lab report, installer, and automated host boundary. Its
+next gate is the Field music-machine checklist: long-held stability, useful
+pitch accumulation, click-free grain automation, mono/stereo behavior, state
+expectations, and first-use discovery in Cubase and Ableton. Live field-memory
+serialization remains deliberately deferred until the musical topology passes.
+
 ## Explicitly deferred
 
 - No universal plugin engine.

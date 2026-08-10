@@ -291,3 +291,22 @@ reduction must remain monotonic before a pack is accepted.
 
 Additional musical fixtures, UI image regression, and Cubase/Ableton matrices
 remain.
+
+## Field F-01 evidence
+
+`field_tests` covers exact zero-blend dry output, zero latency, six rates,
+non-finite controls, finite FOREVER feedback, MIDI excitation, deterministic
+grain motion, variable block partitions, fixed-state memory budget, and zero
+processing allocation. `field_plugin_tests` adds stable parameter count,
+deterministic and malformed state, sample-offset MIDI, macOS callback-system
+audit, meter publication, essential-control visibility, scaling, and a rendered
+UI artifact. The independent VST3 smoke host verifies dynamic bundle loading,
+state, irregular processing blocks, finite output, parameter identity, and
+latency.
+
+`field_lab OUTPUT.csv` renders impulse responses in release and FOREVER modes at
+44.1, 48, 88.2, 96, 176.4, and 192 kHz. It records peak, first-second RMS,
+last-second RMS, stored energy, finite status, and latency. `--benchmark` runs
+all costly controls at maximum for ten seconds at 48 kHz / 127 samples. These
+tests establish implementation behavior, not a musical reverb-quality claim;
+the product music-machine protocol remains mandatory.

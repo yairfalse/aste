@@ -194,3 +194,18 @@ five eight-object Release stress renders with all 32 cells active measured
 1.23198–1.27919% of one M4 Pro performance core at 48 kHz / 127 samples, with a
 1.26032% median. This passes the revised eight-object budget but still requires
 native Intel, oldest-supported Apple Silicon, loaded-DAW, and open-UI evidence.
+
+## Field F-01 baseline
+
+Field has a product-specific fixed processing-state budget below 1.5 MiB. A
+long reverb necessarily stores more samples than the general 256 KiB DSP budget;
+the exception is explicit, bounded at compile time, and contains no callback
+allocation. Latency remains zero. The provisional CPU budget is below 1.0% of
+one performance core at 48 kHz / 127 samples with FOREVER and every continuous
+sound control at maximum.
+
+On 2026-08-10, five ten-second Release stress renders measured
+0.320444–0.323781% of one Apple M4 Pro performance core, with a 0.320727%
+median. Processing state is 1,180,056 bytes. Both pass the local provisional
+gates. This is not evidence for native Intel, the oldest supported Apple
+Silicon machine, a loaded DAW, an open editor, or multi-minute held energy.
