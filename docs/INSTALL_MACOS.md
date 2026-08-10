@@ -6,6 +6,22 @@ and intended only for private testing on your own Macs.
 
 ## Install
 
+### One command
+
+Keep `INSTALL_ALL.command` beside the six `.vst3` bundles, quit every audio
+host, then double-click it in Finder. If macOS does not open it, right-click
+the command, choose **Open**, or run this from Terminal in the transfer folder:
+
+```sh
+./INSTALL_ALL.command
+```
+
+The command verifies the signatures and universal architecture slices before
+installing, clears quarantine, and preserves existing copies as timestamped
+backups. It does not use `sudo`.
+
+### Manual installation
+
 1. Quit Cubase, Ableton Live, and any other audio host.
 2. In Finder choose **Go > Go to Folder** and enter:
 

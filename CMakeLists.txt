@@ -219,6 +219,9 @@ if(APPLE)
   add_test(NAME build_and_install_syntax
     COMMAND /bin/sh -n
             "${CMAKE_CURRENT_SOURCE_DIR}/tools/build_and_install_macos.sh")
+  add_test(NAME install_all_bundles_syntax
+    COMMAND /bin/sh -n
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/install_all_bundles_macos.command")
 endif()
 add_test(NAME harmonic_reference_compare
   COMMAND harmonic_lab --compare

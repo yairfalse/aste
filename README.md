@@ -320,6 +320,16 @@ they are for private host and musical validation, not distribution.
 For the plain transfer-folder workflow, see
 [INSTALL_MACOS.md](docs/INSTALL_MACOS.md).
 
+When all six bundles and `INSTALL_ALL.command` are in one transfer folder,
+quit every audio host and double-click the command, or run:
+
+```sh
+./INSTALL_ALL.command
+```
+
+It installs and locally allows every bundle without `sudo`, preserving any
+previous versions as timestamped backups.
+
 An explicit bundle path may be supplied when testing another build:
 
 ```sh
