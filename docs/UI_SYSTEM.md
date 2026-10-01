@@ -21,7 +21,11 @@ state cues, not decoration.
 - Fixed meaning at every supported scale; resizing must not reveal or hide
   essential controls.
 - Meters update at a bounded rate and never drive DSP state.
-- Tooltips and modal dialogs are omitted unless a tested workflow needs them.
+- Hover descriptions explain musical effects and inactive dependencies. They
+  supplement visible first-action cues rather than replacing them.
+- Preset names stay visible in the open editor; an asterisk marks edits.
+- Input/output bars use a -60 to 0 dBFS scale with numeric readings where space
+  permits, rather than linear-amplitude fill.
 
 ## Density D-01
 
@@ -58,9 +62,11 @@ to signal levels and memory travel. All essential controls remain on one panel.
 
 The 1480×900 editor scales from 1120×700 to 1800×1120. Energy leads the global
 row; Variation, Mutation, Seed, Output, Division, Sequence, and Snapshots remain
-visible. Four equal object strips expose all thirteen sound and cycle controls
-without tabs. Signal orange communicates parameter amount and each track's
-current host-clocked step; output level is the only other motion.
+visible. Eight 32-step rows remain visible. Click a track name to audition it
+and select its sound panel: five sound controls above eight rhythm controls.
+Steps outside the track length are dimmed but can be programmed for later.
+The new-instance groove is a shared, predictable 16 steps; the polymetric and
+mutation starting points are explicitly labelled evolving or wild.
 
 ## Field F-01
 
@@ -70,3 +76,10 @@ and text rather than animation. Input/output, stored energy, and retention are
 the only moving displays. Mass, Grain, Pitch, Motion, Distance, Blend, Output,
 and the compact preset menu remain visible on the single panel with explicit
 keyboard order and editable numeric fields.
+
+FOREVER distinguishes an empty armed hold from held audio. Clear Field empties
+the memory without changing the hold switch. Its additional grain, pitch and
+motion influence is explained on the panel. Sequence groups voice controls by
+oscillators, filter, and envelope, displays note names, and explains its host
+sequence versus MIDI-keyboard modes. Loop distinguishes empty, recording, and
+playing memory and disables the inactive duration control.

@@ -1,5 +1,11 @@
 # Performance budgets
 
+The 2026-10-01 Loop snapshot path measured 0.821238% of one local core versus
+0.517628% without snapshots (five-run Release medians, 48 kHz / 127 frames).
+The preallocated snapshot design reserves roughly 88 MiB at 48 kHz and scales
+with sample rate. See [the usability cycle](UX_REVIEW.md) for methodology,
+recall limits, and remaining hardware/DAW checks.
+
 Budgets are release gates measured on the oldest supported Apple Silicon and
 Intel Macs, Release builds, stereo, worst-case automation:
 

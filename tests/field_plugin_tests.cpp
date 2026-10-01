@@ -1,4 +1,5 @@
 #include "field_plugin.hpp"
+#include "editor_artifact.hpp"
 
 #include <array>
 #include <atomic>
@@ -179,15 +180,45 @@ void testEditor(const char* artifactDirectory) {
     file = file.getChildFile("field-f01-editor.png");
     if (auto stream = file.createOutputStream())
       png.writeImageToStream(image, *stream);
+    require(writeMinimumEditorArtifact(
+                *editor, file.getSiblingFile("field-minimum.png")),
+            "Field controls fit and render at the minimum size");
   }
 }
 
+void testEmptyHoldAndClear() {
+  Field processor;
+  processor.prepareToPlay(48000, 127);
+  setValue(processor, "forever", 1);
+  std::unique_ptr<juce::AudioProcessorEditor> editor{processor.createEditor()};
+  auto* hold = findTitled(*editor, "FOREVER");
+  require(hold && hold->getDescription().contains("HOLD ARMED"),
+          "Empty memory reports an armed hold, not held audio");
+  juce::AudioBuffer<float> audio{2, 127};
+  juce::MidiBuffer midi;
+  midi.addEvent(juce::MidiMessage::noteOn(1, 60, 1.0F), 0);
+  for (int block = 0; block < 200; ++block) {
+    audio.clear();
+    processor.processBlock(audio, midi);
+    midi.clear();
+  }
+  require(processor.fieldEnergy() > 0, "MIDI excitation fills the field");
+  auto* clear = dynamic_cast<juce::Button*>(findTitled(*editor, "CLEAR FIELD"));
+  require(clear != nullptr, "The panel provides a clear action");
+  if (clear) clear->onClick();
+  audio.clear();
+  processor.processBlock(audio, midi);
+  require(processor.fieldEnergy() == 0 && audio.getMagnitude(0, 0, 127) == 0,
+          "Clear empties stored energy and output without changing the hold "
+          "control");
+}
 }  // namespace
 
 int main(int argc, char** argv) {
   juce::ScopedJuceInitialiser_GUI juce;
   testContractAndState();
   testProcessingMidiAndRealtime();
+  testEmptyHoldAndClear();
   testEditor(argc == 3 && std::string{argv[1]} == "--editor-artifacts"
                  ? argv[2]
                  : nullptr);

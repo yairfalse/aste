@@ -1,4 +1,5 @@
 #include "sequence_plugin.hpp"
+#include "editor_artifact.hpp"
 
 #include <array>
 #include <atomic>
@@ -229,6 +230,7 @@ void testInstrumentBoundary() {
 
 void testEditorContract() {
   Sequence processor;
+  setValue(processor, "division", 0);
   std::unique_ptr<juce::AudioProcessorEditor> editor{processor.createEditor()};
   require(editor != nullptr && editor->getWidth() == 1280 &&
               editor->getHeight() == 760 && editor->isResizable(),
@@ -236,6 +238,16 @@ void testEditorContract() {
   if (editor == nullptr) {
     return;
   }
+  auto* division =
+      dynamic_cast<juce::ComboBox*>(findTitled(*editor, "DIVISION"));
+  require(division && division->getSelectedId() == 1,
+          "Opening the editor reflects the restored division instead of "
+          "displaying 1/16");
+  auto* root = dynamic_cast<juce::Slider*>(findTitled(*editor, "ROOT"));
+  require(root && root->getTextFromValue(60) == "C4" &&
+              root->getValueFromText("C3") == 48,
+          "Root supports musical note names without changing MIDI parameter "
+          "values");
   for (const char* title : std::array<const char*, 11>{
            "PRESSURE", "CUTOFF", "FILTER WEIGHT", "FILTER DRIVE", "WAVE",
            "PULSE WIDTH", "OUTPUT", "DIVISION", "SEQUENCE", "Step 01 Program",
@@ -272,6 +284,9 @@ int createEditorArtifact(const char* directoryPath) {
     return 2;
   }
   output.flush();
+  if (!writeMinimumEditorArtifact(
+          *editor, directory.getChildFile("sequence-minimum.png")))
+    return 2;
   return 0;
 }
 

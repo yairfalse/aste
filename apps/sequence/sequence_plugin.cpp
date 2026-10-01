@@ -1,6 +1,7 @@
 #include "sequence_plugin.hpp"
 
 #include "decimal_parse.hpp"
+#include "plugin_ui.hpp"
 
 #include <algorithm>
 #include <array>
@@ -121,6 +122,27 @@ class SequenceLookAndFeel final : public juce::LookAndFeel_V4 {
     setColour(juce::ToggleButton::textColourId, juce::Colour{kInk});
   }
 
+  void drawToggleButton(juce::Graphics& g, juce::ToggleButton& button,
+                        bool highlighted, bool down) override {
+    const auto name = button.getButtonText();
+    if (name != "GATE" && name != "ACC" && name != "SLIDE") {
+      juce::LookAndFeel_V4::drawToggleButton(g, button, highlighted, down);
+      return;
+    }
+    auto area = button.getLocalBounds().reduced(1);
+    const auto mark = area.removeFromLeft(12).withSizeKeepingCentre(10, 10);
+    g.setColour(juce::Colour{button.getToggleState() ? kAccent : kMuted});
+    if (button.getToggleState())
+      g.fillRect(mark);
+    else
+      g.drawRect(mark);
+    g.setFont(juce::FontOptions{9.0F});
+    g.setColour(juce::Colour{kInk});
+    g.drawFittedText(name, area, juce::Justification::centredLeft, 1);
+    if (button.hasKeyboardFocus(true) || highlighted || down)
+      g.drawRect(button.getLocalBounds().reduced(1));
+  }
+
   void drawRotarySlider(juce::Graphics& graphics, int x, int y, int width,
                         int height, float position, float startAngle,
                         float endAngle, juce::Slider&) override {
@@ -157,11 +179,25 @@ class Knob final : public juce::Component {
        const char* name, const char* suffix, double initial, int order)
       : attachment_{state, id, slider_} {
     slider_.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+    slider_.textFromValueFunction = [this](double value) {
+      return aste::ui::formattedValue(slider_, value);
+    };
     slider_.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 80, 20);
     slider_.setTextValueSuffix(suffix);
+    if (juce::String{id} == "root") {
+      slider_.setTextValueSuffix({});
+      slider_.textFromValueFunction = [](double value) {
+        return aste::ui::noteName(static_cast<int>(value));
+      };
+      slider_.valueFromTextFunction = [](const juce::String& text) {
+        return static_cast<double>(
+            aste::ui::noteNumber(text, text.getIntValue()));
+      };
+    }
     slider_.setDoubleClickReturnValue(true, initial);
     slider_.setTitle(name);
-    slider_.setDescription(juce::String{name} + " parameter");
+    slider_.setDescription(aste::ui::explanation(id));
+    slider_.setTooltip(aste::ui::explanation(id));
     slider_.setWantsKeyboardFocus(true);
     slider_.setExplicitFocusOrder(order);
     label_.setText(name, juce::dontSendNotification);
@@ -169,6 +205,7 @@ class Knob final : public juce::Component {
     label_.setFont(juce::FontOptions{10.0F, juce::Font::bold});
     addAndMakeVisible(slider_);
     addAndMakeVisible(label_);
+    slider_.updateText();
   }
 
   void resized() override {
@@ -194,23 +231,43 @@ class StepCell final : public juce::Component {
     setTitle(stepName(index, "Program"));
     note_.setSliderStyle(juce::Slider::LinearVertical);
     note_.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 48, 19);
+    auto* root = state.getRawParameterValue("root");
+    note_.textFromValueFunction = [root](double offset) {
+      return aste::ui::noteName(static_cast<int>(root->load() + offset));
+    };
+    note_.valueFromTextFunction = [root](const juce::String& text) {
+      const int base = static_cast<int>(root->load());
+      return static_cast<double>(
+          aste::ui::noteNumber(text, base + text.getIntValue()) - base);
+    };
+    note_.setTooltip(
+        "Note relative to Root. Type a note name (C3) or a semitone offset "
+        "(+7). MIDI transposes the pattern while running.");
     note_.setTitle(stepName(index, "Note"));
     note_.setDoubleClickReturnValue(true, 0.0);
     note_.setWantsKeyboardFocus(true);
     note_.setExplicitFocusOrder(30 + static_cast<int>(index));
-    gate_.setButtonText({});
+    gate_.setButtonText("GATE");
     gate_.setTitle(stepName(index, "Gate"));
-    accent_.setButtonText({});
+    gate_.setTooltip("Gate: play this step.");
+    accent_.setButtonText("ACC");
     accent_.setTitle(stepName(index, "Accent"));
-    slide_.setButtonText({});
+    accent_.setTooltip(
+        "Accent: give this step extra strength and filter emphasis.");
+    slide_.setButtonText("SLIDE");
     slide_.setTitle(stepName(index, "Slide"));
+    slide_.setTooltip(
+        "Slide: connect this step to the next without retriggering the "
+        "envelope.");
     for (auto* component :
          std::array<juce::Component*, 4>{&note_, &gate_, &accent_, &slide_}) {
       addAndMakeVisible(component);
     }
+    note_.updateText();
   }
 
   void setActive(bool active) {
+    note_.updateText();
     if (active_ != active) {
       active_ = active;
       repaint();
@@ -227,19 +284,15 @@ class StepCell final : public juce::Component {
     graphics.drawText(
         juce::String{static_cast<int>(index_ + 1)}.paddedLeft('0', 2), 0, 5,
         getWidth(), 14, juce::Justification::centred);
-    graphics.setFont(juce::FontOptions{8.0F, juce::Font::bold});
-    graphics.drawText("G     A     S", 0, getHeight() - 34, getWidth(), 10,
-                      juce::Justification::centred);
   }
 
   void resized() override {
     auto area = getLocalBounds().reduced(3);
     area.removeFromTop(18);
-    auto buttons = area.removeFromBottom(23);
+    auto buttons = area.removeFromBottom(72);
     area.removeFromBottom(11);
-    const int width = buttons.getWidth() / 3;
-    gate_.setBounds(buttons.removeFromLeft(width));
-    accent_.setBounds(buttons.removeFromLeft(width));
+    gate_.setBounds(buttons.removeFromTop(24));
+    accent_.setBounds(buttons.removeFromTop(24));
     slide_.setBounds(buttons);
     note_.setBounds(area);
   }
@@ -285,35 +338,49 @@ class SequenceEditor final : public juce::AudioProcessorEditor,
         glide_{processor.state(), "glide", "GLIDE", " ms", 70, 16},
         output_{processor.state(), "output", "OUTPUT", " dB", -6, 17},
         root_{processor.state(), "root", "ROOT", " MIDI", 36, 18},
-        divisionAttachment_{processor.state(), "division", division_},
         sequenceAttachment_{processor.state(), "sequence", sequence_} {
     setLookAndFeel(&lookAndFeel_);
     division_.addItemList({"1/8", "1/16", "1/32"}, 1);
-    division_.setSelectedId(2, juce::dontSendNotification);
+    divisionAttachment_ = std::make_unique<
+        juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+        processor.state(), "division", division_);
     division_.setTitle("DIVISION");
     division_.setWantsKeyboardFocus(true);
-    division_.setExplicitFocusOrder(17);
+    division_.setExplicitFocusOrder(19);
     sequence_.setButtonText("SEQUENCE");
     sequence_.setTitle("SEQUENCE");
     sequence_.setWantsKeyboardFocus(true);
-    sequence_.setExplicitFocusOrder(18);
+    sequence_.setExplicitFocusOrder(20);
+    sequence_.setTooltip(
+        "On: host playback runs the pattern; MIDI transposes it. Off: play the "
+        "synth directly with MIDI.");
     preset_.setTextWhenNothingSelected("PRESETS");
     preset_.setTitle("PRESETS");
     preset_.setWantsKeyboardFocus(true);
-    preset_.setExplicitFocusOrder(19);
+    preset_.setExplicitFocusOrder(21);
     for (int index = 0; index < processor_.factoryPresetCount(); ++index) {
       preset_.addItem(processor_.factoryPresetName(index), index + 1);
     }
     preset_.onChange = [this] {
       if (const int selected = preset_.getSelectedId(); selected > 0) {
         processor_.loadFactoryPreset(selected - 1);
-        preset_.setSelectedId(0, juce::dontSendNotification);
+        preset_.remember(processor_);
       }
     };
     for (std::size_t index = 0; index < steps_.size(); ++index) {
       steps_[index] = std::make_unique<StepCell>(processor_.state(), index);
       addAndMakeVisible(*steps_[index]);
     }
+    for (std::size_t i = 0; i < groups_.size(); ++i) {
+      groups_[i].setText(std::array{"OSCILLATORS", "FILTER & CHARACTER",
+                                    "ENVELOPE & LEVEL"}[i],
+                         juce::dontSendNotification);
+      groups_[i].setFont(juce::FontOptions{11.0F, juce::Font::bold});
+      addAndMakeVisible(groups_[i]);
+    }
+    mode_.setTitle("PLAY MODE");
+    mode_.setFont(juce::FontOptions{11.0F});
+    addAndMakeVisible(mode_);
     for (auto* component : std::array<juce::Component*, 21>{
              &pressure_,    &cutoff_,  &resonance_,      &filterForm_,
              &filterDrive_, &shape_,   &pulseWidth_,     &oscillatorMix_,
@@ -326,6 +393,7 @@ class SequenceEditor final : public juce::AudioProcessorEditor,
     setResizable(true, true);
     setResizeLimits(960, 600, 1600, 1000);
     setSize(1280, 760);
+    timerCallback();
     startTimerHz(30);
   }
 
@@ -351,13 +419,20 @@ class SequenceEditor final : public juce::AudioProcessorEditor,
     graphics.setColour(juce::Colour{kPanel});
     graphics.fillRect(meter);
     auto fill = meter;
-    fill.removeFromTop(meter.getHeight() * (1.0F - displayedPeak_));
+    fill.removeFromTop(meter.getHeight() *
+                       (1.0F - aste::ui::meterPosition(displayedPeak_)));
     graphics.setColour(juce::Colour{kAccent});
     graphics.fillRect(fill);
     graphics.setColour(juce::Colour{kMuted});
     graphics.setFont(juce::FontOptions{10.0F, juce::Font::bold});
     graphics.drawText("OUT", 15, getHeight() - 27, 30, 12,
                       juce::Justification::centred);
+    graphics.setColour(juce::Colour{kInk});
+    graphics.drawText(
+        "G = Gate (play)    A = Accent (stronger)    S = Slide (connect). "
+        "Hover any control for help.",
+        48, getHeight() - 22, getWidth() - 72, 18,
+        juce::Justification::centredLeft);
   }
 
   void resized() override {
@@ -367,25 +442,30 @@ class SequenceEditor final : public juce::AudioProcessorEditor,
     auto sequenceArea = area.removeFromBottom(
         std::max(205, static_cast<int>(area.getHeight() * 0.42F)));
     area.removeFromBottom(14);
-    const int columns = 9;
-    const int knobWidth = std::max(1, area.getWidth() / columns);
+    const int groupWidth = area.getWidth() / 3;
+    auto groupHeader = area.removeFromTop(22);
+    for (auto& label : groups_)
+      label.setBounds(groupHeader.removeFromLeft(groupWidth));
+    const int knobWidth = std::max(1, groupWidth / 3);
     const int knobHeight = std::max(1, area.getHeight() / 2);
     const std::array<Knob*, 18> knobs{
-        &pressure_,    &cutoff_,  &resonance_,      &filterForm_,
-        &filterDrive_, &shape_,   &pulseWidth_,     &oscillatorMix_,
-        &detune_,      &sub_,     &envelopeAmount_, &attack_,
-        &decay_,       &sustain_, &release_,        &glide_,
-        &output_,      &root_};
+        &shape_,     &pulseWidth_, &oscillatorMix_, &detune_,
+        &sub_,       &root_,       &pressure_,      &cutoff_,
+        &resonance_, &filterForm_, &filterDrive_,   &envelopeAmount_,
+        &attack_,    &decay_,      &sustain_,       &release_,
+        &glide_,     &output_};
     for (std::size_t index = 0; index < knobs.size(); ++index) {
-      const int column = static_cast<int>(index % columns);
-      const int row = static_cast<int>(index / columns);
-      knobs[index]->setBounds(area.getX() + column * knobWidth,
-                              area.getY() + row * knobHeight, knobWidth,
-                              knobHeight);
+      const int group = static_cast<int>(index / 6);
+      const int column = static_cast<int>(index % 3);
+      const int row = static_cast<int>((index % 6) / 3);
+      knobs[index]->setBounds(
+          area.getX() + group * groupWidth + column * knobWidth,
+          area.getY() + row * knobHeight, knobWidth, knobHeight);
     }
     auto sequenceHeader = sequenceArea.removeFromTop(34);
     sequence_.setBounds(sequenceHeader.removeFromLeft(120));
     division_.setBounds(sequenceHeader.removeFromLeft(100).reduced(5, 2));
+    mode_.setBounds(sequenceHeader);
     const int stepWidth = std::max(1, sequenceArea.getWidth() / 16);
     for (std::size_t index = 0; index < steps_.size(); ++index) {
       steps_[index]->setBounds(
@@ -396,6 +476,14 @@ class SequenceEditor final : public juce::AudioProcessorEditor,
 
  private:
   void timerCallback() override {
+    const bool enabled =
+        processor_.state().getRawParameterValue("sequence")->load() >= 0.5F;
+    const bool running = processor_.currentStep() >= 0;
+    mode_.setText(
+        enabled ? (running ? "HOST SEQUENCE / MIDI transposes (C4 = root)"
+                           : "Play MIDI, or start the host for the pattern")
+                : "KEYBOARD / Play MIDI notes",
+        juce::dontSendNotification);
     displayedPeak_ = std::max(processor_.outputPeak(), displayedPeak_ * 0.84F);
     const int active = processor_.currentStep();
     for (std::size_t index = 0; index < steps_.size(); ++index) {
@@ -405,6 +493,8 @@ class SequenceEditor final : public juce::AudioProcessorEditor,
   }
 
   SequenceLookAndFeel lookAndFeel_;
+  std::array<juce::Label, 3> groups_;
+  juce::Label mode_;
   SequenceAudioProcessor& processor_;
   Knob pressure_;
   Knob cutoff_;
@@ -426,8 +516,10 @@ class SequenceEditor final : public juce::AudioProcessorEditor,
   Knob root_;
   juce::ComboBox division_;
   juce::ToggleButton sequence_;
-  juce::ComboBox preset_;
-  juce::AudioProcessorValueTreeState::ComboBoxAttachment divisionAttachment_;
+  aste::ui::PresetMenu preset_;
+  juce::TooltipWindow tooltips_{this, 400};
+  std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>
+      divisionAttachment_;
   juce::AudioProcessorValueTreeState::ButtonAttachment sequenceAttachment_;
   std::array<std::unique_ptr<StepCell>, kStepCount> steps_{};
   float displayedPeak_{};
@@ -638,6 +730,8 @@ void SequenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 
 void SequenceAudioProcessor::processBlockBypassed(
     juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) {
+  processor_.reset();  // Bypass must not retain held notes after their
+                       // note-offs are skipped.
   buffer.clear();
   publishMeters({});
 }

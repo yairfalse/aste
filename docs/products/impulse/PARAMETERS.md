@@ -1,6 +1,6 @@
 # Impulse I-01 parameter contract
 
-Schema 2 contains 368 stable parameters: eight global controls, thirteen sound
+Schema 3 contains 368 stable parameters: eight global controls, thirteen sound
 and cycle controls for each of eight tracks, and 32 pattern cells for each
 track. The original 60 IDs remain unchanged.
 
@@ -10,7 +10,7 @@ Global IDs:
 |---|---:|---:|---|
 | `energy` | 0–100% | 45% | excitation and output loading |
 | `division` | 1/8, 1/16, 1/32 | 1/16 | step duration |
-| `variation` | 0–100% | 12% | bounded event variation |
+| `variation` | 0–100% | 0% | bounded event variation |
 | `mutation` | 0–100% | 0% | deterministic event flips |
 | `seed` | 0–65535 | 1701 | reproducible decisions |
 | `output` | -24–12 dB | -6 dB | final trim, smoothed 5 ms |
@@ -39,6 +39,13 @@ and `cut`. Every prefix owns:
 Every prefix also owns `_step_01` through `_step_32`. Values are `0` Off, `1`
 Hit, and `2` Accent. These automatable integer parameters are the actual
 playback pattern and are always visible in the editor.
+
+New instances use 16 steps, 100% probability, one ratchet, zero rotation/timing,
+and an every-cycle condition on every track. Steady Start plays Kick on steps
+1 and 9, Click on 3/7/11/15, and Crack on 5 and 13; the other rows start empty.
+The first Kick is accented. Schema-1/2 states retain their historical defaults
+and stored patterns. Track selectors audition the selected voice even while
+host playback is stopped.
 
 All controls support host automation, numeric entry, fine drag, reset, and
 portable state. Direct parameters are deliberately playable and can produce

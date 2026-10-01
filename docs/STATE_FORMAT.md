@@ -54,12 +54,13 @@ mutations. Its exact schema contract is in
 Sequence applies the same boundary to its voice and complete 16-step program;
 its exact contract is in
 [docs/products/sequence/STATE_FORMAT.md](products/sequence/STATE_FORMAT.md).
-Loop applies the scalar boundary to 20 controls. Schema 2 accepts schema 1 and
-adds Tape Speed at its default. It does not serialize captured tape generations;
-the exact limitation and migration boundary
+Loop applies the scalar boundary to 20 controls. Schema 3 adds bounded captured
+audio, generation IDs, active deck and source sample rate. Schemas 1 and 2 still
+restore controls with empty tape memory; the payload and migration boundary
 are in [docs/products/loop/STATE_FORMAT.md](products/loop/STATE_FORMAT.md).
-Impulse stores every object, cycle, probability, mutation, and seed value as 60
-portable scalars. Its deterministic pattern contract is in
+Impulse stores every object, visible step, cycle, probability, mutation, and
+seed value as 368 portable scalars. Schema 3 introduces predictable defaults
+without changing restored schema-1/2 values. Its deterministic pattern contract is in
 [docs/products/impulse/STATE_FORMAT.md](products/impulse/STATE_FORMAT.md).
 Field stores nine control scalars but deliberately excludes live delay memory;
 its validation and empty-memory recall contract is in

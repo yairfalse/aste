@@ -1,5 +1,16 @@
 # Roadmap
 
+## Current — playable first use
+
+User feedback prioritizes the complete family's interaction problems: calmer
+Impulse defaults and click audition; Loop capture guidance and recorded-memory
+recall; Sequence grouping, note names and mode feedback; clearer Density and
+Harmonic control relationships; Field hold-state feedback and memory clear.
+These changes preserve parameter IDs and old-session defaults. The next gate
+is hands-on use of these revised builds, not a claim that green automated tests
+establish musical quality. See [ADR 0016](adr/0016-playable-defaults-and-tape-recall.md).
+Implementation and local evidence are recorded in [the usability cycle](UX_REVIEW.md).
+
 ## Now — complete-line external validation
 
 The first working VST3, DSP lab, state model, industrial editor, and automated
@@ -58,8 +69,8 @@ evidence are also outstanding.
 Sequence S-01 has passed hosted core, sanitizer, universal, signature, and
 independent Steinberg validation. Its immediate gate is the music-machine
 checklist. Loop L-01 now has an independent working VST3 prototype; its next
-gate is the Loop music-machine checklist and a race-free captured-memory state
-snapshot. Impulse I-01 now has an independent working VST3 prototype; its next
+gate is the Loop music-machine checklist with schema-3 captured-memory recall.
+Impulse I-01 now has an independent working VST3 prototype; its next
 gate is deterministic music-machine transport and deep-kick validation. Extract
 shared UI, transport, or amplifier code only after identical behavior is
 measured in two products.

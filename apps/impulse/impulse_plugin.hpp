@@ -47,6 +47,9 @@ class ImpulseAudioProcessor final : public juce::AudioProcessor {
   [[nodiscard]] static int factoryPresetCount() noexcept;
   [[nodiscard]] static juce::String factoryPresetName(int index);
   void loadFactoryPreset(int index);
+  void audition(std::size_t track) noexcept {
+    if (track < kTrackCount) auditionRequests_.fetch_or(1U << track);
+  }
 
  private:
   static constexpr std::size_t kGlobalCount = 8;
@@ -60,6 +63,7 @@ class ImpulseAudioProcessor final : public juce::AudioProcessor {
   void publishMeters(const MeterSnapshot&) noexcept;
 
   Processor processor_{};
+  std::atomic<unsigned> auditionRequests_{};
   juce::AudioProcessorValueTreeState state_;
   std::array<std::atomic<float>*, kGlobalCount> globals_{};
   std::array<std::array<std::atomic<float>*, kTrackParameterCount>, kTrackCount>
@@ -75,5 +79,7 @@ class ImpulseAudioProcessor final : public juce::AudioProcessor {
 
 static_assert(std::atomic<float>::is_always_lock_free,
               "Impulse meter publication must remain lock-free");
+static_assert(std::atomic<unsigned>::is_always_lock_free,
+              "Impulse audition requests must remain lock-free");
 
 }  // namespace aste::impulse::plugin

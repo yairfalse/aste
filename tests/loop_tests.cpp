@@ -8,6 +8,7 @@
 #include <iostream>
 #include <new>
 #include <vector>
+#include <thread>
 
 namespace {
 std::atomic<std::size_t> allocations{};
@@ -102,6 +103,10 @@ void testGenerationalReloop() {
   }
   require(processor.meters().retainedGenerations == 3U,
           "Three tape decks retain a bounded generation history");
+  require(processor.meters().oldestGeneration == 2 &&
+              processor.meters().newestGeneration == 4,
+          "History bounds expose the retained generations rather than the "
+          "generation counter");
   processor.previousGeneration();
   parameters.reloop = false;
   std::array<float, 1> tick{};
@@ -184,7 +189,52 @@ void testVariableBlocks() {
 
 }  // namespace
 
+void testConcurrentTapeSnapshots() {
+  aste::loop::Processor processor;
+  processor.prepare(8000, 1, true);
+  aste::loop::Parameters p;
+  p.capture = true;
+  p.overdub = 0;
+  p.loopLengthSeconds = 1;
+  std::atomic<bool> done{};
+  std::thread audio([&] {
+    std::array<float, 127> left{}, right{};
+    for (int block = 0; block < 800; ++block) {
+      left.fill(0.25F);
+      right.fill(-0.25F);
+      processor.process(left.data(), right.data(), left.size(), p);
+    }
+    done.store(true);
+  });
+  do {
+    const auto saved = processor.tapeState();
+    for (std::size_t i = 0; i + 1 < saved.audio[0].size(); i += 2)
+      require(saved.audio[0][i] == 0.25F && saved.audio[0][i + 1] == -0.25F,
+              "Concurrent save observes complete stereo frames from an "
+              "immutable block");
+  } while (!done.load());
+  audio.join();
+  const auto saved = processor.tapeState();
+  aste::loop::Processor restored;
+  restored.prepare(8000, 1, true);
+  restored.restoreTape(saved);
+  require(restored.tapeState().audio == saved.audio,
+          "Same-rate tape recall preserves every recorded sample");
+  restored.prepare(16000, 1, true);
+  restored.restoreTape(saved);
+  const auto resampled = restored.tapeState();
+  require(resampled.audio[0].size() == 32000 &&
+              resampled.generations == saved.generations,
+          "Recall preserves tape duration and generations across sample rates");
+  std::array<float, 127> input{};
+  const auto before = allocations.load();
+  restored.process(input.data(), nullptr, input.size(), p);
+  require(allocations.load() == before,
+          "Snapshot publication and copy-on-write never allocate on audio");
+}
+
 int main() {
+  testConcurrentTapeSnapshots();
   testCapturePlaybackAndReset();
   testGenerationalReloop();
   testModesAndRealtimeSafety();

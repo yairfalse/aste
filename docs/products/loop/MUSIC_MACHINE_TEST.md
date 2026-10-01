@@ -16,8 +16,9 @@ result for every run.
    and only the latest three generations remain navigable.
 7. Exercise Previous/Next, feedback, overdub, and memory clear during playback;
    document discontinuities and branch behavior.
-8. Save/reopen and confirm all controls recall. Confirm and record the known
-   prototype behavior that captured audio does not recall.
+8. Save/reopen and confirm controls, captured audio and retained generations
+   recall. Repeat while recording, after RELOOP, at another sample rate, and
+   with a legacy control-only state (which should restore empty memory).
 9. Automate every parameter rapidly and inspect finite output, CPU, and clicks.
 10. Listen on full mixes, ambient fields, percussion, bass, and sparse acoustic
    capture at level-matched output.

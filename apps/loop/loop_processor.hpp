@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <vector>
+#include "tape_snapshots.hpp"
 
 namespace aste::loop {
 
@@ -38,18 +39,25 @@ struct MeterSnapshot {
   std::uint32_t generation{};
   std::uint32_t retainedGenerations{};
   std::size_t activeDeck{};
+  std::uint32_t oldestGeneration{};
+  std::uint32_t newestGeneration{};
 };
 
 class Processor {
  public:
-  void prepare(double sampleRate, double maximumSeconds = 30.0) noexcept;
+  void prepare(double sampleRate, double maximumSeconds = 30.0,
+               bool enableSnapshots = false) noexcept;
   void reset() noexcept;
   void clear() noexcept;
   void discard() noexcept;
   void previousGeneration() noexcept;
   void nextGeneration() noexcept;
+  [[nodiscard]] TapeState tapeState() const { return snapshots_.read(); }
+  void publishTape() noexcept;
+  // Non-audio setup only: restore into a freshly prepared processor.
+  void restoreTape(const TapeState&);
   void process(float* left, float* right, std::size_t frames,
-               const Parameters& parameters) noexcept;
+               const Parameters& parameters, bool publish = true) noexcept;
 
   [[nodiscard]] constexpr std::size_t latencySamples() const noexcept {
     return 0U;
@@ -61,6 +69,7 @@ class Processor {
 
  private:
   static constexpr std::size_t kDeckCount = 3U;
+  TapeSnapshots snapshots_;
   struct Deck {
     std::vector<float> left{};
     std::vector<float> right{};

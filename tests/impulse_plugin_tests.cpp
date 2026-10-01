@@ -1,4 +1,5 @@
 #include "impulse_plugin.hpp"
+#include "editor_artifact.hpp"
 
 #include <array>
 #include <atomic>
@@ -78,6 +79,19 @@ juce::Component* findTitled(juce::Component& c, const juce::String& title) {
 }
 void testContractState() {
   Impulse source;
+  require(value(source, "variation") == 0 && value(source, "mutation") == 0,
+          "New instances start without random variation or mutation");
+  for (const auto* track :
+       {"kick", "click", "burst", "body", "low", "crack", "metal", "cut"}) {
+    const auto prefix = std::string{track};
+    require(value(source, (prefix + "_length").c_str()) == 16 &&
+                value(source, (prefix + "_probability").c_str()) == 100,
+            "Starter groove uses a shared length and predictable hits");
+  }
+  setValue(source, "kick_pitch", 999);
+  source.loadFactoryPreset(0);
+  require(value(source, "kick_pitch") == 48,
+          "Starting points reset sound settings, not just patterns");
   require(source.getParameters().size() == 368,
           "Impulse exposes eight sounds and eight visible 32-step patterns");
   setValue(source, "seed", 4242);
@@ -105,6 +119,19 @@ void testContractState() {
       state.getData(), static_cast<int>(state.getSize()));
   require(xml != nullptr, "Impulse state exposes migration XML");
   if (xml != nullptr) {
+    auto oldDefaults = juce::ValueTree::fromXml(*xml);
+    oldDefaults.setProperty("schema", 2, nullptr);
+    for (const auto* id : {"click_length", "click_probability", "variation"})
+      oldDefaults.removeChild(oldDefaults.getChildWithProperty("id", id),
+                              nullptr);
+    juce::MemoryBlock oldState;
+    juce::AudioProcessor::copyXmlToBinary(*oldDefaults.createXml(), oldState);
+    restored.setStateInformation(oldState.getData(),
+                                 static_cast<int>(oldState.getSize()));
+    require(value(restored, "click_length") == 23 &&
+                value(restored, "click_probability") == 85 &&
+                value(restored, "variation") == 12,
+            "Schema 2 missing fields retain their historical defaults");
     auto legacy = juce::ValueTree::fromXml(*xml);
     legacy.setProperty("schema", 1, nullptr);
     for (int index = legacy.getNumChildren(); --index >= 0;) {
@@ -189,6 +216,43 @@ void testEditor(const char* directory) {
               editor->isResizable(),
           "Impulse opens at its scalable product size");
   if (!editor) return;
+  auto* cell = findTitled(*editor, "KICK STEP 02");
+  setValue(processor, "kick_step_02", 2);
+  for (int attempt = 0;
+       cell && cell->getDescription() != "Accent" && attempt < 50; ++attempt) {
+    juce::Thread::sleep(20);
+    juce::Timer::callPendingTimersSynchronously();
+  }
+  require(cell && cell->getDescription() == "Accent",
+          "Stopped pattern cells refresh after an external parameter change");
+  setValue(processor, "kick_step_02", 0);
+  auto* kick = dynamic_cast<juce::Button*>(findTitled(*editor, "KICK TRACK"));
+  require(kick != nullptr, "Kick audition target exists");
+  if (kick) {
+    processor.prepareToPlay(48000, 127);
+    kick->onClick();
+    juce::AudioBuffer<float> audio{2, 127};
+    juce::MidiBuffer midi;
+    audio.clear();
+    const auto before = allocations.load();
+    setAudit(true);
+    processor.processBlock(audio, midi);
+    setAudit(false);
+    require(allocations.load() == before && audio.getMagnitude(0, 0, 127) > 0,
+            "Click auditions a drum without host playback, MIDI or audio "
+            "allocation");
+    kick->onClick();
+    processor.processBlockBypassed(audio, midi);
+    processor.processBlock(audio, midi);
+    require(audio.getMagnitude(0, 0, 127) == 0,
+            "Leaving bypass does not replay a queued audition or frozen voice");
+    kick->onClick();
+    processor.releaseResources();
+    processor.prepareToPlay(48000, 127);
+    processor.processBlock(audio, midi);
+    require(audio.getMagnitude(0, 0, 127) == 0,
+            "Restarting audio does not replay an old audition request");
+  }
   for (const char* title :
        std::array{"ENERGY", "VARIATION", "MUTATION", "SEQUENCE", "KICK LEVEL",
                   "BODY ACCENT", "LOW TRACK", "METAL STEP 32", "CUT GENERATE",
@@ -208,6 +272,9 @@ void testEditor(const char* directory) {
     file = file.getChildFile("impulse-i01-editor.png");
     if (auto stream = file.createOutputStream())
       png.writeImageToStream(image, *stream);
+    require(writeMinimumEditorArtifact(
+                *editor, file.getSiblingFile("impulse-minimum.png")),
+            "Impulse controls fit and render at the minimum size");
   }
 }
 }  // namespace

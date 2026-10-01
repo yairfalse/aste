@@ -1,4 +1,5 @@
 #include "density_plugin.hpp"
+#include "editor_artifact.hpp"
 
 #include <array>
 #include <atomic>
@@ -715,10 +716,15 @@ void testEditorContract() {
           "Factory presets are compact, keyboard reachable, and accessible");
   if (presets != nullptr) {
     presets->setSelectedId(2, juce::sendNotificationSync);
-    require(
-        std::abs(rawValue(processor, "drive") - 2.0F) < 0.011F &&
-            presets->getSelectedId() == 0,
-        "Preset menu actions load parameters and return to a neutral label");
+    require(std::abs(rawValue(processor, "drive") - 2.0F) < 0.011F &&
+                presets->getSelectedId() == 2 &&
+                presets->getText() == "Continuity",
+            "Preset menu retains the selected starting point");
+    setValue(processor, "drive", 3);
+    std::this_thread::sleep_for(std::chrono::milliseconds{300});
+    juce::Timer::callPendingTimersSynchronously();
+    require(presets->getText() == "Continuity *",
+            "Edited starting points are marked without losing their name");
     presets->setSelectedId(1, juce::sendNotificationSync);
   }
 
@@ -810,6 +816,9 @@ int createEditorArtifacts(const char* directoryPath) {
     return 2;
   }
   output.flush();
+  if (!writeMinimumEditorArtifact(
+          *editor, directory.getChildFile("density-minimum.png")))
+    return 2;
   std::cout << "{\"width\":" << snapshot.getWidth()
             << ",\"height\":" << snapshot.getHeight()
             << ",\"paint_frames\":120,\"idle_ms_per_frame\":" << idleMs

@@ -28,3 +28,9 @@ position therefore reproduce the same generated pattern.
 The single scalable panel keeps all eight pattern rows visible while one direct
 track selector chooses the sound controls below. Signal orange marks hits and
 the current step, off-white marks accents, and no hidden pattern page exists.
+
+Clicking a track also auditions its voice without requiring MIDI or host
+playback. New instances start with a shared 16-step groove and predictable hits;
+polymeter, probability, variation and mutation are deliberate choices rather
+than the first-use default. Factory starting points reset the complete sound
+and pattern state instead of inheriting settings from the previous selection.

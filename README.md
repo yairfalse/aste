@@ -27,7 +27,7 @@ real-time testing. It is not a hardware-cloning exercise and does not use
 | **Density D-01** | Parallel hard mastering compressor | Complete internal prototype; DAW validation next |
 | **Harmonic H-01** | Equalizer with nonlinear band behaviour | Complete internal prototype; musical/DAW validation next |
 | **Sequence S-01** | Monophonic programmed-current synthesizer | Complete internal prototype; musical/DAW validation next |
-| **Loop L-01** | Tape-inspired playable memory instrument | Complete internal prototype; captured-memory recall next |
+| **Loop L-01** | Tape-inspired playable memory instrument | Internal prototype with captured-memory recall; DAW validation next |
 | **Impulse I-01** | Generative rhythm and transient instrument | Complete internal prototype; musical/DAW validation next |
 | **Field F-01** | Playable reverb and stored-spatial-energy instrument | Complete internal prototype; musical/DAW validation next |
 
@@ -152,9 +152,10 @@ free seconds remain separate stable parameters; MIDI performance actions are
 sample-offset accurate.
 
 The prototype reports zero latency and never allocates or locks while
-processing. Its schema-2 control state and schema-1 migration are deterministic,
-but captured audio and generations are not yet serialized; session memory
-recall remains a stated release blocker. See
+processing. Schema 3 saves captured audio and retained generations using
+immutable snapshots; schemas 1 and 2 remain readable with empty audio memory.
+Recall restarts playback at the beginning of the active tape and resamples
+recorded audio if the host sample rate changes. See
 [docs/products/loop/SPECIFICATION.md](docs/products/loop/SPECIFICATION.md).
 
 ## Impulse I-01
@@ -168,8 +169,10 @@ Stored seeds make probability, variation, and mutation reproducible from host
 PPQ across block partitions and project recall. MIDI pitch classes C through G
 trigger the eight objects directly.
 
-The default polymetric lengths remain host-clocked while drifting against one
-another. No drum samples, genre kits, named circuit clone, or nondeterministic
+New instances start with a predictable shared 16-step groove, 100% hit
+probability, and variation/mutation off. Click a track name to audition its drum.
+Polymetric and mutation-based starting points remain explicitly labelled
+experimental choices. No drum samples, genre kits, named circuit clone, or nondeterministic
 “analog” behavior defines the product. See
 [docs/products/impulse/SPECIFICATION.md](docs/products/impulse/SPECIFICATION.md).
 
@@ -479,7 +482,8 @@ older Apple Silicon, and DAW/UI-open measurements remain external gates.
 Loop's generational topology measured a 0.526622% five-run median on the same
 machine at 48 kHz / 127 samples while continuously printing through pitch,
 transport modulation, Record, and Loss at worst case. It passes the local
-provisional 1% budget; captured-memory recall, native Intel, older Apple
+provisional 1% budget for the original graph without snapshot publication;
+the new `loop_lab --benchmark-snapshots` mode measures recall overhead. Native Intel, older Apple
 Silicon, and DAW/UI-open measurements remain open.
 
 Impulse measured a 1.26032% five-run median on the same machine at 48 kHz /

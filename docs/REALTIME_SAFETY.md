@@ -28,6 +28,14 @@ Current DSP ownership is single-audio-thread only. Each adapter publishes a
 small fixed meter snapshot through `std::atomic<float>` guarded by a compile-time lock-free
 assertion on supported targets; UI-side decay occurs on the message thread.
 
+Loop's schema-3 tape recall adds preallocated copy-on-write snapshot pages.
+Only the audio thread changes page ownership; state readers pin immutable
+published slots. Engine restoration and destruction happen off-thread, with a
+lock-free pointer handoff at the callback boundary. See
+[ADR 0016](adr/0016-playable-defaults-and-tape-recall.md) for the memory cost and
+the snapshot boundary. The loop core concurrency test is also runnable under
+ThreadSanitizer; save/restore must not be called from a realtime callback.
+
 Field owns approximately 1.2 MiB of fixed delay and pitch memory per instance.
 It is value-initialized and cleared during prepare/reset, never resized or
 allocated inside processing. Its deterministic pseudo-random grain state is

@@ -1,6 +1,7 @@
 #include "harmonic_plugin.hpp"
 
 #include "decimal_parse.hpp"
+#include "plugin_ui.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -148,7 +149,8 @@ class Knob final : public juce::Component {
     slider_.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 86, 22);
     slider_.setDoubleClickReturnValue(true, initial);
     slider_.setTitle(name);
-    slider_.setDescription(juce::String{name} + " parameter");
+    slider_.setDescription(aste::ui::explanation(id));
+    slider_.setTooltip(aste::ui::explanation(id));
     slider_.setWantsKeyboardFocus(true);
     slider_.setExplicitFocusOrder(focusOrder);
     label_.setText(name, juce::dontSendNotification);
@@ -184,7 +186,7 @@ class MeterPanel final : public juce::Component, private juce::Timer {
     graphics.setFont(juce::FontOptions{11.0F, juce::Font::bold});
     graphics.drawText("BOUNDARIES", area.removeFromTop(20.0F),
                       juce::Justification::centredLeft);
-    auto levels = area.removeFromTop(210.0F);
+    auto levels = area.removeFromTop(std::max(40.0F, area.getHeight() - 90.0F));
     drawLevel(graphics, levels.removeFromLeft(levels.getWidth() * 0.5F), input_,
               "IN");
     drawLevel(graphics, levels, output_, "OUT");
@@ -202,15 +204,19 @@ class MeterPanel final : public juce::Component, private juce::Timer {
  private:
   static void drawLevel(juce::Graphics& graphics, juce::Rectangle<float> area,
                         float level, const char* name) {
-    const auto label = area.removeFromBottom(20.0F);
+    const auto reading = area.removeFromBottom(30.0F);
+    const auto label = area.removeFromBottom(18.0F);
     graphics.setColour(juce::Colour{kMuted});
     graphics.drawText(name, label, juce::Justification::centred);
+    graphics.setFont(juce::FontOptions{9.0F});
+    graphics.drawFittedText(aste::ui::levelText(level), reading.toNearestInt(),
+                            juce::Justification::centred, 2);
     area = area.reduced(11.0F, 0.0F);
     graphics.setColour(juce::Colour{kSurface});
     graphics.fillRect(area);
     auto fill = area;
     fill.removeFromTop(area.getHeight() *
-                       (1.0F - juce::jlimit(0.0F, 1.0F, level)));
+                       (1.0F - aste::ui::meterPosition(level)));
     graphics.setColour(level > 0.95F ? juce::Colour{kAccent}
                                      : juce::Colour{kInk});
     graphics.fillRect(fill);
@@ -280,7 +286,7 @@ class HarmonicEditor final : public juce::AudioProcessorEditor {
     preset_.onChange = [this] {
       if (const int selected = preset_.getSelectedId(); selected > 0) {
         processor_.loadFactoryPreset(selected - 1);
-        preset_.setSelectedId(0, juce::dontSendNotification);
+        preset_.remember(processor_);
       }
     };
     for (auto* component : std::array<juce::Component*, 13>{
@@ -310,12 +316,20 @@ class HarmonicEditor final : public juce::AudioProcessorEditor {
                       juce::Justification::centredRight);
     graphics.setColour(juce::Colour{kMuted}.withAlpha(0.35F));
     graphics.fillRect(24, 74, getWidth() - 48, 1);
+    graphics.setFont(juce::FontOptions{11.0F});
+    graphics.setColour(juce::Colour{kInk});
+    graphics.drawText(
+        "Boost a band to engage Harmonic. Flat and cut bands stay clean. Hover "
+        "a control for help.",
+        24, getHeight() - 24, getWidth() - 48, 20,
+        juce::Justification::centredLeft);
   }
 
   void resized() override {
     preset_.setBounds(getWidth() - 204, 28, 180, 28);
     auto area = getLocalBounds().reduced(24);
     area.removeFromTop(68);
+    area.removeFromBottom(24);
     meter_.setBounds(area.removeFromLeft(136));
     area.removeFromLeft(16);
     auto hero = area.removeFromRight(214);
@@ -353,7 +367,8 @@ class HarmonicEditor final : public juce::AudioProcessorEditor {
   Knob presenceFrequency_;
   Knob airGain_;
   Knob airFrequency_;
-  juce::ComboBox preset_;
+  aste::ui::PresetMenu preset_;
+  juce::TooltipWindow tooltips_{this, 400};
 };
 
 }  // namespace

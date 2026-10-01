@@ -30,8 +30,9 @@ lose more bandwidth, while Record and Loss determine compression and
 generational damage. RELOOP is ignored until usable audio exists and while a
 print is already in progress.
 
-The internal prototype is zero latency and stores control state only. Captured
-audio and retained generations do not yet survive instance reload; this remains
-a release blocker. The scalable panel shows all three tape paths, the active
+The internal prototype is zero latency. Schema 3 stores control state, captured
+audio and retained generations; older control-only states remain accepted.
+Recall starts the active tape from its beginning; incomplete RELOOP prints are
+not retained generations. The scalable panel shows all three tape paths, the active
 deck, generation number, retained history, print progress, a large RELOOP
 action, previous/next navigation, boundary meters, and explicit memory clear.

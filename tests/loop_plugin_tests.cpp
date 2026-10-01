@@ -1,4 +1,5 @@
 #include "loop_plugin.hpp"
+#include "editor_artifact.hpp"
 
 #include <array>
 #include <atomic>
@@ -8,7 +9,9 @@
 #include <filesystem>
 #include <iostream>
 #include <memory>
+#include <limits>
 #include <new>
+#include <thread>
 
 #if JUCE_MAC
 #include <pthread.h>
@@ -200,7 +203,174 @@ void testEditor(const char* artifactDirectory) {
     file = file.getChildFile("loop-l01-editor.png");
     if (auto stream = file.createOutputStream())
       png.writeImageToStream(image, *stream);
+    require(writeMinimumEditorArtifact(*editor,
+                                       file.getSiblingFile("loop-minimum.png")),
+            "Loop controls fit and render at the minimum size");
   }
+}
+
+void testRecallBeforePreparePreservesSamples() {
+  Loop source;
+  juce::MemoryBlock saved;
+  source.getStateInformation(saved);
+  auto xml = juce::AudioProcessor::getXmlFromBinary(
+      saved.getData(), static_cast<int>(saved.getSize()));
+  require(xml != nullptr, "Empty session has serializable tape metadata");
+  if (!xml) return;
+  auto* tapes = xml->getChildByName("TAPES");
+  tapes->setAttribute("sample_rate", 96000);
+  tapes->setAttribute("active", 0);
+  auto* tape = tapes->getFirstChildElement();
+  tape->setAttribute("generation", 1);
+  tape->setAttribute("frames", 128);
+  juce::MemoryOutputStream bytes;
+  for (int frame = 0; frame < 128; ++frame) {
+    bytes.writeFloat(frame % 2 == 0 ? 0.25F : -0.25F);
+    bytes.writeFloat(frame % 2 == 0 ? -0.25F : 0.25F);
+  }
+  const auto payload =
+      juce::Base64::toBase64(bytes.getData(), bytes.getDataSize());
+  tape->setAttribute("audio", payload);
+  juce::AudioProcessor::copyXmlToBinary(*xml, saved);
+  Loop restored;
+  restored.setStateInformation(saved.getData(),
+                               static_cast<int>(saved.getSize()));
+  restored.prepareToPlay(96000, 127);
+  restored.getStateInformation(saved);
+  xml = juce::AudioProcessor::getXmlFromBinary(
+      saved.getData(), static_cast<int>(saved.getSize()));
+  require(xml != nullptr && xml->getChildByName("TAPES")
+                                    ->getFirstChildElement()
+                                    ->getStringAttribute("audio") == payload,
+          "Restore before host preparation preserves high-rate tape exactly");
+}
+
+void testTapeRecallAndMidiRelease() {
+  Loop source;
+  source.prepareToPlay(8000, 127);
+  setValue(source, "sync", 0);
+  setValue(source, "free_length", 0.05F);
+  setValue(source, "overdub", 0);
+  juce::AudioBuffer<float> audio{2, 127};
+  juce::MidiBuffer midi;
+  midi.addEvent(juce::MidiMessage::noteOn(1, 60, 1.0F), 0);
+  for (int block = 0; block < 5; ++block) {
+    for (int c = 0; c < 2; ++c)
+      for (int s = 0; s < 127; ++s) audio.setSample(c, s, 0.25F);
+    source.processBlock(audio, midi);
+    midi.clear();
+  }
+  require(source.isCapturing(), "MIDI note starts capture");
+  midi.addEvent(juce::MidiMessage::allNotesOff(1), 0);
+  source.processBlock(audio, midi);
+  require(!source.isCapturing(), "MIDI panic releases capture");
+  midi.clear();
+  juce::MemoryBlock saved;
+  source.getStateInformation(saved);
+  Loop restored;
+  restored.setStateInformation(saved.getData(),
+                               static_cast<int>(saved.getSize()));
+  restored.prepareToPlay(16000, 127);
+  audio.clear();
+  const auto before = allocations.load();
+  setAudit(true);
+  restored.processBlock(audio, midi);
+  setAudit(false);
+  require(
+      allocations.load() == before && restored.generation() == 1 &&
+          audio.getMagnitude(0, 0, 127) > 0.01F,
+      "Reopened tape plays at another sample rate without callback allocation");
+  juce::MemoryBlock stable, after;
+  restored.getStateInformation(stable);
+  auto xml = juce::AudioProcessor::getXmlFromBinary(
+      stable.getData(), static_cast<int>(stable.getSize()));
+  require(xml != nullptr, "Saved tape has versioned state");
+  if (xml) {
+    auto* tape = xml->getChildByName("TAPES")->getFirstChildElement();
+    tape->setAttribute("frames", 999999999);
+    juce::MemoryBlock invalid;
+    juce::AudioProcessor::copyXmlToBinary(*xml, invalid);
+    restored.setStateInformation(invalid.getData(),
+                                 static_cast<int>(invalid.getSize()));
+    restored.getStateInformation(after);
+    require(stable == after,
+            "Oversized audio payload leaves controls and tape unchanged");
+    for (int mutation = 0; mutation < 6; ++mutation) {
+      auto bad = juce::AudioProcessor::getXmlFromBinary(
+          stable.getData(), static_cast<int>(stable.getSize()));
+      auto* tapes = bad->getChildByName("TAPES");
+      auto* first = tapes->getFirstChildElement();
+      switch (mutation) {
+        case 0:
+          tapes->setAttribute("sample_rate", "nan");
+          break;
+        case 1:
+          tapes->setAttribute("active", 3);
+          break;
+        case 2:
+          first->setAttribute("generation", -1);
+          break;
+        case 3:
+          first->setAttribute("audio", "not base64");
+          break;
+        case 4:
+          bad->setAttribute("schema", "3.5");
+          break;
+        case 5: {
+          juce::MemoryOutputStream bytes;
+          const int frames = first->getIntAttribute("frames");
+          for (int sample = 0; sample < frames * 2; ++sample)
+            bytes.writeFloat(std::numeric_limits<float>::quiet_NaN());
+          first->setAttribute(
+              "audio",
+              juce::Base64::toBase64(bytes.getData(), bytes.getDataSize()));
+          break;
+        }
+      }
+      juce::AudioProcessor::copyXmlToBinary(*bad, invalid);
+      restored.setStateInformation(invalid.getData(),
+                                   static_cast<int>(invalid.getSize()));
+      restored.getStateInformation(after);
+      require(stable == after,
+              "Malformed schema, tape metadata and non-finite audio are "
+              "rejected atomically");
+    }
+  }
+  midi.addEvent(juce::MidiMessage::noteOn(1, 60, 1.0F), 0);
+  source.processBlock(audio, midi);
+  midi.clear();
+  midi.addEvent(juce::MidiMessage::noteOff(1, 60), 0);
+  source.processBlockBypassed(audio, midi);
+  require(source.generation() == 1 && source.retainedGenerations() == 1 &&
+              source.isBypassed(),
+          "Bypass preserves tape status instead of reporting empty memory");
+  midi.clear();
+  source.processBlock(audio, midi);
+  require(
+      !source.isCapturing(),
+      "A MIDI release received during bypass does not leave capture latched");
+  std::atomic<bool> finished{}, nonfinite{};
+  std::thread callback([&] {
+    juce::AudioBuffer<float> block{2, 127};
+    juce::MidiBuffer events;
+    while (!finished.load()) {
+      block.clear();
+      source.processBlock(block, events);
+      for (int sample = 0; sample < 127; ++sample)
+        if (!std::isfinite(block.getSample(0, sample))) nonfinite.store(true);
+    }
+  });
+  for (int iteration = 0; iteration < 8; ++iteration) {
+    juce::MemoryBlock concurrent;
+    source.getStateInformation(concurrent);
+    source.setStateInformation(concurrent.getData(),
+                               static_cast<int>(concurrent.getSize()));
+  }
+  finished.store(true);
+  callback.join();
+  require(!nonfinite.load(),
+          "Concurrent save, restore and engine retirement preserve finite "
+          "playback");
 }
 }  // namespace
 
@@ -208,6 +378,8 @@ int main(int argc, char** argv) {
   juce::ScopedJuceInitialiser_GUI juce;
   testContractAndState();
   testProcessingMidiAndRealtime();
+  testRecallBeforePreparePreservesSamples();
+  testTapeRecallAndMidiRelease();
   testEditor(argc == 3 && std::string{argv[1]} == "--editor-artifacts"
                  ? argv[2]
                  : nullptr);

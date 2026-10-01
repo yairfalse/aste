@@ -50,6 +50,7 @@ class FieldAudioProcessor final : public juce::AudioProcessor {
   [[nodiscard]] float outputPeak() const noexcept;
   [[nodiscard]] float fieldEnergy() const noexcept;
   [[nodiscard]] float retention() const noexcept;
+  void clearField() noexcept { clearRequested_.store(true); }
   [[nodiscard]] static int factoryPresetCount() noexcept;
   [[nodiscard]] static juce::String factoryPresetName(int index);
   void loadFactoryPreset(int index);
@@ -76,6 +77,7 @@ class FieldAudioProcessor final : public juce::AudioProcessor {
   void publishMeters(const MeterSnapshot&) noexcept;
 
   Processor processor_{};
+  std::atomic<bool> clearRequested_{};
   juce::AudioProcessorValueTreeState state_;
   std::array<std::atomic<float>*, parameterCount> parameterValues_{};
   std::atomic<float> inputPeak_{};
@@ -88,5 +90,7 @@ class FieldAudioProcessor final : public juce::AudioProcessor {
 
 static_assert(std::atomic<float>::is_always_lock_free,
               "Field meter publication must remain lock-free");
+static_assert(std::atomic<bool>::is_always_lock_free,
+              "Field clear request must remain lock-free");
 
 }  // namespace aste::field::plugin

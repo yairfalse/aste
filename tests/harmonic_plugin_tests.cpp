@@ -1,4 +1,5 @@
 #include "harmonic_plugin.hpp"
+#include "editor_artifact.hpp"
 
 #include <array>
 #include <atomic>
@@ -329,7 +330,7 @@ void testLifecycleAndProcessingBoundary() {
   processor.releaseResources();
 }
 
-void testEditorContract() {
+void testEditorContract(const char* directory) {
   Harmonic processor;
   std::unique_ptr<juce::AudioProcessorEditor> editor{processor.createEditor()};
   require(editor != nullptr && editor->getWidth() == 1120 &&
@@ -352,17 +353,26 @@ void testEditorContract() {
   editor->paintEntireComponent(graphics, true);
   require(image.getPixelAt(0, 0).getAlpha() == 255,
           "Minimum Harmonic editor size paints an opaque panel");
+  if (directory) {
+    const juce::File folder{juce::String{directory}};
+    require(folder.createDirectory().wasOk() &&
+                writeMinimumEditorArtifact(
+                    *editor, folder.getChildFile("harmonic-minimum.png")),
+            "Harmonic controls fit and render at the minimum size");
+  }
 }
 
 }  // namespace
 
-int main() {
+int main(int argc, char** argv) {
   juce::ScopedJuceInitialiser_GUI juce;
   testParameterContract();
   testStateAndPresets();
   testStateFuzz();
   testLifecycleAndProcessingBoundary();
-  testEditorContract();
+  testEditorContract(argc == 3 && juce::String{argv[1]} == "--editor-artifacts"
+                         ? argv[2]
+                         : nullptr);
   if (failures == 0) {
     std::cout << "harmonic_plugin_tests: ok\n";
   }

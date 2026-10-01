@@ -1,6 +1,7 @@
 #include "field_plugin.hpp"
 
 #include "decimal_parse.hpp"
+#include "plugin_ui.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -105,6 +106,10 @@ class FieldLookAndFeel final : public juce::LookAndFeel_V4 {
     graphics.setColour(juce::Colour{kAccent}.withAlpha(
         active ? 0.9F : (highlighted || down ? 0.62F : 0.35F)));
     graphics.drawEllipse(area, active ? 5.0F : 2.0F);
+    if (button.hasKeyboardFocus(true)) {
+      graphics.setColour(juce::Colour{kInk});
+      graphics.drawEllipse(area.reduced(5), 2.0F);
+    }
     graphics.setColour(active ? juce::Colour{kSurface} : juce::Colour{kInk});
     graphics.setFont(juce::FontOptions{22.0F, juce::Font::bold});
     graphics.drawText(button.getButtonText(), area,
@@ -112,7 +117,7 @@ class FieldLookAndFeel final : public juce::LookAndFeel_V4 {
     graphics.setColour(active ? juce::Colour{kSurface}.withAlpha(0.7F)
                               : juce::Colour{kMuted});
     graphics.setFont(juce::FontOptions{10.0F, juce::Font::bold});
-    graphics.drawText(active ? "ENERGY HELD" : "PRESS TO HOLD",
+    graphics.drawText(button.getProperties()["holdStatus"].toString(),
                       area.removeFromBottom(54.0F),
                       juce::Justification::centred);
   }
@@ -124,11 +129,21 @@ class Knob final : public juce::Component {
        const char* name, const char* suffix, double initial, int focusOrder)
       : attachment_{state, id, slider_} {
     slider_.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+    slider_.textFromValueFunction = [this](double value) {
+      return aste::ui::formattedValue(slider_, value);
+    };
     slider_.setTextValueSuffix(suffix);
     slider_.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 78, 22);
     slider_.setDoubleClickReturnValue(true, initial);
     slider_.setTitle(name);
-    slider_.setDescription(juce::String{name} + " parameter");
+    slider_.setDescription(aste::ui::explanation(id));
+    slider_.setTooltip(aste::ui::explanation(id));
+    if (juce::String{id} == "pitch") {
+      slider_.setDescription(
+          "Amount of pitch-shifted audio returning into the field, not a "
+          "tuning control.");
+      slider_.setTooltip(slider_.getDescription());
+    }
     slider_.setWantsKeyboardFocus(true);
     slider_.setExplicitFocusOrder(focusOrder);
     label_.setText(name, juce::dontSendNotification);
@@ -163,7 +178,8 @@ class FieldMeter final : public juce::Component, private juce::Timer {
     graphics.setFont(juce::FontOptions{11.0F, juce::Font::bold});
     graphics.drawText("BOUNDARIES", area.removeFromTop(20.0F),
                       juce::Justification::centredLeft);
-    auto levels = area.removeFromTop(240.0F);
+    auto levels =
+        area.removeFromTop(std::max(40.0F, area.getHeight() - 135.0F));
     drawLevel(graphics, levels.removeFromLeft(levels.getWidth() * 0.5F), input_,
               "IN");
     drawLevel(graphics, levels, output_, "OUT");
@@ -180,15 +196,19 @@ class FieldMeter final : public juce::Component, private juce::Timer {
  private:
   static void drawLevel(juce::Graphics& graphics, juce::Rectangle<float> area,
                         float level, const char* name) {
-    const auto label = area.removeFromBottom(20.0F);
+    const auto reading = area.removeFromBottom(30.0F);
+    const auto label = area.removeFromBottom(18.0F);
     graphics.setColour(juce::Colour{kMuted});
     graphics.drawText(name, label, juce::Justification::centred);
+    graphics.setFont(juce::FontOptions{9.0F});
+    graphics.drawFittedText(aste::ui::levelText(level), reading.toNearestInt(),
+                            juce::Justification::centred, 2);
     area = area.reduced(10.0F, 0.0F);
     graphics.setColour(juce::Colour{kSurface});
     graphics.fillRect(area);
     auto fill = area;
     fill.removeFromTop(area.getHeight() *
-                       (1.0F - juce::jlimit(0.0F, 1.0F, level)));
+                       (1.0F - aste::ui::meterPosition(level)));
     graphics.setColour(juce::Colour{kInk});
     graphics.fillRect(fill);
   }
@@ -217,7 +237,8 @@ class FieldMeter final : public juce::Component, private juce::Timer {
   float retention_{};
 };
 
-class FieldEditor final : public juce::AudioProcessorEditor {
+class FieldEditor final : public juce::AudioProcessorEditor,
+                          private juce::Timer {
  public:
   explicit FieldEditor(FieldAudioProcessor& processor)
       : AudioProcessorEditor{processor},
@@ -238,6 +259,16 @@ class FieldEditor final : public juce::AudioProcessorEditor {
     forever_.setClickingTogglesState(true);
     forever_.setWantsKeyboardFocus(true);
     forever_.setExplicitFocusOrder(1);
+    forever_.setTooltip(
+        "Hold and evolve the field: adds grain, pitch and motion. Feed audio "
+        "or MIDI notes first.");
+    clear_.setButtonText("CLEAR FIELD");
+    clear_.setTitle("CLEAR FIELD");
+    clear_.setExplicitFocusOrder(10);
+    clear_.setTooltip(
+        "Empty the stored audio. Hold stays armed if FOREVER is on.");
+    clear_.onClick = [this] { processor_.clearField(); };
+    addAndMakeVisible(clear_);
     preset_.setTextWhenNothingSelected("PRESETS");
     preset_.setTitle("PRESETS");
     preset_.setDescription("Load a Field factory starting point");
@@ -251,7 +282,7 @@ class FieldEditor final : public juce::AudioProcessorEditor {
     preset_.onChange = [this] {
       if (const int selected = preset_.getSelectedId(); selected > 0) {
         processor_.loadFactoryPreset(selected - 1);
-        preset_.setSelectedId(0, juce::dontSendNotification);
+        preset_.remember(processor_);
       }
     };
     for (auto* component : std::array<juce::Component*, 10>{
@@ -261,6 +292,8 @@ class FieldEditor final : public juce::AudioProcessorEditor {
     setResizable(true, true);
     setResizeLimits(900, 520, 1800, 1040);
     setSize(1080, 620);
+    timerCallback();
+    startTimerHz(15);
   }
 
   ~FieldEditor() override { setLookAndFeel(nullptr); }
@@ -279,15 +312,24 @@ class FieldEditor final : public juce::AudioProcessorEditor {
                       juce::Justification::centredRight);
     graphics.setColour(juce::Colour{kMuted}.withAlpha(0.35F));
     graphics.fillRect(24, 74, getWidth() - 48, 1);
+    graphics.setColour(juce::Colour{kInk});
+    graphics.setFont(juce::FontOptions{11.0F});
+    graphics.drawText(
+        "Feed audio or MIDI notes, then hold. FOREVER also adds grain, pitch "
+        "and motion.",
+        24, getHeight() - 24, getWidth() - 48, 20,
+        juce::Justification::centredLeft);
   }
 
   void resized() override {
     preset_.setBounds(getWidth() - 204, 28, 180, 28);
     auto area = getLocalBounds().reduced(24);
     area.removeFromTop(68);
+    area.removeFromBottom(24);
     meter_.setBounds(area.removeFromLeft(142));
     area.removeFromLeft(20);
     auto hero = area.removeFromLeft(std::min(310, area.getWidth() / 2));
+    clear_.setBounds(hero.removeFromBottom(32).reduced(18, 0));
     forever_.setBounds(hero.reduced(18));
     area.removeFromLeft(16);
     const int columnWidth = std::max(1, area.getWidth() / 4);
@@ -304,10 +346,24 @@ class FieldEditor final : public juce::AudioProcessorEditor {
   }
 
  private:
+  void timerCallback() override {
+    const juce::String status =
+        forever_.getToggleState()
+            ? (processor_.fieldEnergy() > 0.00001F ? "HOLDING AUDIO"
+                                                   : "HOLD ARMED / FEED AUDIO")
+            : "PRESS TO HOLD";
+    if (forever_.getProperties()["holdStatus"].toString() != status) {
+      forever_.getProperties().set("holdStatus", status);
+      forever_.setDescription(status +
+                              ". Hold also adds grain, pitch and motion.");
+      forever_.repaint();
+    }
+  }
   FieldLookAndFeel lookAndFeel_;
   FieldAudioProcessor& processor_;
   FieldMeter meter_;
   juce::ToggleButton forever_;
+  juce::TextButton clear_;
   juce::AudioProcessorValueTreeState::ButtonAttachment foreverAttachment_;
   Knob mass_;
   Knob grain_;
@@ -316,7 +372,8 @@ class FieldEditor final : public juce::AudioProcessorEditor {
   Knob distance_;
   Knob blend_;
   Knob output_;
-  juce::ComboBox preset_;
+  aste::ui::PresetMenu preset_;
+  juce::TooltipWindow tooltips_{this, 400};
 };
 
 }  // namespace
@@ -397,6 +454,7 @@ void FieldAudioProcessor::processRange(juce::AudioBuffer<float>& buffer,
 void FieldAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
                                        juce::MidiBuffer& midi) {
   juce::ScopedNoDenormals noDenormals;
+  if (clearRequested_.exchange(false)) processor_.reset();
   if (buffer.getNumChannels() < 1 || buffer.getNumSamples() == 0) {
     publishMeters({});
     return;
@@ -419,6 +477,10 @@ void FieldAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 
 void FieldAudioProcessor::processBlockBypassed(juce::AudioBuffer<float>& buffer,
                                                juce::MidiBuffer&) {
+  if (clearRequested_.exchange(false)) {
+    processor_.reset();
+    publishMeters({});
+  }
   float peak{};
   for (int channel = 0; channel < buffer.getNumChannels(); ++channel)
     peak =

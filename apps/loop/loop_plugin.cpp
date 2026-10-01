@@ -1,6 +1,7 @@
 #include "loop_plugin.hpp"
 
 #include "decimal_parse.hpp"
+#include "plugin_ui.hpp"
 
 #include <algorithm>
 #include <array>
@@ -11,7 +12,7 @@ namespace aste::loop::plugin {
 namespace {
 
 constexpr auto kStateType = "loop-l01";
-constexpr int kStateSchema = 2;
+constexpr int kStateSchema = 3;
 constexpr auto kSurface = 0xff0d1212U;
 constexpr auto kPanel = 0xff172120U;
 constexpr auto kInk = 0xffe5ece8U;
@@ -106,11 +107,15 @@ class Knob final : public juce::Component {
        const char* name, const char* suffix, double initial, int order)
       : attachment_{state, id, slider_} {
     slider_.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+    slider_.textFromValueFunction = [this](double value) {
+      return aste::ui::formattedValue(slider_, value);
+    };
     slider_.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 78, 20);
     slider_.setTextValueSuffix(suffix);
     slider_.setDoubleClickReturnValue(true, initial);
     slider_.setTitle(name);
-    slider_.setDescription(juce::String{name} + " parameter");
+    slider_.setDescription(aste::ui::explanation(id));
+    slider_.setTooltip(aste::ui::explanation(id));
     slider_.setWantsKeyboardFocus(true);
     slider_.setExplicitFocusOrder(order);
     label_.setText(name, juce::dontSendNotification);
@@ -131,16 +136,18 @@ class Knob final : public juce::Component {
   juce::AudioProcessorValueTreeState::SliderAttachment attachment_;
 };
 
-class Toggle final : public juce::ToggleButton {
+class Toggle final : public juce::TextButton {
  public:
   Toggle(juce::AudioProcessorValueTreeState& state, const char* id,
          const char* name, int order)
-      : juce::ToggleButton{name}, attachment_{state, id, *this} {
+      : juce::TextButton{name}, attachment_{state, id, *this} {
+    setClickingTogglesState(true);
     setTitle(name);
     setWantsKeyboardFocus(true);
     setExplicitFocusOrder(order);
-    setColour(juce::ToggleButton::textColourId, juce::Colour{kInk});
-    setColour(juce::ToggleButton::tickColourId, juce::Colour{kAccent});
+    setColour(juce::TextButton::textColourOffId, juce::Colour{kInk});
+    setColour(juce::TextButton::buttonColourId, juce::Colour{kPanel});
+    setColour(juce::TextButton::buttonOnColourId, juce::Colour{kAccent});
   }
 
  private:
@@ -156,6 +163,8 @@ class MemoryPanel final : public juce::Component, private juce::Timer {
     reloop_.setColour(juce::TextButton::textColourOffId,
                       juce::Colour{kSurface});
     reloop_.onClick = [this] { processor_.reloop(); };
+    reloop_.setTooltip(
+        "Print the transformed loop onto the next tape. Capture audio first.");
     previous_.setButtonText("PREVIOUS");
     previous_.setTitle("PREVIOUS GENERATION");
     previous_.onClick = [this] { processor_.previousGeneration(); };
@@ -166,7 +175,14 @@ class MemoryPanel final : public juce::Component, private juce::Timer {
     clear_.setTitle("CLEAR MEMORY");
     clear_.setColour(juce::TextButton::buttonColourId, juce::Colour{kPanel});
     clear_.setColour(juce::TextButton::textColourOffId, juce::Colour{kInk});
-    clear_.onClick = [this] { processor_.clearLoop(); };
+    clear_.onClick = [this] {
+      if (auto* capture = processor_.state().getParameter("capture")) {
+        capture->beginChangeGesture();
+        capture->setValueNotifyingHost(0);
+        capture->endChangeGesture();
+      }
+      processor_.clearLoop();
+    };
     for (auto* button : {&previous_, &next_}) {
       button->setColour(juce::TextButton::buttonColourId,
                         juce::Colour{kSurface});
@@ -176,14 +192,15 @@ class MemoryPanel final : public juce::Component, private juce::Timer {
     addAndMakeVisible(previous_);
     addAndMakeVisible(next_);
     addAndMakeVisible(clear_);
+    timerCallback();
     startTimerHz(30);
   }
   void resized() override {
-    reloop_.setBounds(16, getHeight() - 138, getWidth() - 32, 48);
-    previous_.setBounds(16, getHeight() - 82, (getWidth() - 38) / 2, 26);
-    next_.setBounds(previous_.getRight() + 6, getHeight() - 82,
+    reloop_.setBounds(16, getHeight() - 106, getWidth() - 32, 32);
+    previous_.setBounds(16, getHeight() - 68, (getWidth() - 38) / 2, 26);
+    next_.setBounds(previous_.getRight() + 6, getHeight() - 68,
                     (getWidth() - 38) / 2, 26);
-    clear_.setBounds(16, getHeight() - 42, getWidth() - 32, 26);
+    clear_.setBounds(16, getHeight() - 36, getWidth() - 32, 26);
   }
   void paint(juce::Graphics& g) override {
     g.fillAll(juce::Colour{kPanel});
@@ -194,14 +211,14 @@ class MemoryPanel final : public juce::Component, private juce::Timer {
                juce::Justification::centredLeft);
     area.removeFromTop(10);
     for (int deck = 0; deck < 3; ++deck) {
-      auto lane = area.removeFromTop(48).reduced(2, 7);
+      auto lane = area.removeFromTop(30).reduced(2, 3);
       g.setColour(deck == activeDeck_ ? juce::Colour{kAccent}
                                       : juce::Colour{kMuted}.withAlpha(0.55F));
       g.setFont(juce::FontOptions{10.0F, juce::Font::bold});
       g.drawText("TAPE " + juce::String::charToString(
                                static_cast<juce::juce_wchar>('A' + deck)),
                  lane.removeFromLeft(48), juce::Justification::centredLeft);
-      const auto path = lane.reduced(2, 12);
+      const auto path = lane.reduced(2, 7);
       g.fillRect(path.withHeight(2.0F).withCentre(path.getCentre()));
       if (deck == activeDeck_) {
         const float head = path.getX() + position_ * path.getWidth();
@@ -210,10 +227,13 @@ class MemoryPanel final : public juce::Component, private juce::Timer {
     }
     area.removeFromTop(8);
     g.setColour(juce::Colour{kInk});
-    g.setFont(juce::FontOptions{20.0F, juce::Font::bold});
-    g.drawText(
-        generation_ > 0 ? "GENERATION " + juce::String{generation_} : "EMPTY",
-        area.removeFromTop(28), juce::Justification::centred);
+    g.setFont(juce::FontOptions{14.0F, juce::Font::bold});
+    g.drawText(processor_.isBypassed()    ? "BYPASSED / MEMORY RETAINED"
+               : printing_ > 0            ? "PRINTING NEXT TAPE"
+               : processor_.isCapturing() ? "RECORDING INPUT"
+               : generation_ > 0 ? "PLAYING / GEN " + juce::String{generation_}
+                                 : "CAPTURE AUDIO TO BEGIN",
+               area.removeFromTop(28), juce::Justification::centred);
     g.setColour(juce::Colour{kMuted});
     g.setFont(juce::FontOptions{10.0F});
     g.drawText(juce::String{retained_} + " RETAINED / " +
@@ -236,14 +256,15 @@ class MemoryPanel final : public juce::Component, private juce::Timer {
  private:
   static void drawLevel(juce::Graphics& g, juce::Rectangle<float> area,
                         float level, const char* label) {
-    const auto text = area.removeFromLeft(28);
+    const auto text = area.removeFromLeft(104);
     g.setColour(juce::Colour{kMuted});
-    g.drawText(label, text, juce::Justification::centredLeft);
+    g.drawText(juce::String{label} + " " + aste::ui::levelText(level), text,
+               juce::Justification::centredLeft);
     g.setColour(juce::Colour{kSurface});
     g.fillRect(area);
     g.setColour(juce::Colour{kInk});
     g.fillRect(
-        area.withWidth(area.getWidth() * juce::jlimit(0.0F, 1.0F, level)));
+        area.withWidth(area.getWidth() * aste::ui::meterPosition(level)));
   }
   void timerCallback() override {
     input_ = std::max(processor_.inputPeak(), input_ * 0.84F);
@@ -254,6 +275,12 @@ class MemoryPanel final : public juce::Component, private juce::Timer {
     generation_ = processor_.generation();
     retained_ = processor_.retainedGenerations();
     activeDeck_ = processor_.activeDeck();
+    const bool available = printing_ == 0 && !processor_.isBypassed();
+    reloop_.setEnabled(captured_ > 0 && available);
+    previous_.setEnabled(generation_ > processor_.oldestGeneration() &&
+                         available);
+    next_.setEnabled(generation_ < processor_.newestGeneration() && available);
+    clear_.setEnabled(generation_ > 0 || processor_.isCapturing());
     repaint();
   }
   LoopAudioProcessor& processor_;
@@ -268,7 +295,8 @@ class MemoryPanel final : public juce::Component, private juce::Timer {
   int activeDeck_{};
 };
 
-class LoopEditor final : public juce::AudioProcessorEditor {
+class LoopEditor final : public juce::AudioProcessorEditor,
+                         private juce::Timer {
  public:
   explicit LoopEditor(LoopAudioProcessor& processor)
       : AudioProcessorEditor{processor},
@@ -294,6 +322,14 @@ class LoopEditor final : public juce::AudioProcessorEditor {
         mix_{processor.state(), "mix", "MIX", " %", 100, 17},
         output_{processor.state(), "output", "OUTPUT", " dB", -3, 18} {
     setLookAndFeel(&lookAndFeel_);
+    capture_.setButtonText("CAPTURE INPUT");
+    capture_.setColour(juce::TextButton::buttonColourId, juce::Colour{kAccent});
+    capture_.setTooltip(
+        "Record incoming audio. Click again to stop recording and play the "
+        "captured loop. MIDI C also holds Capture.");
+    sync_.setTooltip(
+        "On: Beats determines duration. Off: Free Length determines duration.");
+    reverse_.setTooltip("Play the captured audio backwards.");
     tapeSpeed_.setTitle("TAPE SPEED");
     tapeSpeed_.setTextWhenNothingSelected("TAPE SPEED");
     tapeSpeed_.addItem("3 3/4 IPS", 1);
@@ -312,7 +348,7 @@ class LoopEditor final : public juce::AudioProcessorEditor {
     preset_.onChange = [this] {
       if (preset_.getSelectedId() > 0) {
         processor_.loadFactoryPreset(preset_.getSelectedId() - 1);
-        preset_.setSelectedId(0, juce::dontSendNotification);
+        preset_.remember(processor_);
       }
     };
     for (auto* component : std::array<juce::Component*, 20>{
@@ -326,6 +362,8 @@ class LoopEditor final : public juce::AudioProcessorEditor {
     setResizable(true, true);
     setResizeLimits(920, 540, 1840, 1080);
     setSize(1160, 650);
+    timerCallback();
+    startTimerHz(15);
   }
   ~LoopEditor() override { setLookAndFeel(nullptr); }
   void paint(juce::Graphics& g) override {
@@ -342,18 +380,27 @@ class LoopEditor final : public juce::AudioProcessorEditor {
                juce::Justification::centredRight);
     g.setColour(juce::Colour{kMuted}.withAlpha(0.35F));
     g.fillRect(24, 72, getWidth() - 48, 1);
+    g.setColour(juce::Colour{kInk});
+    g.setFont(juce::FontOptions{11.0F});
+    g.drawText(
+        "Feed audio > Capture > stop Capture to play > transform > RELOOP to "
+        "print. Hover for help.",
+        24, getHeight() - 24, getWidth() - 48, 20,
+        juce::Justification::centredLeft);
   }
   void resized() override {
     preset_.setBounds(getWidth() - 204, 27, 180, 28);
     auto area = getLocalBounds().reduced(24);
     area.removeFromTop(66);
+    area.removeFromBottom(24);
     memory_.setBounds(area.removeFromLeft(310));
     area.removeFromLeft(14);
     auto switches = area.removeFromTop(36);
-    capture_.setBounds(switches.removeFromLeft(120));
-    sync_.setBounds(switches.removeFromLeft(130));
-    reverse_.setBounds(switches.removeFromLeft(110));
-    tapeSpeed_.setBounds(switches.removeFromLeft(140).reduced(3, 4));
+    const int switchWidth = switches.getWidth() / 4;
+    capture_.setBounds(switches.removeFromLeft(switchWidth));
+    sync_.setBounds(switches.removeFromLeft(switchWidth));
+    reverse_.setBounds(switches.removeFromLeft(switchWidth));
+    tapeSpeed_.setBounds(switches.reduced(3, 4));
     area.removeFromTop(8);
     constexpr int columns = 5;
     constexpr int rows = 3;
@@ -372,6 +419,16 @@ class LoopEditor final : public juce::AudioProcessorEditor {
   }
 
  private:
+  void timerCallback() override {
+    const bool synced =
+        processor_.state().getRawParameterValue("sync")->load() >= 0.5F;
+    lengthBeats_.setEnabled(synced);
+    freeLength_.setEnabled(!synced);
+    lengthBeats_.setAlpha(synced ? 1.0F : 0.35F);
+    freeLength_.setAlpha(synced ? 0.35F : 1.0F);
+    capture_.setButtonText(capture_.getToggleState() ? "STOP CAPTURE"
+                                                     : "CAPTURE INPUT");
+  }
   LoopLookAndFeel lookAndFeel_;
   LoopAudioProcessor& processor_;
   MemoryPanel memory_;
@@ -381,7 +438,8 @@ class LoopEditor final : public juce::AudioProcessorEditor {
   juce::ComboBox tapeSpeed_;
   std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>
       tapeSpeedAttachment_;
-  juce::ComboBox preset_;
+  aste::ui::PresetMenu preset_;
+  juce::TooltipWindow tooltips_{this, 400};
 };
 
 }  // namespace
@@ -468,8 +526,44 @@ Parameters LoopAudioProcessor::currentParameters() const noexcept {
           .bypass = value(bypass) >= 0.5F};
 }
 
+LoopAudioProcessor::~LoopAudioProcessor() {
+  delete pending_.exchange(nullptr);
+  delete engine_.exchange(nullptr);
+  collectRetired();
+}
+
+void LoopAudioProcessor::collectRetired() {
+  auto* next = retired_.exchange(nullptr);
+  while (next) {
+    auto* old = next;
+    next = old->retiredNext;
+    delete old;
+  }
+}
+
+void LoopAudioProcessor::adoptPending() noexcept {
+  if (auto* ready = pending_.exchange(nullptr)) {
+    auto* old = engine_.exchange(ready);
+    auto* head = retired_.load();
+    do {
+      old->retiredNext = head;
+    } while (!retired_.compare_exchange_weak(head, old));
+    midiCapture_ = false;
+  }
+}
+
 void LoopAudioProcessor::prepareToPlay(double sampleRate, int) {
-  processor_.prepare(sampleRate, 16.0);
+  const std::lock_guard lock{lifecycle_};
+  adoptPending();
+  auto tape = engine_.load()->processor.tapeState();
+  auto ready = std::make_unique<Engine>();
+  hostRate_ = juce::jlimit(8000.0, 384000.0,
+                           std::isfinite(sampleRate) ? sampleRate : 48000.0);
+  hostPrepared_ = true;
+  ready->processor.prepare(hostRate_, 16.0, true);
+  ready->processor.restoreTape(tape);
+  delete engine_.exchange(ready.release());
+  collectRetired();
   midiCapture_ = false;
   setLatencySamples(0);
   publishMeters({});
@@ -488,28 +582,31 @@ void LoopAudioProcessor::processRange(juce::AudioBuffer<float>& buffer,
                                       int startSample, int frames,
                                       Parameters parameters) noexcept {
   if (frames <= 0) return;
-  processor_.process(buffer.getWritePointer(0, startSample),
-                     buffer.getNumChannels() > 1
-                         ? buffer.getWritePointer(1, startSample)
-                         : nullptr,
-                     static_cast<std::size_t>(frames), parameters);
+  engine_.load()->processor.process(
+      buffer.getWritePointer(0, startSample),
+      buffer.getNumChannels() > 1 ? buffer.getWritePointer(1, startSample)
+                                  : nullptr,
+      static_cast<std::size_t>(frames), parameters, false);
 }
 
 void LoopAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
                                       juce::MidiBuffer& midi) {
   juce::ScopedNoDenormals noDenormals;
+  adoptPending();
   if (clearRequested_.exchange(false, std::memory_order_acq_rel)) {
-    processor_.discard();
+    engine_.load()->processor.discard();
+    midiCapture_ = false;
   }
   const int navigation =
       generationNavigation_.exchange(0, std::memory_order_acq_rel);
-  if (navigation < 0) processor_.previousGeneration();
-  if (navigation > 0) processor_.nextGeneration();
+  if (navigation < 0) engine_.load()->processor.previousGeneration();
+  if (navigation > 0) engine_.load()->processor.nextGeneration();
   if (buffer.getNumChannels() < 1 || buffer.getNumSamples() == 0) {
     publishMeters({});
     return;
   }
   Parameters parameters = currentParameters();
+  bypassed_.store(parameters.bypass);
   parameters.reloop =
       reloopRequested_.exchange(false, std::memory_order_acq_rel);
   int processed{};
@@ -524,25 +621,46 @@ void LoopAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
         message.isNoteOnOrOff() ? message.getNoteNumber() % 12 : -1;
     if (message.isNoteOn() && pitchClass == 0) midiCapture_ = true;
     if (message.isNoteOff() && pitchClass == 0) midiCapture_ = false;
+    if (message.isAllNotesOff() || message.isAllSoundOff())
+      midiCapture_ = false;
     if (message.isNoteOn() && pitchClass == 2) parameters.reloop = true;
-    if (message.isNoteOn() && pitchClass == 11) processor_.previousGeneration();
-    if (message.isNoteOn() && pitchClass == 1) processor_.nextGeneration();
+    if (message.isNoteOn() && pitchClass == 11)
+      engine_.load()->processor.previousGeneration();
+    if (message.isNoteOn() && pitchClass == 1)
+      engine_.load()->processor.nextGeneration();
     parameters.capture =
         parameterValues_[capture]->load(std::memory_order_relaxed) >= 0.5F ||
         midiCapture_;
   }
   processRange(buffer, processed, buffer.getNumSamples() - processed,
                parameters);
-  publishMeters(processor_.meters());
+  captureActive_.store(parameters.capture);
+  engine_.load()->processor.publishTape();
+  publishMeters(engine_.load()->processor.meters());
 }
 
 void LoopAudioProcessor::processBlockBypassed(juce::AudioBuffer<float>& buffer,
-                                              juce::MidiBuffer&) {
+                                              juce::MidiBuffer& midi) {
+  adoptPending();
+  bypassed_.store(true);
+  if (clearRequested_.exchange(false)) {
+    engine_.load()->processor.discard();
+    midiCapture_ = false;
+    publishMeters({});
+  }
+  for (const auto metadata : midi) {
+    const auto message = metadata.getMessage();
+    if (message.isAllNotesOff() || message.isAllSoundOff() ||
+        (message.isNoteOff() && message.getNoteNumber() % 12 == 0))
+      midiCapture_ = false;
+  }
+  captureActive_.store(false);
   float peak{};
   for (int channel = 0; channel < buffer.getNumChannels(); ++channel)
     peak =
         std::max(peak, buffer.getMagnitude(channel, 0, buffer.getNumSamples()));
-  publishMeters({peak, peak, loopPosition(), capturedAmount()});
+  inputPeak_.store(peak);
+  outputPeak_.store(peak);
 }
 
 void LoopAudioProcessor::publishMeters(const MeterSnapshot& meters) noexcept {
@@ -557,6 +675,8 @@ void LoopAudioProcessor::publishMeters(const MeterSnapshot& meters) noexcept {
                              std::memory_order_relaxed);
   activeDeck_.store(static_cast<int>(meters.activeDeck),
                     std::memory_order_relaxed);
+  oldestGeneration_.store(static_cast<int>(meters.oldestGeneration));
+  newestGeneration_.store(static_cast<int>(meters.newestGeneration));
 }
 float LoopAudioProcessor::inputPeak() const noexcept {
   return inputPeak_.load(std::memory_order_relaxed);
@@ -617,21 +737,113 @@ juce::AudioProcessorParameter* LoopAudioProcessor::getBypassParameter() const {
 }
 
 void LoopAudioProcessor::getStateInformation(juce::MemoryBlock& destination) {
+  const std::lock_guard lock{lifecycle_};
+  collectRetired();
   auto state = state_.copyState();
   state.setProperty("schema", kStateSchema, nullptr);
   state.setProperty("product", kStateType, nullptr);
+  auto* source = pending_.load();
+  if (!source) source = engine_.load();
+  const auto tape = source->processor.tapeState();
+  juce::ValueTree tapes{"TAPES"};
+  tapes.setProperty("sample_rate", tape.sampleRate, nullptr);
+  tapes.setProperty("active", static_cast<int>(tape.active), nullptr);
+  for (std::size_t deck = 0; deck < 3; ++deck) {
+    juce::MemoryOutputStream bytes;
+    for (float sample : tape.audio[deck]) bytes.writeFloat(sample);
+    juce::ValueTree child{"TAPE"};
+    child.setProperty("index", static_cast<int>(deck), nullptr);
+    child.setProperty("generation",
+                      static_cast<juce::int64>(tape.generations[deck]),
+                      nullptr);
+    child.setProperty("frames", static_cast<int>(tape.audio[deck].size() / 2),
+                      nullptr);
+    child.setProperty(
+        "audio", juce::Base64::toBase64(bytes.getData(), bytes.getDataSize()),
+        nullptr);
+    tapes.addChild(child, -1, nullptr);
+  }
+  state.removeChild(state.getChildWithName("TAPES"), nullptr);
+  state.addChild(tapes, -1, nullptr);
   if (const auto xml = state.createXml()) copyXmlToBinary(*xml, destination);
 }
 
 void LoopAudioProcessor::setStateInformation(const void* data, int size) {
+  if (!data || size <= 0 || size > 256 * 1024 * 1024) return;
+  const std::lock_guard lock{lifecycle_};
   const auto xml = getXmlFromBinary(data, size);
   if (xml == nullptr) return;
   const auto restored = juce::ValueTree::fromXml(*xml);
+  const auto schemaText = restored.getProperty("schema").toString();
+  if (schemaText != "1" && schemaText != "2" && schemaText != "3") return;
   const int schema = static_cast<int>(restored.getProperty("schema", -1));
   if (!restored.isValid() || restored.getType().toString() != kStateType ||
       restored.getProperty("product").toString() != kStateType ||
-      (schema != 1 && schema != kStateSchema))
+      (schema < 1 || schema > kStateSchema))
     return;
+  TapeState tape;
+  if (schema == 3) {
+    const auto tapes = restored.getChildWithName("TAPES");
+    if (!tapes.isValid() || tapes.getNumChildren() != 3) return;
+    int tapeRoots{};
+    for (int i = 0; i < restored.getNumChildren(); ++i)
+      if (restored.getChild(i).hasType("TAPES")) ++tapeRoots;
+    if (tapeRoots != 1) return;
+    const auto integer = [](const juce::var& input, double maximum,
+                            std::size_t& output) {
+      double parsed{};
+      if (!aste::parameters::parseFiniteDecimal(input.toString().toStdString(),
+                                                parsed) ||
+          parsed < 0 || parsed > maximum || std::floor(parsed) != parsed)
+        return false;
+      output = static_cast<std::size_t>(parsed);
+      return true;
+    };
+    if (!aste::parameters::parseFiniteDecimal(
+            tapes.getProperty("sample_rate").toString().toStdString(),
+            tape.sampleRate) ||
+        tape.sampleRate < 8000 || tape.sampleRate > 384000 ||
+        !integer(tapes.getProperty("active"), 2, tape.active))
+      return;
+    std::array<bool, 3> seenDecks{};
+    for (int i = 0; i < 3; ++i) {
+      const auto child = tapes.getChild(i);
+      std::size_t deck{}, frames{}, generation{};
+      if (!child.hasType("TAPE") ||
+          !integer(child.getProperty("index"), 2, deck) || seenDecks[deck] ||
+          !integer(child.getProperty("frames"), tape.sampleRate * 16, frames) ||
+          !integer(child.getProperty("generation"), 4294967295.0, generation) ||
+          (frames == 0) != (generation == 0))
+        return;
+      seenDecks[deck] = true;
+      const auto encoded = child.getProperty("audio").toString();
+      const auto byteCount = frames * 2 * sizeof(float);
+      if (static_cast<std::size_t>(encoded.length()) !=
+          ((byteCount + 2) / 3) * 4)
+        return;
+      juce::MemoryOutputStream bytes;
+      if (!juce::Base64::convertFromBase64(bytes, encoded) ||
+          bytes.getDataSize() != byteCount)
+        return;
+      juce::MemoryInputStream input{bytes.getData(), bytes.getDataSize(),
+                                    false};
+      tape.generations[deck] = static_cast<std::uint32_t>(generation);
+      tape.audio[deck].resize(frames * 2);
+      for (auto& sample : tape.audio[deck]) {
+        sample = input.readFloat();
+        if (!std::isfinite(sample) || std::abs(sample) > 8.0F) return;
+      }
+    }
+    const bool any =
+        std::any_of(tape.generations.begin(), tape.generations.end(),
+                    [](auto g) { return g != 0; });
+    if (any && tape.generations[tape.active] == 0) return;
+    for (std::size_t i = 0; i < 3; ++i)
+      for (std::size_t j = i + 1; j < 3; ++j)
+        if (tape.generations[i] != 0 &&
+            tape.generations[i] == tape.generations[j])
+          return;
+  }
   auto validated = state_.copyState();
   for (int index = 0; index < validated.getNumChildren(); ++index) {
     auto child = validated.getChild(index);
@@ -660,7 +872,16 @@ void LoopAudioProcessor::setStateInformation(const void* data, int size) {
   }
   validated.setProperty("schema", kStateSchema, nullptr);
   validated.setProperty("product", kStateType, nullptr);
+  auto ready = std::make_unique<Engine>();
+  // Hosts may restore before announcing their rate. Keep the source samples
+  // intact until prepareToPlay rather than resampling through a guessed rate.
+  ready->processor.prepare(hostPrepared_ ? hostRate_ : tape.sampleRate, 16.0,
+                           true);
+  if (ready->processor.capacitySamples() == 0) return;
+  ready->processor.restoreTape(tape);
   state_.replaceState(validated);
+  delete pending_.exchange(ready.release());
+  collectRetired();
 }
 
 juce::AudioProcessorEditor* LoopAudioProcessor::createEditor() {

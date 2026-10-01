@@ -55,11 +55,11 @@ int render(const char* path) {
   return std::isfinite(rms) && peak > 0.01F ? 0 : 1;
 }
 
-int benchmark() {
+int benchmark(bool snapshots = false) {
   constexpr std::size_t seconds = 30;
   constexpr std::size_t frames = static_cast<std::size_t>(kRate) * seconds;
   aste::loop::Processor processor;
-  processor.prepare(kRate, 16.0);
+  processor.prepare(kRate, 16.0, snapshots);
   aste::loop::Parameters parameters;
   parameters.capture = true;
   parameters.loopLengthSeconds = 2.0F;
@@ -95,6 +95,8 @@ int benchmark() {
 }  // namespace
 
 int main(int argc, char** argv) {
+  if (argc == 2 && std::string{argv[1]} == "--benchmark-snapshots")
+    return benchmark(true);
   if (argc == 2 && std::string{argv[1]} == "--benchmark") return benchmark();
   return render(argc == 2 ? argv[1] : "loop-render.csv");
 }

@@ -39,7 +39,8 @@ double wrap(double position, std::size_t length) noexcept {
 
 }  // namespace
 
-void Processor::prepare(double sampleRate, double maximumSeconds) noexcept {
+void Processor::prepare(double sampleRate, double maximumSeconds,
+                        bool enableSnapshots) noexcept {
   sampleRate_ = std::clamp(std::isfinite(sampleRate) ? sampleRate : 48000.0,
                            8000.0, 384000.0);
   maximumSeconds = std::clamp(
@@ -51,6 +52,7 @@ void Processor::prepare(double sampleRate, double maximumSeconds) noexcept {
       deck.left.assign(capacity, 0.0F);
       deck.right.assign(capacity, 0.0F);
     }
+    snapshots_.prepare(enableSnapshots ? capacity : 0);
   } catch (...) {
     for (auto& deck : decks_) {
       deck.left.clear();
@@ -60,6 +62,43 @@ void Processor::prepare(double sampleRate, double maximumSeconds) noexcept {
   smoothingCoefficient_ =
       static_cast<float>(1.0 - std::exp(-1.0 / (0.005 * sampleRate_)));
   reset();
+}
+
+void Processor::publishTape() noexcept {
+  snapshots_.publish(
+      sampleRate_, activeDeck_,
+      {decks_[0].length, decks_[1].length, decks_[2].length},
+      {decks_[0].generation, decks_[1].generation, decks_[2].generation});
+}
+
+void Processor::restoreTape(const TapeState& state) {
+  reset();
+  const double ratio = sampleRate_ / state.sampleRate;
+  for (std::size_t deck = 0; deck < decks_.size(); ++deck) {
+    auto& target = decks_[deck];
+    const auto& audio = state.audio[deck];
+    const auto frames = audio.size() / 2;
+    target.length =
+        std::min(target.left.size(),
+                 static_cast<std::size_t>(std::round(frames * ratio)));
+    target.generation = target.length ? state.generations[deck] : 0;
+    generationCounter_ = std::max(generationCounter_, target.generation);
+    for (std::size_t frame = 0; frame < target.length; ++frame) {
+      const double position =
+          std::min(static_cast<double>(frames - 1), frame / ratio);
+      const auto first = static_cast<std::size_t>(position);
+      const auto next = std::min(first + 1, frames - 1);
+      const float mix = static_cast<float>(position - first);
+      target.left[frame] =
+          clean(audio[first * 2] + mix * (audio[next * 2] - audio[first * 2]));
+      target.right[frame] =
+          clean(audio[first * 2 + 1] +
+                mix * (audio[next * 2 + 1] - audio[first * 2 + 1]));
+      snapshots_.write(deck, frame, target.left[frame], target.right[frame]);
+    }
+  }
+  activeDeck_ = std::min(state.active, decks_.size() - 1);
+  publishTape();
 }
 
 void Processor::reset() noexcept {
@@ -83,6 +122,7 @@ void Processor::reset() noexcept {
   wasCapturing_ = false;
   printing_ = false;
   meters_ = {};
+  publishTape();
 }
 
 void Processor::clear() noexcept {
@@ -246,7 +286,7 @@ float Processor::printSample(float input, float& state,
 }
 
 void Processor::process(float* left, float* right, std::size_t frames,
-                        const Parameters& parameters) noexcept {
+                        const Parameters& parameters, bool publish) noexcept {
   if (left == nullptr || frames == 0U || decks_[0].left.empty()) {
     meters_ = {};
     return;
@@ -323,6 +363,8 @@ void Processor::process(float* left, float* right, std::size_t frames,
                                           existingLeft * feedback * overdub);
       active.right[writePosition_] = clean(inputRight * (1.0F - overdub) +
                                            existingRight * feedback * overdub);
+      snapshots_.write(activeDeck_, writePosition_, active.left[writePosition_],
+                       active.right[writePosition_]);
       writePosition_ = (writePosition_ + 1U) % length;
       active.length = std::min(length, active.length + 1U);
     }
@@ -338,6 +380,9 @@ void Processor::process(float* left, float* right, std::size_t frames,
           printSample(wetLeft, printStateLeft_, parameters);
       destination.right[printPosition_] =
           printSample(wetRight, printStateRight_, parameters);
+      snapshots_.write(printingDeck_, printPosition_,
+                       destination.left[printPosition_],
+                       destination.right[printPosition_]);
       ++printPosition_;
       destination.length = printPosition_;
       if (printPosition_ >= printLength_) {
@@ -406,7 +451,16 @@ void Processor::process(float* left, float* right, std::size_t frames,
   measured.retainedGenerations =
       static_cast<std::uint32_t>(retainedGenerations());
   measured.activeDeck = activeDeck_;
+  for (const auto& deck : decks_) {
+    if (deck.generation == 0) continue;
+    if (measured.oldestGeneration == 0 ||
+        deck.generation < measured.oldestGeneration)
+      measured.oldestGeneration = deck.generation;
+    measured.newestGeneration =
+        std::max(measured.newestGeneration, deck.generation);
+  }
   meters_ = measured;
+  if (publish) publishTape();
 }
 
 }  // namespace aste::loop

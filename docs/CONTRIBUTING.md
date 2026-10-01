@@ -1,6 +1,7 @@
 # Contributing
 
-Density is the only implementation priority until its release gates close.
+The current implementation priority is playable first use across the six products,
+as described in the roadmap; release validation remains open.
 Keep changes product-local unless a second real consumer or a foundational
 correctness requirement justifies sharing.
 
