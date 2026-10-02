@@ -51,16 +51,18 @@ float Processor::Smoother::next() noexcept {
   return current_;
 }
 
-void Processor::PeakFilter::prepare(double sampleRate, float frequency, float q,
-                                    float gainDb) noexcept {
+void Processor::ContourFilter::prepare(double sampleRate, float frequency,
+                                       float q, float gainDb,
+                                       Shape shape) noexcept {
   smoothing_ = static_cast<float>(std::exp(-1.0 / (0.020 * sampleRate)));
-  setTarget(sampleRate, frequency, q, gainDb);
+  setTarget(sampleRate, frequency, q, gainDb, shape);
   current_ = target_;
   reset();
 }
 
-void Processor::PeakFilter::setTarget(double sampleRate, float frequency,
-                                      float q, float gainDb) noexcept {
+void Processor::ContourFilter::setTarget(double sampleRate, float frequency,
+                                         float q, float gainDb,
+                                         Shape shape) noexcept {
   gainDb = bounded(gainDb, -12.0F, 12.0F, 0.0F);
   if (gainDb == 0.0F) {
     target_ = {};
@@ -73,6 +75,29 @@ void Processor::PeakFilter::setTarget(double sampleRate, float frequency,
   const double omega = 2.0 * std::numbers::pi * frequency / sampleRate;
   const double alpha = std::sin(omega) / (2.0 * q);
   const double cosine = std::cos(omega);
+  if (shape != Shape::bell) {
+    // Audio EQ Cookbook shelves, slope S=1: monotonic without resonant
+    // overshoot.
+    const double beta = std::sqrt(2.0 * amplitude) * std::sin(omega);
+    const double sum = amplitude + 1.0;
+    const double difference = amplitude - 1.0;
+    if (shape == Shape::lowShelf) {
+      const double a0 = sum + difference * cosine + beta;
+      target_ = {amplitude * (sum - difference * cosine + beta) / a0,
+                 2.0 * amplitude * (difference - sum * cosine) / a0,
+                 amplitude * (sum - difference * cosine - beta) / a0,
+                 -2.0 * (difference + sum * cosine) / a0,
+                 (sum + difference * cosine - beta) / a0};
+    } else {
+      const double a0 = sum - difference * cosine + beta;
+      target_ = {amplitude * (sum + difference * cosine + beta) / a0,
+                 -2.0 * amplitude * (difference + sum * cosine) / a0,
+                 amplitude * (sum + difference * cosine - beta) / a0,
+                 2.0 * (difference - sum * cosine) / a0,
+                 (sum - difference * cosine - beta) / a0};
+    }
+    return;
+  }
   const double a0 = 1.0 + alpha / amplitude;
   target_ = {
       .b0 = (1.0 + alpha * amplitude) / a0,
@@ -83,7 +108,7 @@ void Processor::PeakFilter::setTarget(double sampleRate, float frequency,
   };
 }
 
-float Processor::PeakFilter::process(float input) noexcept {
+float Processor::ContourFilter::process(float input) noexcept {
   current_.b0 = smooth(current_.b0, target_.b0, smoothing_);
   current_.b1 = smooth(current_.b1, target_.b1, smoothing_);
   current_.b2 = smooth(current_.b2, target_.b2, smoothing_);
@@ -95,7 +120,7 @@ float Processor::PeakFilter::process(float input) noexcept {
   return static_cast<float>(flush(output));
 }
 
-void Processor::PeakFilter::reset() noexcept { z1_ = z2_ = 0.0F; }
+void Processor::ContourFilter::reset() noexcept { z1_ = z2_ = 0.0F; }
 
 void Processor::StateVariableBand::prepare(double sampleRate, float frequency,
                                            float q) noexcept {
@@ -147,21 +172,21 @@ float Processor::proportionalQ(float gainDb) noexcept {
   return gainDb > 0.0F ? 0.7F / contour : 0.7F * contour;
 }
 
-void Processor::Band::prepare(double sampleRate, float frequency,
-                              float gainDb) noexcept {
+void Processor::Band::prepare(double sampleRate, float frequency, float gainDb,
+                              Shape shape) noexcept {
   gainDb = bounded(gainDb, -12.0F, 12.0F, 0.0F);
   const float q = Processor::proportionalQ(gainDb);
-  contour_.prepare(sampleRate, frequency, q, gainDb);
+  contour_.prepare(sampleRate, frequency, q, gainDb, shape);
   reference_.prepare(sampleRate, frequency, 0.9F);
   nonlinear_.prepare(sampleRate, frequency, 0.9F);
   boost_.prepare(sampleRate, 0.020, std::max(gainDb, 0.0F) / 12.0F);
 }
 
 void Processor::Band::setTarget(double sampleRate, float frequency,
-                                float gainDb) noexcept {
+                                float gainDb, Shape shape) noexcept {
   gainDb = bounded(gainDb, -12.0F, 12.0F, 0.0F);
   contour_.setTarget(sampleRate, frequency, Processor::proportionalQ(gainDb),
-                     gainDb);
+                     gainDb, shape);
   reference_.setTarget(sampleRate, frequency, 0.9F);
   nonlinear_.setTarget(sampleRate, frequency, 0.9F);
   boost_.setTarget(std::max(gainDb, 0.0F) / 12.0F);
@@ -210,7 +235,10 @@ void Processor::prepare(double sampleRate, const Parameters& initial) noexcept {
   };
   for (auto& channel : bands_) {
     for (std::size_t band = 0; band < channel.size(); ++band) {
-      channel[band].prepare(sampleRate_, frequencies[band], gains[band]);
+      const auto shape = band == 0   ? Shape::lowShelf
+                         : band == 3 ? Shape::highShelf
+                                     : Shape::bell;
+      channel[band].prepare(sampleRate_, frequencies[band], gains[band], shape);
     }
   }
   reset();
@@ -251,7 +279,11 @@ void Processor::process(float* left, float* right, std::size_t frames,
   };
   for (auto& channel : bands_) {
     for (std::size_t band = 0; band < channel.size(); ++band) {
-      channel[band].setTarget(sampleRate_, frequencies[band], gains[band]);
+      const auto shape = band == 0   ? Shape::lowShelf
+                         : band == 3 ? Shape::highShelf
+                                     : Shape::bell;
+      channel[band].setTarget(sampleRate_, frequencies[band], gains[band],
+                              shape);
     }
   }
 

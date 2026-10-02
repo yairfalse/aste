@@ -4,7 +4,11 @@ Status: internal-beta implementation contract, revised 2026-08-10. ADR 0007
 promotes Candidate 3 into the first testable four-band VST3; ADR 0014 widens
 its production character mapping. [ADR 0018](../../adr/0018-track-level-impact.md)
 broadens positive contours in 0.2.0 while preserving centre-gain labels and clean
-cuts. Parameter identifiers and schema 1 are
+cuts. [ADR 0019](../../adr/0019-tone-shelves-and-direct-blend.md) makes Foundation
+and Air fixed low/high shelves in 0.3.0; Body/Presence remain bells. Shelf gain
+denotes the plateau and shelf frequency the half-gain corner. The historical
+candidate gates below retain their original bell-reference definitions.
+Parameter identifiers and schema 1 are
 frozen; host compatibility and musical preference remain unproven.
 
 ## Purpose

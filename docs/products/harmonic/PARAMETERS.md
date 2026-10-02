@@ -26,9 +26,11 @@ participation law makes small positive boosts responsive instead of reserving
 most character for the final few decibels. Zero and negative gain remain
 linear. No parameter changes topology or latency.
 
-From 0.2.0, positive contours broaden with gain: `Q = 0.7 / (1 + 0.7 * gain / 12)`.
-Cuts retain `Q = 0.7 * (1 + 0.7 * abs(gain) / 12)`. Gain labels remain actual
-centre-frequency dB with Harmonic at zero, not scaled "intensity" values.
-The Default preset stays neutral; the five coloured presets have stronger
-tonal contrasts. Existing saved values recall unchanged but boosted bands
-render with the wider response. See [ADR 0018](../../adr/0018-track-level-impact.md).
+From 0.3.0, Foundation is a low shelf and Air a high shelf, with slope S=1.
+Their gain controls specify the plateau below/above the frequency control;
+the frequency is the half-gain transition. Body and Presence remain bells:
+positive contours use `Q = 0.7 / (1 + 0.7 * gain / 12)`, and cuts use
+`Q = 0.7 * (1 + 0.7 * abs(gain) / 12)`. Bell gain labels remain actual
+centre-frequency dB with Harmonic at zero, not scaled intensity values.
+Default stays neutral. Existing saved values recall unchanged but outer bands
+now render as shelves. See [ADR 0019](../../adr/0019-tone-shelves-and-direct-blend.md).

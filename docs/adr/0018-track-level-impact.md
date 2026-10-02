@@ -88,6 +88,6 @@ These are local measurements, not a supported-hardware performance guarantee.
 ## Compatibility
 
 Use minor development version 0.2.0 because existing sessions intentionally
-render differently despite exact parameter recall. Existing Blend values are
-and Output values are not overwritten. Keep the 0.1.1 download for exact old renders. No automatic
+render differently despite exact parameter recall. Existing Blend and Output
+values are not overwritten. Keep the 0.1.1 download for exact old renders. No automatic
 installation, cleanup, tagging or publication is part of this change.

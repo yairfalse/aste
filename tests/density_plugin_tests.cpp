@@ -254,6 +254,8 @@ void testStateRoundTrip() {
   setValue(source, "drive", 7.5F);
   setValue(source, "release", 432.1F);
   setValue(source, "stereo", 37.5F);
+  setValue(source, "blend", 75.0F);
+  setValue(source, "output", -6.0F);
   setValue(source, "protection", 0.0F);
   setValue(source, "bypass", 1.0F);
 
@@ -274,6 +276,9 @@ void testStateRoundTrip() {
           "Stereo link restores exactly within parameter interval");
   require(rawValue(restored, "protection") < 0.5F, "Boolean state restores");
   require(rawValue(restored, "bypass") >= 0.5F, "Bypass state restores");
+  require(std::abs(rawValue(restored, "blend") - 75.0F) < 0.011F &&
+              std::abs(rawValue(restored, "output") + 6.0F) < 0.011F,
+          "Saved 0.2.0 blend and output are not replaced by stronger defaults");
 
   juce::MemoryBlock repeated;
   restored.getStateInformation(repeated);
@@ -656,7 +661,7 @@ void testProcessingBoundary() {
 void testTrackLevelCompression() {
   aste::density::plugin::DensityAudioProcessor processor;
   require(std::abs(processor.state().getRawParameterValue("blend")->load() -
-                   75.0F) < 0.01F,
+                   90.0F) < 0.01F,
           "New instances start with the audible processed blend");
   processor.prepareToPlay(48000.0, 128);
   juce::AudioBuffer<float> audio{2, 128};
@@ -705,10 +710,10 @@ void testEditorContract() {
       {"CRUSH", 65.0, "82.50 %", 82.50},
       {"ATTACK", 1.0, "0.125 ms", 0.125},
       {"RELEASE", 180.0, "777.7 ms", 777.7},
-      {"BLEND", 75.0, "37.50 %", 37.50},
+      {"BLEND", 90.0, "37.50 %", 37.50},
       {"STEREO", 100.0, "62.50 %", 62.50},
       {"DETECTOR HPF", 90.0, "137.5 Hz", 137.5},
-      {"OUTPUT", -6.0, "-3.25 dB", -3.25},
+      {"OUTPUT", -7.0, "-3.25 dB", -3.25},
   }};
   for (const auto& contract : sliderContracts) {
     auto* slider =
@@ -771,7 +776,7 @@ void testEditorContract() {
           "Rounded zero never displays a negative sign");
   if (output != nullptr) {
     auto* textBox = dynamic_cast<juce::Label*>(output->getChildComponent(0));
-    require(textBox != nullptr && textBox->getText() == "-6.00 dB",
+    require(textBox != nullptr && textBox->getText() == "-7.00 dB",
             "Output text box displays the gain-staged default");
   }
 

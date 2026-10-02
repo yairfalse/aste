@@ -266,8 +266,9 @@ void testAudibleBandControls() {
     const double measured = 10.0 * std::log10(outputPower / inputPower);
     std::cout << "{\"host_eq_band\":\"" << ids[band]
               << "\",\"measured_gain_db\":" << measured << "}\n";
-    require(std::abs(measured - 6.0) < 0.1,
-            "Host EQ automation reaches audio at its labelled gain");
+    const double expected = (band == 0 || band == 3) ? 3.0 : 6.0;
+    require(std::abs(measured - expected) < 0.1,
+            "Host EQ automation reaches the shelf corner or bell centre gain");
     processor.releaseResources();
   }
 }

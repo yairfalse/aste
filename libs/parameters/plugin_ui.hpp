@@ -32,6 +32,12 @@ inline juce::String explanation(const juce::String& id) {
   if (id == "harmonic")
     return "Adds nonlinear character to boosted bands. Flat and cut bands stay "
            "clean.";
+  if (id == "foundation_gain")
+    return "Low shelf: boost or cut the bass below Foundation Frequency.";
+  if (id == "air_gain")
+    return "High shelf: boost or cut the top end above Air Frequency.";
+  if (id == "foundation_frequency" || id == "air_frequency")
+    return "Shelf transition frequency; half the selected gain occurs here.";
   if (id.endsWith("_gain"))
     return "Boost or cut this frequency region. Positive boosts engage "
            "Harmonic.";

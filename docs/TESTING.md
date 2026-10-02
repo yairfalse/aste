@@ -41,6 +41,10 @@ bandwidth on quiet signals, plus actual Density gain reduction and blended-outpu
 level response. Linked plugin tests verify these through host parameters.
 The 0.2.0 numeric golden review is recorded in
 [ADR 0018](adr/0018-track-level-impact.md); the earlier manifest is retained.
+The 0.3.0 shelf checks cover half-gain corners, plateaus and opposite-band
+rejection at +/-6 and +/-12 dB over all six rates. Density's stronger default
+blend must reduce the measured 6 dB input step to less than 0.4 dB at the output.
+See [ADR 0019](adr/0019-tone-shelves-and-direct-blend.md).
 
 `sequence_lab` renders two seconds of the host-clocked production voice to CSV
 and reports peak, RMS, and finite status. Its `--benchmark` mode exercises the

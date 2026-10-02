@@ -73,10 +73,10 @@ void testMusicalBandResponse() {
       &Parameters::foundationGainDb, &Parameters::bodyGainDb,
       &Parameters::presenceGainDb, &Parameters::airGainDb};
   constexpr std::array centres{80.0, 400.0, 2500.0, 12000.0};
-  for (double rate : {44100.0, 48000.0, 96000.0, 192000.0}) {
+  for (double rate : {44100.0, 48000.0, 88200.0, 96000.0, 176400.0, 192000.0}) {
     for (std::size_t band = 0; band < gains.size(); ++band) {
-      for (float gain : {-6.0F, 6.0F}) {
-        for (double position : {0.5, 1.0}) {
+      for (float gain : {-12.0F, -6.0F, 6.0F, 12.0F}) {
+        for (double position : {0.25, 0.5, 1.0, 4.0}) {
           Parameters parameters;
           parameters.*gains[band] = gain;
           parameters.harmonic = 0.0F;
@@ -91,7 +91,8 @@ void testMusicalBandResponse() {
             for (std::size_t i = 0; i < count; ++i) {
               audio[i] = static_cast<float>(
                   0.0630957344 *
-                  std::sin(2.0 * std::numbers::pi * centres[band] * position *
+                  std::sin(2.0 * std::numbers::pi *
+                           std::min(centres[band] * position, rate * 0.45) *
                            static_cast<double>(offset + i) / rate));
               if (offset >= frames / 2) inputPower += audio[i] * audio[i];
             }
@@ -103,13 +104,24 @@ void testMusicalBandResponse() {
           }
           const double measured = 10.0 * std::log10(outputPower / inputPower);
           if (position == 1.0) {
-            require(std::abs(measured - gain) < 0.1,
-                    "Every EQ band delivers its labelled gain on quiet input");
-          } else if (gain > 0) {
-            require(measured > (band == 3 ? 2.0 : 3.0),
+            const double expected =
+                (band == 0 || band == 3) ? gain * 0.5 : gain;
+            require(
+                std::abs(measured - expected) < 0.1,
+                "Shelves reach half gain at the corner; bells reach full gain");
+          } else if ((band == 0 && position == 0.25) ||
+                     (band == 3 && position == 4.0)) {
+            require(std::abs(measured - gain) < 0.3,
+                    "Outer EQ bands deliver full shelf gain beyond the corner");
+          } else if ((band == 0 && position == 4.0) ||
+                     (band == 3 && position == 0.25)) {
+            require(std::abs(measured) < 0.3,
+                    "Shelf gain leaves the opposite end of the spectrum alone");
+          } else if (gain == 6 && band > 0 && band < 3 && position == 0.5) {
+            require(measured > 3.0,
                     "A 6 dB boost shapes a broad region, not only its centre");
           }
-          if (rate == 48000.0)
+          if (rate == 48000.0 && gain == 6.0F)
             std::cout << "{\"eq_band\":" << band << ",\"gain_db\":" << gain
                       << ",\"frequency_ratio\":" << position
                       << ",\"measured_db\":" << measured << "}\n";

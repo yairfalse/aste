@@ -5,13 +5,15 @@ for Intel and Apple Silicon Macs. The build targets macOS 11 or newer; this
 minimum is not yet verified on physical macOS 11 machines. These are development
 builds, not a claim of compatibility with every DAW or Mac.
 
-0.2.0 SOUND CHANGES
-Density now compresses at lower track levels, with more crushed-path make-up
-and a 75% processed starting blend with -6 dB Output trim. Harmonic boosts cover wider regions and
-its coloured presets have stronger tonal contrasts. Default EQ stays neutral.
-Existing projects retain their parameter values but will sound different with
-these two plugins. Keep 0.1.1 if you need exact old renders. Compare at matched
-listening levels using Output; more volume alone is not evidence of improvement.
+0.3.0 SOUND CHANGES
+Harmonic Foundation now shapes the whole bass end as a low shelf; Air shapes
+the top end as a high shelf. Their frequency knobs mark the half-gain point.
+Body and Presence remain bells. Default EQ stays neutral.
+Density starts at 90% processed Blend with -7 dB Output trim, and its presets
+have more processed sound. Saved Density settings are not overwritten.
+Existing Harmonic projects retain their values but sound different in the
+outer bands. Keep 0.2.0 for exact prior renders (0.1.1 for pre-0.2.0 sound).
+Compare at matched listening levels using Output, not by loudness alone.
 
 INSTALL
 Quit your DAW. Open Install Aste.pkg, then use Customize to select instruments

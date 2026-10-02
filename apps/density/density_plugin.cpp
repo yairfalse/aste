@@ -29,19 +29,19 @@ struct FactoryPreset {
 
 constexpr std::array<FactoryPreset, 5> kFactoryPresets{{
     {"Default",
-     {0.0F, 65.0F, 1.0F, 180.0F, 50.0F, 75.0F, -6.0F, 100.0F, 90.0F, 1.0F,
+     {0.0F, 65.0F, 1.0F, 180.0F, 50.0F, 90.0F, -7.0F, 100.0F, 90.0F, 1.0F,
       0.0F}},
     {"Continuity",
-     {2.0F, 50.0F, 8.0F, 320.0F, 35.0F, 35.0F, -1.0F, 100.0F, 120.0F, 1.0F,
+     {2.0F, 50.0F, 8.0F, 320.0F, 35.0F, 50.0F, -3.0F, 100.0F, 120.0F, 1.0F,
       0.0F}},
     {"Proximity",
-     {6.0F, 75.0F, 0.5F, 140.0F, 70.0F, 55.0F, -3.0F, 85.0F, 100.0F, 1.0F,
+     {6.0F, 75.0F, 0.5F, 140.0F, 70.0F, 80.0F, -5.0F, 85.0F, 100.0F, 1.0F,
       0.0F}},
     {"Parallel Crush",
-     {12.0F, 95.0F, 0.05F, 80.0F, 90.0F, 32.0F, -6.0F, 100.0F, 140.0F, 1.0F,
+     {12.0F, 95.0F, 0.05F, 80.0F, 90.0F, 50.0F, -8.0F, 100.0F, 140.0F, 1.0F,
       0.0F}},
     {"Transient Hold",
-     {4.0F, 85.0F, 6.0F, 500.0F, 60.0F, 45.0F, -2.0F, 65.0F, 180.0F, 1.0F,
+     {4.0F, 85.0F, 6.0F, 500.0F, 60.0F, 70.0F, -4.0F, 65.0F, 180.0F, 1.0F,
       0.0F}},
 }};
 
@@ -272,10 +272,10 @@ class DensityEditor final : public juce::AudioProcessorEditor {
         crush_{processor.state(), "crush", "CRUSH", " %", 65.0, 3},
         attack_{processor.state(), "attack", "ATTACK", " ms", 1.0, 4},
         release_{processor.state(), "release", "RELEASE", " ms", 180.0, 5},
-        blend_{processor.state(), "blend", "BLEND", " %", 75.0, 6},
+        blend_{processor.state(), "blend", "BLEND", " %", 90.0, 6},
         stereo_{processor.state(), "stereo", "STEREO", " %", 100.0, 7},
         hpf_{processor.state(), "detector_hpf", "DETECTOR HPF", " Hz", 90.0, 8},
-        output_{processor.state(), "output", "OUTPUT", " dB", -6.0, 9},
+        output_{processor.state(), "output", "OUTPUT", " dB", -7.0, 9},
         protection_{processor.state(), "protection", "PROTECTION", 10} {
     setLookAndFeel(&lookAndFeel_);
     preset_.setTextWhenNothingSelected("PRESETS");
@@ -386,9 +386,9 @@ DensityAudioProcessor::createParameterLayout() {
   addFloat(layout, "release", "Release", skewed(20.0F, 1200.0F, 180.0F, 0.1F),
            180.0F, "ms");
   addFloat(layout, "density", "Density", {0.0F, 100.0F, 0.01F}, 50.0F, "%");
-  addFloat(layout, "blend", "Blend", {0.0F, 100.0F, 0.01F}, 75.0F, "%");
+  addFloat(layout, "blend", "Blend", {0.0F, 100.0F, 0.01F}, 90.0F, "%");
   addFloat(layout, "stereo", "Stereo", {0.0F, 100.0F, 0.01F}, 100.0F, "%");
-  addFloat(layout, "output", "Output", {-24.0F, 12.0F, 0.01F}, -6.0F, "dB");
+  addFloat(layout, "output", "Output", {-24.0F, 12.0F, 0.01F}, -7.0F, "dB");
   addFloat(layout, "detector_hpf", "Detector HPF",
            skewed(20.0F, 300.0F, 90.0F, 0.1F), 90.0F, "Hz");
   layout.add(std::make_unique<juce::AudioParameterBool>(

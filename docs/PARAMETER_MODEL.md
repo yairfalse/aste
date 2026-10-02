@@ -14,9 +14,9 @@ decimal parser for text entry while retaining independent parameter layouts.
 | `attack` | Attack | 0.02..30 ms | 1 | logarithmic | 5 ms in log-time space |
 | `release` | Release | 20..1200 ms | 180 | logarithmic | coefficient per block |
 | `density` | Density | 0..100 % | 50 | linear | 10 ms |
-| `blend` | Blend | 0..100 % | 75 | linear | cascaded 3+3 ms |
+| `blend` | Blend | 0..100 % | 90 | linear | cascaded 3+3 ms |
 | `stereo` | Stereo link | 0..100 % | 100 | linear | 10 ms |
-| `output` | Output | -24..12 dB | -6 | linear dB | cascaded 3+3 ms |
+| `output` | Output | -24..12 dB | -7 | linear dB | cascaded 3+3 ms |
 | `detector_hpf` | Detector HPF | 20..300 Hz | 90 | logarithmic | coefficient per block |
 | `protection` | Protection | off/on | on | boolean | deliberate transition |
 | `bypass` | Host bypass | off/on | off | boolean | host transition |
@@ -44,11 +44,11 @@ like any manual setting. Protection is on and bypass is off in every snapshot.
 
 | Name | Drive | Crush | Attack | Release | Density | Blend | Output | Stereo | HPF |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Default | 0 dB | 65% | 1 ms | 180 ms | 50% | 75% | -6 dB | 100% | 90 Hz |
-| Continuity | 2 dB | 50% | 8 ms | 320 ms | 35% | 35% | -1 dB | 100% | 120 Hz |
-| Proximity | 6 dB | 75% | 0.5 ms | 140 ms | 70% | 55% | -3 dB | 85% | 100 Hz |
-| Parallel Crush | 12 dB | 95% | 0.05 ms | 80 ms | 90% | 32% | -6 dB | 100% | 140 Hz |
-| Transient Hold | 4 dB | 85% | 6 ms | 500 ms | 60% | 45% | -2 dB | 65% | 180 Hz |
+| Default | 0 dB | 65% | 1 ms | 180 ms | 50% | 90% | -7 dB | 100% | 90 Hz |
+| Continuity | 2 dB | 50% | 8 ms | 320 ms | 35% | 50% | -3 dB | 100% | 120 Hz |
+| Proximity | 6 dB | 75% | 0.5 ms | 140 ms | 70% | 80% | -5 dB | 85% | 100 Hz |
+| Parallel Crush | 12 dB | 95% | 0.05 ms | 80 ms | 90% | 50% | -8 dB | 100% | 140 Hz |
+| Transient Hold | 4 dB | 85% | 6 ms | 500 ms | 60% | 70% | -4 dB | 65% | 180 Hz |
 
 These are internal-beta starting points, not yet listening-approved factory
 content. Their names and values may change before the first external release;

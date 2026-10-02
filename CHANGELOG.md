@@ -3,6 +3,23 @@
 Versions apply to the complete six-instrument family. See
 [versioning](docs/VERSIONING.md) for numbering and compatibility rules.
 
+## 0.3.0 — 2026-10-03 — Decisive tone and dynamics (development)
+
+- Harmonic Foundation is now a low shelf and Air a high shelf: gain changes
+  cover the whole bass/top end, not only a bell around the selected frequency.
+  Body and Presence remain broad bells. Shelf frequency marks half gain; gain
+  labels describe the shelf plateau. Updated tooltips explain the controls.
+- Density starts at 90% processed Blend with -7 dB Output. All five existing
+  presets have more processed sound and compensating Output trims. Threshold,
+  ratio and saturation are not pushed further; the dynamics are less diluted.
+- **Audible compatibility change:** existing Harmonic Foundation/Air settings
+  render as shelves. Existing Density parameter values still render as before;
+  its stronger blend applies to new instances and explicitly loaded presets.
+  Parameter IDs, ranges, schemas, neutral EQ, bypass and protection are retained.
+  Keep 0.2.0 for exact previous Harmonic renders. Listening approval is pending.
+- Local verification: all 70 regression checks, 537 Steinberg checks per changed
+  plugin, DSP ASan/UBSan, static analysis, formatting and CPU budgets passed.
+
 ## 0.2.0 — 2026-10-02 — Track-level impact (development)
 
 - Density engages quieter tracks: the threshold mapping is 16 dB lower, with

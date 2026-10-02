@@ -131,9 +131,10 @@ void testTrackLevelCompression() {
         }
       }
       const double outputDb = 10.0 * std::log10(outputPower / measuredFrames);
-      require(levelDb != -18.0F || (outputDb > previousOutputDb &&
-                                    outputDb - previousOutputDb < 3.0),
-              "A 6 dB input rise is compressed in the actual blended output");
+      require(
+          levelDb != -18.0F || (outputDb > previousOutputDb &&
+                                outputDb - previousOutputDb < 0.4),
+          "Default blend keeps a 6 dB input rise below 0.4 dB at the output");
       previousOutputDb = outputDb;
       require(levelDb != -24.0F || (reduction > 3.0F && reduction < 5.0F),
               "Default compression engages on a -24 dBFS peak track");

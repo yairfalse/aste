@@ -24,8 +24,8 @@ State schema numbers change only when serialized data requires it.
 ## Preparing the next download
 
 1. Bump the version once in CMake before building a changed download. The next
-   fixes-only download after 0.2.0 is 0.2.1. Version 0.2.0 intentionally changes
-   Density/Harmonic voicing; the 0.1.x downloads remain available for old mixes.
+   fixes-only download after 0.3.0 is 0.3.1. Versions 0.2.0 and 0.3.0 intentionally
+   change voicing; earlier downloads remain available for old mixes.
 2. Move relevant Unreleased entries into a dated section of
    [CHANGELOG.md](../CHANGELOG.md), describing user-visible changes and limits.
 3. Build, test and package from a clean, committed source revision. Keep the

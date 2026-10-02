@@ -70,9 +70,9 @@ change.
 | Attack | 0.02–30 ms | 1 ms | Shapes transient entry |
 | Release | 20–1200 ms | 180 ms | Sets recovery time |
 | Density | 0–100% | 50% | Coordinates threshold, ratio, saturation, release curvature, and crush make-up |
-| Blend | 0–100% | 75% | Mixes the aligned dry and crush paths |
+| Blend | 0–100% | 90% | Mixes the aligned dry and crush paths |
 | Stereo | 0–100% | 100% | Moves continuously from independent to fully linked detection |
-| Output | -24 to +12 dB | -6 dB | Final level trim |
+| Output | -24 to +12 dB | -7 dB | Final level trim |
 | Detector HPF | 20–300 Hz | 90 Hz | Reduces low-frequency detector dominance |
 | Protection | Off/on | On | Sample-peak output protection |
 
@@ -86,7 +86,7 @@ see [PARAMETER_MODEL.md](docs/PARAMETER_MODEL.md).
 At restrained settings Density is intended to increase presence and continuity
 while keeping the transient-bearing dry path intact. Crush now also controls
 nonlinear participation, while positive Drive pushes saturation by up to 75%.
-At stronger settings the expanded -30 dB / 60:1 macro range becomes
+At stronger settings the expanded -46 dB / 60:1 macro range becomes
 deliberately hard, close, and physical. The output stage is protective
 sample-peak clipping, **not** a true-peak mastering limiter.
 
@@ -109,6 +109,10 @@ region. The serial graph is:
 input -> Foundation -> Body -> Presence -> Air -> output
            clean cuts / nonlinear-participating boosts
 ```
+
+Foundation is a low shelf for the whole bass end; Air is a high shelf for the
+top end. Their frequency controls mark the half-gain transition. Body and
+Presence remain broad bells. Zero gain stays neutral; no extra mode is needed.
 
 Foundation, Body, Presence, and Air each expose gain and a constrained frequency
 range. Input, Harmonic, and Output are global. The Harmonic macro continuously
@@ -663,7 +667,7 @@ JUCE licence, signing identity, notarization, package contents, and release
 gates have all been reviewed.
 ## Free, open-source macOS development builds
 
-The six instruments share development version **0.2.0**; the original **0.1.0**
+The six instruments share development version **0.3.0**; the original **0.1.0**
 download remains preserved. See the [changelog](CHANGELOG.md) and
 [versioning policy](docs/VERSIONING.md).
 

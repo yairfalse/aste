@@ -49,11 +49,13 @@ class Processor {
     float coefficient_{};
   };
 
-  struct PeakFilter {
-    void prepare(double sampleRate, float frequency, float q,
-                 float gainDb) noexcept;
-    void setTarget(double sampleRate, float frequency, float q,
-                   float gainDb) noexcept;
+  enum class Shape { bell, lowShelf, highShelf };
+
+  struct ContourFilter {
+    void prepare(double sampleRate, float frequency, float q, float gainDb,
+                 Shape shape) noexcept;
+    void setTarget(double sampleRate, float frequency, float q, float gainDb,
+                   Shape shape) noexcept;
     [[nodiscard]] float process(float input) noexcept;
     void reset() noexcept;
 
@@ -88,13 +90,15 @@ class Processor {
   };
 
   struct Band {
-    void prepare(double sampleRate, float frequency, float gainDb) noexcept;
-    void setTarget(double sampleRate, float frequency, float gainDb) noexcept;
+    void prepare(double sampleRate, float frequency, float gainDb,
+                 Shape shape) noexcept;
+    void setTarget(double sampleRate, float frequency, float gainDb,
+                   Shape shape) noexcept;
     [[nodiscard]] float process(float input, float harmonic,
                                 float& activity) noexcept;
     void reset() noexcept;
 
-    PeakFilter contour_{};
+    ContourFilter contour_{};
     StateVariableBand reference_{};
     StateVariableBand nonlinear_{};
     Smoother boost_{};
