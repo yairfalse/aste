@@ -652,20 +652,24 @@ automatically. Read [CONTRIBUTING.md](docs/CONTRIBUTING.md) before opening a cha
 
 ## Licensing and distribution
 
-No project-wide distribution licence has been selected, so this repository is
-not itself permission to redistribute source or binaries.
+Aste's original code is licensed under **AGPL-3.0-only**; see [LICENSE](LICENSE).
+Use, modification and redistribution are subject to that license, including
+its corresponding-source obligations.
 
 The opt-in VST3 build fetches JUCE 8.0.13. JUCE is available under its EULA or
-AGPLv3; a closed-source distributable requires the applicable JUCE licence and
-reviewed notices. No third-party manuals, firmware, impulse responses, samples,
+AGPLv3; this open-source distribution uses its AGPLv3 option. Third-party
+components retain their own licenses. No third-party manuals, firmware, impulse responses, samples,
 or commercial plugin code are included. See
 [THIRD_PARTY_NOTICES.md](docs/THIRD_PARTY_NOTICES.md) and
 [LICENSES/README.md](LICENSES/README.md).
 
-Do not distribute a plugin build until the company identity, project licence,
-JUCE licence, signing identity, notarization, package contents, and release
-gates have all been reviewed.
+Development downloads include matching source and license notices. They are
+not Apple-notarized or supported stable releases; see their release notes and
+the [release checklist](docs/RELEASE_CHECKLIST.md) for validation limits.
 ## Free, open-source macOS development builds
+
+Download the installer, matching source, checksums and validation evidence from
+[GitHub Releases](https://github.com/yairfalse/aste/releases).
 
 The six instruments share development version **0.3.0**; the original **0.1.0**
 download remains preserved. See the [changelog](CHANGELOG.md) and
@@ -694,7 +698,7 @@ installation instructions, provenance, and a corresponding-source archive
 containing sibling `Aste/` and `JUCE/` source directories. For an offline rebuild,
 enter `Aste/` and add `-DFETCHCONTENT_SOURCE_DIR_JUCE="$PWD/../JUCE"` to configuration.
 Build requirements are Xcode Command Line Tools, CMake 3.25+, a C++20 compiler,
-and Rust (for the installer bundle checks only);
+and Rust (for the cleanup utility and packaging checks);
 the existing verification scripts also use Python 3. macOS 11 is the compilation
 target, not yet a verified minimum-host claim. If the current SDK reports errors
 in the pinned JUCE version, select an installed compatible SDK explicitly; the
