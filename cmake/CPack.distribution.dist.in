@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<installer-gui-script minSpecVersion="1.0">
+  <title>@CPACK_PACKAGE_NAME@</title>
+  <readme file="@CPACK_RESOURCE_FILE_README_NOPATH@"/>
+  <license file="@CPACK_RESOURCE_FILE_LICENSE_NOPATH@"/>
+  <volume-check>
+    <allowed-os-versions>
+      <os-version min="@CPACK_ASTE_MIN_MACOS@"/>
+    </allowed-os-versions>
+  </volume-check>
+@CPACK_APPLE_PKG_INSTALLER_CONTENT@
+</installer-gui-script>

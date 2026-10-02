@@ -721,8 +721,11 @@ void testEditorContract() {
                 presets->getText() == "Continuity",
             "Preset menu retains the selected starting point");
     setValue(processor, "drive", 3);
-    std::this_thread::sleep_for(std::chrono::milliseconds{300});
-    juce::Timer::callPendingTimersSynchronously();
+    for (int attempt = 0; presets->getText() != "Continuity *" && attempt < 50;
+         ++attempt) {
+      std::this_thread::sleep_for(std::chrono::milliseconds{20});
+      juce::Timer::callPendingTimersSynchronously();
+    }
     require(presets->getText() == "Continuity *",
             "Edited starting points are marked without losing their name");
     presets->setSelectedId(1, juce::sendNotificationSync);

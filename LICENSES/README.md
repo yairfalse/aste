@@ -1,11 +1,12 @@
 # Distribution licences
 
 No third-party source, manual, schematic, impulse response, or sample library is
-redistributed from this directory. The internal VST3 build fetches JUCE under
+redistributed from this directory. The plugin build fetches JUCE under
 the terms recorded in [THIRD_PARTY_NOTICES.md](../docs/THIRD_PARTY_NOTICES.md). The
 Steinberg VST3 SDK MIT text is retained here for the pinned CI-only validator
 source.
 
-Before a distributable build, place the exact required licence texts here and
-verify them against the dependency versions embedded in the build metadata.
-This directory is not itself a licence grant for the project or its binaries.
+Aste's original code is licensed by the root [LICENSE](../LICENSE). The macOS
+development download includes JUCE's complete pinned source and dependency
+license texts in its corresponding-source archive. Third-party copyrights and
+licenses remain intact; they are not relicensed by Aste.

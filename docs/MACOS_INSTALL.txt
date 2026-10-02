@@ -1,0 +1,63 @@
+Aste — free, open-source development build
+
+This package contains all six instruments in Audio Unit (AU) and VST3 formats,
+for Intel and Apple Silicon Macs. The build targets macOS 11 or newer; this
+minimum is not yet verified on physical macOS 11 machines. These are development
+builds, not a claim of compatibility with every DAW or Mac.
+
+INSTALL
+Quit your DAW. Open Install Aste.pkg, then use Customize to select instruments
+and formats if you do not want all six. Installation requires administrator
+approval and writes to /Library/Audio/Plug-Ins/Components and
+/Library/Audio/Plug-Ins/VST3. It also installs license notices and these
+instructions in /Library/Application Support/Aste, plus Aste Plugin Cleanup.app
+in /Applications.
+
+Reopen your DAW and rescan plugins if necessary. Logic and GarageBand use AU;
+Cubase uses VST3; Ableton can use either. Loop and Field are MIDI-capable audio
+effects; their routing depends on the host. No standalone instrument app is included.
+
+APPLE SECURITY
+This free development package is NOT Developer ID signed or Apple notarized.
+The plugin binaries have local ad-hoc signatures, not verified publisher
+identities. Downloaded copies may be blocked by macOS. Only if you trust the
+source, follow macOS's Privacy & Security approval flow after attempting to
+open the installer. Approval of the installer does not guarantee that every
+host will accept its plugins. Do not disable Gatekeeper or system protection.
+
+UPDATE / REMOVE
+The installer replaces matching Aste plugin bundles; keep a copy of your old
+build if you may want to roll back. It does not delete project files or user
+settings. To remove a plugin, quit your DAW and remove its named .component
+and/or .vst3 bundle from the folders above.
+
+After installing, quit your DAW and open Aste Plugin Cleanup.app from this disk
+image or /Applications. It previews eligible older copies in your own
+~/Library/Audio/Plug-Ins/VST3 and Components folders, including backup folders
+left by the old install scripts. Choose Move to Backup to move them to a dated
+folder under ~/Library/Application Support/Aste/Plugin Backups, outside the
+DAW scan paths. The backup includes restore instructions. Nothing is deleted.
+
+Cleanup requires a newer, matching, signature-verified system-wide replacement
+for each format. Same/newer versions, missing or unrecognized versions, different
+bundle identities, symlinked paths, other users' files, projects, presets and DAW
+caches are left alone. If you didn't install a format, its user copy is kept.
+Cancel makes no changes. Do not use sudo; this utility runs as your normal user.
+If interrupted or a move fails, earlier moves remain in the reported backup.
+Restart your DAW afterward. The cleanup utility is also unnotarized and may
+require the normal macOS security approval described above.
+
+SOURCE AND LICENSE
+Aste's original code is licensed under AGPL-3.0-only. You may use, study,
+modify, and redistribute it subject to that license. Third-party code retains
+its own notices and licenses. Your music is not automatically AGPL-licensed
+merely because you process it with Aste.
+
+The matching Aste source and pinned JUCE source are included in
+the Aste source .tar.gz archive beside the installer. Keep that archive with any
+redistribution of this development download. See Aste/README.md and Aste/LICENSE
+inside the source archive for build instructions and the full license terms.
+The sibling JUCE/ directory contains the pinned framework and its licenses.
+
+No account, subscription, network activation, or paid Apple membership is
+required to use these tools. The package installs no background service.

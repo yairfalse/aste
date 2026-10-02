@@ -13,6 +13,12 @@ Implementation and local evidence are recorded in [the usability cycle](UX_REVIE
 
 ## Now — complete-line external validation
 
+Free open-source macOS packaging is now being prepared under AGPL-3.0-only:
+universal AU/VST3, a native development installer, and bundled corresponding
+source. No Apple enrollment or paid service is required for this development
+path; signing/notarization and clean-machine host validation remain distinct
+release work. See [ADR 0017](adr/0017-free-open-source-macos-packaging.md).
+
 The first working VST3, DSP lab, state model, industrial editor, and automated
 foundation exist. A deterministic internal package rehearsal now checks bundle
 contents, provenance, and an SPDX dependency bill of materials without

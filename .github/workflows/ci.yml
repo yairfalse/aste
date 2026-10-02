@@ -42,13 +42,15 @@ jobs:
         run: ./ci-core/density_lab --benchmark
 
   vst3:
-    name: VST3 / arm64
+    name: AU + VST3 / universal
     runs-on: macos-15
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Universal cleanup utility toolchains
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
       - name: Configure
-        run: cmake -S . -B ci-vst3 -DASTE_BUILD_VST3=ON -DCMAKE_BUILD_TYPE=Release '-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64'
+        run: cmake -S . -B ci-vst3 -DASTE_BUILD_VST3=ON -DASTE_BUILD_AU=ON -DASTE_BUILD_MACOS_INSTALLER=ON -DCMAKE_BUILD_TYPE=Release '-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64'
       - name: Build
         run: cmake --build ci-vst3 --parallel 3
       - name: Test
@@ -104,8 +106,10 @@ jobs:
       - name: Inspect internal package
         run: >-
           python3 tools/package_density.py verify
-          --archive ci-vst3/packages/Density-D01-0.1.0-internal-macos-universal.zip
+          --archive ci-vst3/packages/Density-D01-*-internal-macos-universal.zip
           --require-clean
+      - name: Build and inspect free macOS development installer
+        run: cmake --build ci-vst3 --target aste_macos_package
 
   sanitizers:
     name: ASan + UBSan / arm64

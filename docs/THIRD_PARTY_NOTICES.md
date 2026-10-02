@@ -2,10 +2,19 @@
 
 Historical documents in the research catalog are linked, not redistributed.
 
-The opt-in internal VST3 build fetches JUCE 8.0.13 from its official repository.
+The opt-in plugin build fetches JUCE 8.0.13 from its official repository.
 JUCE is copyright Raw Material Software Limited and available under the JUCE 8
-EULA or AGPLv3. This prototype is not a distribution grant; the applicable
-commercial licence and full release notices remain a packaging gate.
+EULA or AGPLv3. Aste selects the AGPLv3 route; no commercial JUCE license is
+required for this compatible open-source distribution. Aste's original code is
+licensed under AGPL-3.0-only; see [LICENSE](../LICENSE).
+
+The macOS development download includes corresponding Aste source and the
+complete pinned JUCE source tree, including its dependency license texts and
+copyright notices. Keep this source archive alongside redistributed binaries.
+Third-party components retain their original licenses, not Aste's blanket
+license. JUCE's LICENSE.md inventories its dependencies; Audio Units additionally
+use its Apache-2.0-licensed AudioUnitSDK. This license choice does not establish
+Apple notarization, DAW compatibility, or readiness for public release.
 
 - Source: https://github.com/juce-framework/JUCE/tree/8.0.13
 - Licence: https://github.com/juce-framework/JUCE/blob/8.0.13/LICENSE.md

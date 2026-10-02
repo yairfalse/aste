@@ -2,9 +2,9 @@
 
 [![CI](https://github.com/yairfalse/aste/actions/workflows/ci.yml/badge.svg)](https://github.com/yairfalse/aste/actions/workflows/ci.yml)
 
-`Aste` is the neutral internal codename for a planned family of professional
-audio instruments. It is not the company name and must not become a permanent
-public namespace, bundle identifier, preset signature, or installer path.
+`Aste` is the working name for a family of open-source audio instruments, not
+a registered company. Development packaging uses this provisional name while
+preserving existing plugin identifiers for session compatibility.
 
 The project combines original DSP, restrained industrial interfaces, historical
 engineering research, deterministic measurement, and unusually strict
@@ -661,3 +661,48 @@ or commercial plugin code are included. See
 Do not distribute a plugin build until the company identity, project licence,
 JUCE licence, signing identity, notarization, package contents, and release
 gates have all been reviewed.
+## Free, open-source macOS development builds
+
+The six instruments share development version **0.1.1**; the original **0.1.0**
+download remains preserved. See the [changelog](CHANGELOG.md) and
+[versioning policy](docs/VERSIONING.md).
+
+Aste's original code is licensed under **AGPL-3.0-only**; see [LICENSE](LICENSE).
+JUCE is used under its AGPLv3 option. Third-party code retains its own licenses;
+see [notices](docs/THIRD_PARTY_NOTICES.md). No Apple subscription is required to
+build or use Aste. These development downloads are not Apple-notarized.
+
+Build all six instruments as universal Intel/Apple Silicon AU and VST3 plugins,
+then create a native installer and disk image with matching source:
+
+```sh
+rustup target add aarch64-apple-darwin x86_64-apple-darwin
+cmake -S . -B build-macos -DASTE_BUILD_VST3=ON -DASTE_BUILD_AU=ON \
+  -DASTE_BUILD_MACOS_INSTALLER=ON -DCMAKE_BUILD_TYPE=Release \
+  '-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64' -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+cmake --build build-macos --parallel 4
+ctest --test-dir build-macos --output-on-failure --output-junit "$PWD/build-macos/test-results.xml"
+cmake --build build-macos --target aste_macos_package
+```
+
+The download is in `build-macos/packages/`. It includes an unsigned `.pkg`,
+installation instructions, provenance, and a corresponding-source archive
+containing sibling `Aste/` and `JUCE/` source directories. For an offline rebuild,
+enter `Aste/` and add `-DFETCHCONTENT_SOURCE_DIR_JUCE="$PWD/../JUCE"` to configuration.
+Build requirements are Xcode Command Line Tools, CMake 3.25+, a C++20 compiler,
+and Rust (for the installer bundle checks only);
+the existing verification scripts also use Python 3. macOS 11 is the compilation
+target, not yet a verified minimum-host claim. If the current SDK reports errors
+in the pinned JUCE version, select an installed compatible SDK explicitly; the
+local development build uses `-DCMAKE_OSX_SYSROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk`.
+
+See [installation instructions](docs/MACOS_INSTALL.txt) for format selection,
+security limitations, upgrades, and removal. Building does not install or publish
+anything. Existing plugin identifiers are preserved for session compatibility.
+
+After installation, **Aste Plugin Cleanup.app** can preview and move older
+per-user plugin copies to a dated backup outside DAW scan folders. It never
+deletes them or touches other users' files. Script users can run its executable
+with `--preview` (read-only) or `--apply` (move eligible copies); running the app
+normally presents a confirmation dialog. See the installation instructions for
+the eligibility checks and restore location.

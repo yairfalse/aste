@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.25)
-project(aste_signal_instruments VERSION 0.1.0 LANGUAGES C CXX)
+if(CMAKE_HOST_APPLE AND NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET)
+  set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum macOS deployment target")
+endif()
+project(aste_signal_instruments VERSION 0.1.1 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -7,6 +10,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(ASTE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 option(ASTE_BUILD_VST3 "Build the internal VST3 prototypes" OFF)
+option(ASTE_BUILD_AU "Also build Audio Units on macOS" ON)
+option(ASTE_BUILD_MACOS_INSTALLER "Enable the universal development installer" OFF)
+if(ASTE_BUILD_MACOS_INSTALLER AND NOT (APPLE AND ASTE_BUILD_VST3 AND ASTE_BUILD_AU))
+  message(FATAL_ERROR "The macOS installer requires macOS, ASTE_BUILD_VST3 and ASTE_BUILD_AU")
+endif()
 set(ASTE_JUCE_COMMIT "7c9d3783b127263d72bb65fe0a7e2dc8a02a7ac2")
 
 find_package(Git QUIET)
@@ -354,6 +362,10 @@ if(ASTE_BUILD_VST3)
     GIT_SHALLOW TRUE
   )
   FetchContent_MakeAvailable(JUCE)
+  set(ASTE_PLUGIN_FORMATS VST3)
+  if(APPLE AND ASTE_BUILD_AU)
+    list(APPEND ASTE_PLUGIN_FORMATS AU)
+  endif()
 
   juce_add_plugin(DensityD01
     VERSION ${PROJECT_VERSION}
@@ -367,7 +379,8 @@ if(ASTE_BUILD_VST3)
     COPY_PLUGIN_AFTER_BUILD FALSE
     PLUGIN_MANUFACTURER_CODE Aste
     PLUGIN_CODE Den1
-    FORMATS VST3
+    AU_SANDBOX_SAFE TRUE
+    FORMATS ${ASTE_PLUGIN_FORMATS}
     VST3_CATEGORIES Fx Dynamics
     PRODUCT_NAME "Density D-01"
   )
@@ -400,7 +413,8 @@ if(ASTE_BUILD_VST3)
     COPY_PLUGIN_AFTER_BUILD FALSE
     PLUGIN_MANUFACTURER_CODE Aste
     PLUGIN_CODE Lop1
-    FORMATS VST3
+    AU_SANDBOX_SAFE TRUE
+    FORMATS ${ASTE_PLUGIN_FORMATS}
     VST3_CATEGORIES Fx Delay
     PRODUCT_NAME "Loop L-01"
   )
@@ -434,7 +448,8 @@ if(ASTE_BUILD_VST3)
     COPY_PLUGIN_AFTER_BUILD FALSE
     PLUGIN_MANUFACTURER_CODE Aste
     PLUGIN_CODE Imp1
-    FORMATS VST3
+    AU_SANDBOX_SAFE TRUE
+    FORMATS ${ASTE_PLUGIN_FORMATS}
     VST3_CATEGORIES Instrument Synth
     PRODUCT_NAME "Impulse I-01"
   )
@@ -462,7 +477,8 @@ if(ASTE_BUILD_VST3)
     COPY_PLUGIN_AFTER_BUILD FALSE
     PLUGIN_MANUFACTURER_CODE Aste
     PLUGIN_CODE Har1
-    FORMATS VST3
+    AU_SANDBOX_SAFE TRUE
+    FORMATS ${ASTE_PLUGIN_FORMATS}
     VST3_CATEGORIES Fx EQ
     PRODUCT_NAME "Harmonic H-01"
   )
@@ -495,7 +511,8 @@ if(ASTE_BUILD_VST3)
     COPY_PLUGIN_AFTER_BUILD FALSE
     PLUGIN_MANUFACTURER_CODE Aste
     PLUGIN_CODE Seq1
-    FORMATS VST3
+    AU_SANDBOX_SAFE TRUE
+    FORMATS ${ASTE_PLUGIN_FORMATS}
     VST3_CATEGORIES Instrument Synth
     PRODUCT_NAME "Sequence S-01"
   )
@@ -529,7 +546,8 @@ if(ASTE_BUILD_VST3)
     COPY_PLUGIN_AFTER_BUILD FALSE
     PLUGIN_MANUFACTURER_CODE Aste
     PLUGIN_CODE Fie1
-    FORMATS VST3
+    AU_SANDBOX_SAFE TRUE
+    FORMATS ${ASTE_PLUGIN_FORMATS}
     VST3_CATEGORIES Fx Reverb
     PRODUCT_NAME "Field F-01"
   )
@@ -549,6 +567,15 @@ if(ASTE_BUILD_VST3)
       COMMENT "Applying final ad-hoc signature after Field VST3 manifest generation"
       VERBATIM
     )
+  endif()
+
+  if(APPLE AND ASTE_BUILD_AU)
+    foreach(_product DensityD01 HarmonicH01 SequenceS01 LoopL01 ImpulseI01 FieldF01)
+      add_custom_command(TARGET ${_product}_AU POST_BUILD
+        COMMAND codesign --force --sign - "$<TARGET_BUNDLE_DIR:${_product}_AU>"
+        COMMENT "Applying local development signature to ${_product} AU"
+        VERBATIM)
+    endforeach()
   endif()
 
   juce_add_console_app(density_plugin_tests PRODUCT_NAME "Density plugin tests")
@@ -691,6 +718,9 @@ if(ASTE_BUILD_VST3)
   add_dependencies(vst3_smoke_host DensityD01_VST3 HarmonicH01_VST3
                    SequenceS01_VST3 LoopL01_VST3 ImpulseI01_VST3
                    FieldF01_VST3)
+  if(ASTE_BUILD_MACOS_INSTALLER)
+    include(cmake/MacInstaller.cmake)
+  endif()
   add_test(NAME density_vst3_host
     COMMAND vst3_smoke_host "$<TARGET_BUNDLE_DIR:DensityD01_VST3>"
             "Density D-01" "Drive" 11)
