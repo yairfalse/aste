@@ -31,6 +31,16 @@ foreach(_product DensityD01 HarmonicH01 SequenceS01 LoopL01 ImpulseI01 FieldF01)
 endforeach()
 
 find_program(ASTE_RUSTC rustc REQUIRED)
+execute_process(COMMAND ${ASTE_RUSTC} --print sysroot
+  OUTPUT_VARIABLE _rust_sysroot OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ERROR_IS_FATAL ANY)
+find_file(ASTE_RUST_NOTICES NAMES COPYRIGHT-library.html COPYRIGHT.html COPYRIGHT
+  PATHS "${_rust_sysroot}/share/doc/rust" NO_DEFAULT_PATH NO_CACHE REQUIRED)
+execute_process(COMMAND ${ASTE_RUSTC} --version --verbose
+  OUTPUT_FILE "${PROJECT_BINARY_DIR}/rust-toolchain.txt" COMMAND_ERROR_IS_FATAL ANY)
+install(FILES "${ASTE_RUST_NOTICES}" "${PROJECT_BINARY_DIR}/rust-toolchain.txt"
+  DESTINATION "Library/Application Support/Aste/ThirdParty/Rust" COMPONENT Notices)
+install(FILES "${ASTE_RUST_NOTICES}" "${PROJECT_BINARY_DIR}/rust-toolchain.txt"
+  DESTINATION Rust-Licenses COMPONENT Source EXCLUDE_FROM_ALL)
 set(_cleanup_app "${PROJECT_BINARY_DIR}/cleanup/Aste Plugin Cleanup.app")
 configure_file("${PROJECT_SOURCE_DIR}/cmake/CleanupInfo.plist.in"
   "${_cleanup_app}/Contents/Info.plist" @ONLY)

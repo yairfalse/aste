@@ -2,6 +2,13 @@
 
 Historical documents in the research catalog are linked, not redistributed.
 
+The cleanup utility links the Rust standard library. Its original copyright
+and license notices (MIT/Apache-2.0 and the dependencies listed by Rust) are
+installed under `Aste/ThirdParty/Rust` alongside the exact compiler version.
+The corresponding-source archive also includes these files in `Rust-Licenses/`.
+These notices come from the toolchain used to build the utility, rather than a
+separately downloaded or possibly mismatched license inventory.
+
 The opt-in plugin build fetches JUCE 8.0.13 from its official repository.
 JUCE is copyright Raw Material Software Limited and available under the JUCE 8
 EULA or AGPLv3. Aste selects the AGPLv3 route; no commercial JUCE license is
