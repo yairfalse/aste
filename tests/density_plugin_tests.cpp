@@ -653,6 +653,30 @@ void testProcessingBoundary() {
 #endif
 }
 
+void testTrackLevelCompression() {
+  aste::density::plugin::DensityAudioProcessor processor;
+  require(std::abs(processor.state().getRawParameterValue("blend")->load() -
+                   75.0F) < 0.01F,
+          "New instances start with the audible processed blend");
+  processor.prepareToPlay(48000.0, 128);
+  juce::AudioBuffer<float> audio{2, 128};
+  juce::MidiBuffer midi;
+  for (int block = 0; block < 375; ++block) {
+    for (int i = 0; i < 128; ++i) {
+      const float value = static_cast<float>(
+          0.0630957344 * std::sin(juce::MathConstants<double>::twoPi * 1000.0 *
+                                  (block * 128 + i) / 48000.0));
+      audio.setSample(0, i, value);
+      audio.setSample(1, i, value);
+    }
+    processor.processBlock(audio, midi);
+  }
+  require(
+      processor.gainReductionDb() > 3.0F && processor.gainReductionDb() < 5.0F,
+      "The plugin, not only the DSP test, compresses quiet tracks");
+  processor.releaseResources();
+}
+
 void testEditorContract() {
   aste::density::plugin::DensityAudioProcessor processor;
   std::unique_ptr<juce::AudioProcessorEditor> editor{processor.createEditor()};
@@ -681,10 +705,10 @@ void testEditorContract() {
       {"CRUSH", 65.0, "82.50 %", 82.50},
       {"ATTACK", 1.0, "0.125 ms", 0.125},
       {"RELEASE", 180.0, "777.7 ms", 777.7},
-      {"BLEND", 50.0, "37.50 %", 37.50},
+      {"BLEND", 75.0, "37.50 %", 37.50},
       {"STEREO", 100.0, "62.50 %", 62.50},
       {"DETECTOR HPF", 90.0, "137.5 Hz", 137.5},
-      {"OUTPUT", 0.0, "-3.25 dB", -3.25},
+      {"OUTPUT", -6.0, "-3.25 dB", -3.25},
   }};
   for (const auto& contract : sliderContracts) {
     auto* slider =
@@ -747,8 +771,8 @@ void testEditorContract() {
           "Rounded zero never displays a negative sign");
   if (output != nullptr) {
     auto* textBox = dynamic_cast<juce::Label*>(output->getChildComponent(0));
-    require(textBox != nullptr && textBox->getText() == "0.00 dB",
-            "Output text box initially displays canonical zero");
+    require(textBox != nullptr && textBox->getText() == "-6.00 dB",
+            "Output text box displays the gain-staged default");
   }
 
   editor->setSize(760, 420);
@@ -846,6 +870,7 @@ int main(int argc, char** argv) {
   testStateFuzz();
   testLifecycleAndAudio();
   testProcessingBoundary();
+  testTrackLevelCompression();
   testEditorContract();
   if (failures == 0) {
     std::cout << "density_plugin_tests: ok\n";

@@ -67,6 +67,58 @@ void testNeutralAndLatency() {
           "Harmonic internal beta reports zero latency");
 }
 
+void testMusicalBandResponse() {
+  using Parameters = aste::harmonic::Parameters;
+  constexpr std::array gains{
+      &Parameters::foundationGainDb, &Parameters::bodyGainDb,
+      &Parameters::presenceGainDb, &Parameters::airGainDb};
+  constexpr std::array centres{80.0, 400.0, 2500.0, 12000.0};
+  for (double rate : {44100.0, 48000.0, 96000.0, 192000.0}) {
+    for (std::size_t band = 0; band < gains.size(); ++band) {
+      for (float gain : {-6.0F, 6.0F}) {
+        for (double position : {0.5, 1.0}) {
+          Parameters parameters;
+          parameters.*gains[band] = gain;
+          parameters.harmonic = 0.0F;
+          aste::harmonic::Processor processor;
+          processor.prepare(rate);
+          double inputPower{}, outputPower{};
+          std::array<float, 127> audio{};
+          const auto frames = static_cast<std::size_t>(rate);
+          for (std::size_t offset = 0; offset < frames;
+               offset += audio.size()) {
+            const auto count = std::min(audio.size(), frames - offset);
+            for (std::size_t i = 0; i < count; ++i) {
+              audio[i] = static_cast<float>(
+                  0.0630957344 *
+                  std::sin(2.0 * std::numbers::pi * centres[band] * position *
+                           static_cast<double>(offset + i) / rate));
+              if (offset >= frames / 2) inputPower += audio[i] * audio[i];
+            }
+            processor.process(audio.data(), nullptr, count, parameters);
+            if (offset >= frames / 2) {
+              for (std::size_t i = 0; i < count; ++i)
+                outputPower += audio[i] * audio[i];
+            }
+          }
+          const double measured = 10.0 * std::log10(outputPower / inputPower);
+          if (position == 1.0) {
+            require(std::abs(measured - gain) < 0.1,
+                    "Every EQ band delivers its labelled gain on quiet input");
+          } else if (gain > 0) {
+            require(measured > (band == 3 ? 2.0 : 3.0),
+                    "A 6 dB boost shapes a broad region, not only its centre");
+          }
+          if (rate == 48000.0)
+            std::cout << "{\"eq_band\":" << band << ",\"gain_db\":" << gain
+                      << ",\"frequency_ratio\":" << position
+                      << ",\"measured_db\":" << measured << "}\n";
+        }
+      }
+    }
+  }
+}
+
 void testRatesBlocksAndStereo() {
   constexpr std::array<double, 6> rates{44100.0, 48000.0,  88200.0,
                                         96000.0, 176400.0, 192000.0};
@@ -245,6 +297,7 @@ void testNoProcessAllocation() {
 
 int main() {
   testNeutralAndLatency();
+  testMusicalBandResponse();
   testRatesBlocksAndStereo();
   testDeterministicBlocksAndReset();
   testCutsRemainLinear();

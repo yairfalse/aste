@@ -11,9 +11,9 @@ struct Parameters {
   float attackMs{1.0F};
   float releaseMs{180.0F};
   float density{0.5F};
-  float blend{0.5F};
+  float blend{0.75F};
   float stereoLink{1.0F};
-  float outputDb{0.0F};
+  float outputDb{-6.0F};
   float detectorHpfHz{90.0F};
   bool protection{true};
 };

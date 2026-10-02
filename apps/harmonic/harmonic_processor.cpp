@@ -24,16 +24,17 @@ float cleanSample(float sample) noexcept {
   return std::clamp(finiteOr(sample, 0.0F), -16.0F, 16.0F);
 }
 
-float flush(float value) noexcept {
+template <typename Value>
+Value flush(Value value) noexcept {
   if (!std::isfinite(value) ||
-      std::abs(value) < std::numeric_limits<float>::min()) {
+      std::abs(value) < std::numeric_limits<Value>::min()) {
     return 0.0F;
   }
   return value;
 }
 
-float smooth(float current, float target, float coefficient) noexcept {
-  const float result = target + coefficient * (current - target);
+double smooth(double current, double target, double coefficient) noexcept {
+  const double result = target + coefficient * (current - target);
   return std::abs(result - target) < 1.0e-8F ? target : result;
 }
 
@@ -74,11 +75,11 @@ void Processor::PeakFilter::setTarget(double sampleRate, float frequency,
   const double cosine = std::cos(omega);
   const double a0 = 1.0 + alpha / amplitude;
   target_ = {
-      .b0 = static_cast<float>((1.0 + alpha * amplitude) / a0),
-      .b1 = static_cast<float>((-2.0 * cosine) / a0),
-      .b2 = static_cast<float>((1.0 - alpha * amplitude) / a0),
-      .a1 = static_cast<float>((-2.0 * cosine) / a0),
-      .a2 = static_cast<float>((1.0 - alpha / amplitude) / a0),
+      .b0 = (1.0 + alpha * amplitude) / a0,
+      .b1 = (-2.0 * cosine) / a0,
+      .b2 = (1.0 - alpha * amplitude) / a0,
+      .a1 = (-2.0 * cosine) / a0,
+      .a2 = (1.0 - alpha / amplitude) / a0,
   };
 }
 
@@ -88,10 +89,10 @@ float Processor::PeakFilter::process(float input) noexcept {
   current_.b2 = smooth(current_.b2, target_.b2, smoothing_);
   current_.a1 = smooth(current_.a1, target_.a1, smoothing_);
   current_.a2 = smooth(current_.a2, target_.a2, smoothing_);
-  const float output = current_.b0 * input + z1_;
+  const double output = current_.b0 * input + z1_;
   z1_ = flush(current_.b1 * input - current_.a1 * output + z2_);
   z2_ = flush(current_.b2 * input - current_.a2 * output);
-  return flush(output);
+  return static_cast<float>(flush(output));
 }
 
 void Processor::PeakFilter::reset() noexcept { z1_ = z2_ = 0.0F; }
@@ -141,7 +142,9 @@ void Processor::StateVariableBand::reset() noexcept {
 }
 
 float Processor::proportionalQ(float gainDb) noexcept {
-  return 0.7F * (1.0F + 0.7F * std::abs(gainDb) / 12.0F);
+  const float contour = 1.0F + 0.7F * std::abs(gainDb) / 12.0F;
+  // Broad boosts shape a region; cuts retain their tighter contour.
+  return gainDb > 0.0F ? 0.7F / contour : 0.7F * contour;
 }
 
 void Processor::Band::prepare(double sampleRate, float frequency,

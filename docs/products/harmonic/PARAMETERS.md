@@ -25,3 +25,10 @@ contribution is `1.1 * Harmonic * sqrt(positive gain / 12 dB)`. The square-root
 participation law makes small positive boosts responsive instead of reserving
 most character for the final few decibels. Zero and negative gain remain
 linear. No parameter changes topology or latency.
+
+From 0.2.0, positive contours broaden with gain: `Q = 0.7 / (1 + 0.7 * gain / 12)`.
+Cuts retain `Q = 0.7 * (1 + 0.7 * abs(gain) / 12)`. Gain labels remain actual
+centre-frequency dB with Harmonic at zero, not scaled "intensity" values.
+The Default preset stays neutral; the five coloured presets have stronger
+tonal contrasts. Existing saved values recall unchanged but boosted bands
+render with the wider response. See [ADR 0018](../../adr/0018-track-level-impact.md).

@@ -57,16 +57,18 @@ class Processor {
     [[nodiscard]] float process(float input) noexcept;
     void reset() noexcept;
 
+    // Float coefficient updates can stall before reaching low-frequency
+    // targets.
     struct Coefficients {
-      float b0{1.0F};
-      float b1{};
-      float b2{};
-      float a1{};
-      float a2{};
+      double b0{1.0};
+      double b1{};
+      double b2{};
+      double a1{};
+      double a2{};
     } current_{}, target_{};
     float smoothing_{};
-    float z1_{};
-    float z2_{};
+    double z1_{};
+    double z2_{};
   };
 
   struct StateVariableBand {

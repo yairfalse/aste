@@ -14,9 +14,9 @@ decimal parser for text entry while retaining independent parameter layouts.
 | `attack` | Attack | 0.02..30 ms | 1 | logarithmic | 5 ms in log-time space |
 | `release` | Release | 20..1200 ms | 180 | logarithmic | coefficient per block |
 | `density` | Density | 0..100 % | 50 | linear | 10 ms |
-| `blend` | Blend | 0..100 % | 50 | linear | cascaded 3+3 ms |
+| `blend` | Blend | 0..100 % | 75 | linear | cascaded 3+3 ms |
 | `stereo` | Stereo link | 0..100 % | 100 | linear | 10 ms |
-| `output` | Output | -24..12 dB | 0 | linear dB | cascaded 3+3 ms |
+| `output` | Output | -24..12 dB | -6 | linear dB | cascaded 3+3 ms |
 | `detector_hpf` | Detector HPF | 20..300 Hz | 90 | logarithmic | coefficient per block |
 | `protection` | Protection | off/on | on | boolean | deliberate transition |
 | `bypass` | Host bypass | off/on | off | boolean | host transition |
@@ -24,13 +24,16 @@ decimal parser for text entry while retaining independent parameter layouts.
 Drag, fine adjustment, reset, typed entry, and text conversion belong to the
 JUCE adapter. Exact parsing rejects trailing junk and non-finite values.
 
-Density continuously lowers threshold from -2 to -30 dB while increasing ratio
+Density continuously lowers threshold from -18 to -46 dB while increasing ratio
 from 3:1 to 60:1, saturation drive from 1 to 9, release curvature from 1 to 5,
-and crushed-path make-up from 0 to 10 dB. Crush scales the nonlinear
+and crushed-path make-up from 12 to 22 dB. Crush scales the nonlinear
 participation as well as the gain computer. Positive Drive raises saturation
 drive by up to 75%, so it remains a timbral gesture after compression. There
 are no topology switches. `mapDensity()` and `mapCrushSaturation()` are the
-maintainer-visible mappings and have monotonicity and boundary tests.
+maintainer-visible mappings and have monotonicity and boundary tests. The lower
+threshold engages ordinary track levels; additional crushed-path make-up keeps
+that branch present in the blend. Output remains an independent level trim.
+At the default Density/Crush settings the effective threshold is -27.8 dBFS.
 
 ## Factory starting points
 
@@ -41,7 +44,7 @@ like any manual setting. Protection is on and bypass is off in every snapshot.
 
 | Name | Drive | Crush | Attack | Release | Density | Blend | Output | Stereo | HPF |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Default | 0 dB | 65% | 1 ms | 180 ms | 50% | 50% | 0 dB | 100% | 90 Hz |
+| Default | 0 dB | 65% | 1 ms | 180 ms | 50% | 75% | -6 dB | 100% | 90 Hz |
 | Continuity | 2 dB | 50% | 8 ms | 320 ms | 35% | 35% | -1 dB | 100% | 120 Hz |
 | Proximity | 6 dB | 75% | 0.5 ms | 140 ms | 70% | 55% | -3 dB | 85% | 100 Hz |
 | Parallel Crush | 12 dB | 95% | 0.05 ms | 80 ms | 90% | 32% | -6 dB | 100% | 140 Hz |

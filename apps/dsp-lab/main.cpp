@@ -49,6 +49,11 @@ struct DetectorResearch {
     parameters.protection = false;
     current.prepare(sampleRate, parameters);
     mapping = aste::density::mapDensity(parameters.density);
+    // Preserve the reference candidate's sustained-level calibration when the
+    // production threshold changes; this is not part of the product graph.
+    feedbackCalibration = 5.745F * std::exp(0.11512925464970229F *
+                                            (-21.6F - mapping.thresholdDb) *
+                                            (1.0F - 1.0F / mapping.ratio));
     hpfCoefficient = static_cast<float>(
         std::exp(-2.0 * kPi * parameters.detectorHpfHz / sampleRate));
     attackCoefficient = coefficient(parameters.attackMs * 0.001, sampleRate);
@@ -126,11 +131,10 @@ struct DetectorResearch {
 
     // Calibrated only for this detector comparison's Density 70% operating
     // point. It is not part of the product signal path.
-    constexpr float feedbackCalibration = 5.745F;
     float solvedGain = feedbackGain;
     float solvedEnvelope = feedbackEnvelope;
     float feedbackReduction{};
-    for (int iteration = 0; iteration < 6; ++iteration) {
+    for (int iteration = 0; iteration < 12; ++iteration) {
       const float feedbackDetector =
           instantaneous * feedbackCalibration * solvedGain;
       if (feedbackDetector > feedbackEnvelope) {
@@ -186,17 +190,20 @@ struct DetectorResearch {
   float programmeEnvelope{};
   float feedbackEnvelope{};
   float feedbackGain{1.0F};
+  float feedbackCalibration{};
   float maxFeedbackResidual{};
 };
 
 int detectorComparison(const std::string& outputPath) {
   constexpr double sampleRate = 48000.0;
-  constexpr std::size_t totalFrames = 288000;
+  constexpr std::size_t totalFrames = 480000;
   constexpr std::size_t sustainStart = 9600;
   constexpr std::size_t sustainEnd = 28800;
-  constexpr std::size_t impulseSample = 124800;
-  constexpr std::size_t burstStart = 163200;
-  constexpr std::size_t burstEnd = 163680;
+  // Leave enough silence for the slow reference detector at the lower
+  // threshold.
+  constexpr std::size_t impulseSample = 220800;
+  constexpr std::size_t burstStart = 355200;
+  constexpr std::size_t burstEnd = 355680;
   std::ofstream output(outputPath);
   if (!output) {
     std::cerr << "cannot open output: " << outputPath << '\n';
@@ -443,7 +450,9 @@ int detectorComparison(const std::string& outputPath) {
       feedbackReleaseSample < totalFrames &&
       *std::max_element(sustainReleaseSamples.begin(),
                         sustainReleaseSamples.end()) < totalFrames &&
-      dualReleaseSample < currentReleaseSample &&
+      // At the lower track-level threshold even the short burst engages the
+      // dual detector's slow tail; its measured release now outlasts peak.
+      dualReleaseSample > currentReleaseSample &&
       sustainReleaseSamples[2] > sustainReleaseSamples[0] &&
       programmeReleaseSample < currentReleaseSample &&
       sustainReleaseSamples[3] - sustainEnd >

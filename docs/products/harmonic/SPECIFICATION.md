@@ -2,7 +2,9 @@
 
 Status: internal-beta implementation contract, revised 2026-08-10. ADR 0007
 promotes Candidate 3 into the first testable four-band VST3; ADR 0014 widens
-its production character mapping. Parameter identifiers and schema 1 are
+its production character mapping. [ADR 0018](../../adr/0018-track-level-impact.md)
+broadens positive contours in 0.2.0 while preserving centre-gain labels and clean
+cuts. Parameter identifiers and schema 1 are
 frozen; host compatibility and musical preference remain unproven.
 
 ## Purpose

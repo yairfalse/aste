@@ -36,6 +36,11 @@ median without placing timing in sanitizer gates. `harmonic_tests` independently
 checks finite output, exact neutral behavior, zero latency, stereo identity,
 deterministic reset, variable-block identity, clean cuts, monotonic canonical
 H3, and zero processing allocation at the required rates and block sizes.
+Track-level regression checks additionally measure labelled EQ gain and boost
+bandwidth on quiet signals, plus actual Density gain reduction and blended-output
+level response. Linked plugin tests verify these through host parameters.
+The 0.2.0 numeric golden review is recorded in
+[ADR 0018](adr/0018-track-level-impact.md); the earlier manifest is retained.
 
 `sequence_lab` renders two seconds of the host-clocked production voice to CSV
 and reports peak, RMS, and finite status. Its `--benchmark` mode exercises the

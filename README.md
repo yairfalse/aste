@@ -70,9 +70,9 @@ change.
 | Attack | 0.02–30 ms | 1 ms | Shapes transient entry |
 | Release | 20–1200 ms | 180 ms | Sets recovery time |
 | Density | 0–100% | 50% | Coordinates threshold, ratio, saturation, release curvature, and crush make-up |
-| Blend | 0–100% | 50% | Mixes the aligned dry and crush paths |
+| Blend | 0–100% | 75% | Mixes the aligned dry and crush paths |
 | Stereo | 0–100% | 100% | Moves continuously from independent to fully linked detection |
-| Output | -24 to +12 dB | 0 dB | Final level trim |
+| Output | -24 to +12 dB | -6 dB | Final level trim |
 | Detector HPF | 20–300 Hz | 90 Hz | Reduces low-frequency detector dominance |
 | Protection | Off/on | On | Sample-peak output protection |
 
@@ -663,7 +663,7 @@ JUCE licence, signing identity, notarization, package contents, and release
 gates have all been reviewed.
 ## Free, open-source macOS development builds
 
-The six instruments share development version **0.1.1**; the original **0.1.0**
+The six instruments share development version **0.2.0**; the original **0.1.0**
 download remains preserved. See the [changelog](CHANGELOG.md) and
 [versioning policy](docs/VERSIONING.md).
 

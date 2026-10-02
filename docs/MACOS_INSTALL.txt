@@ -5,6 +5,14 @@ for Intel and Apple Silicon Macs. The build targets macOS 11 or newer; this
 minimum is not yet verified on physical macOS 11 machines. These are development
 builds, not a claim of compatibility with every DAW or Mac.
 
+0.2.0 SOUND CHANGES
+Density now compresses at lower track levels, with more crushed-path make-up
+and a 75% processed starting blend with -6 dB Output trim. Harmonic boosts cover wider regions and
+its coloured presets have stronger tonal contrasts. Default EQ stays neutral.
+Existing projects retain their parameter values but will sound different with
+these two plugins. Keep 0.1.1 if you need exact old renders. Compare at matched
+listening levels using Output; more volume alone is not evidence of improvement.
+
 INSTALL
 Quit your DAW. Open Install Aste.pkg, then use Customize to select instruments
 and formats if you do not want all six. Installation requires administrator

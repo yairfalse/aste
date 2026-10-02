@@ -80,9 +80,9 @@ void testStrictDecimalParsing() {
 
 void testDensityMapping() {
   auto previous = aste::density::mapDensity(0.0F);
-  require(previous.thresholdDb == -2.0F && previous.ratio == 3.0F &&
+  require(previous.thresholdDb == -18.0F && previous.ratio == 3.0F &&
               previous.saturationDrive == 1.0F &&
-              previous.releaseCurve == 1.0F && previous.crushMakeupDb == 0.0F,
+              previous.releaseCurve == 1.0F && previous.crushMakeupDb == 12.0F,
           "Minimum Density preserves the documented character boundary");
   for (int step = 1; step <= 100; ++step) {
     const auto current =
@@ -98,10 +98,55 @@ void testDensityMapping() {
             "Density makeup is monotonic");
     previous = current;
   }
-  require(previous.thresholdDb == -30.0F && previous.ratio == 60.0F &&
+  require(previous.thresholdDb == -46.0F && previous.ratio == 60.0F &&
               previous.saturationDrive == 9.0F &&
-              previous.releaseCurve == 5.0F && previous.crushMakeupDb == 10.0F,
+              previous.releaseCurve == 5.0F && previous.crushMakeupDb == 22.0F,
           "Maximum Density reaches the documented character boundary");
+}
+
+void testTrackLevelCompression() {
+  for (double rate : {44100.0, 48000.0, 96000.0, 192000.0}) {
+    double previousOutputDb{};
+    for (float levelDb : {-30.0F, -24.0F, -18.0F, -12.0F}) {
+      aste::density::Parameters parameters;
+      aste::density::Processor processor;
+      processor.prepare(rate, parameters);
+      std::array<float, 127> audio{};
+      float reduction{};
+      double outputPower{};
+      std::size_t measuredFrames{};
+      const auto frames = static_cast<std::size_t>(rate);
+      for (std::size_t offset = 0; offset < frames; offset += audio.size()) {
+        const auto count = std::min(audio.size(), frames - offset);
+        for (std::size_t i = 0; i < count; ++i)
+          audio[i] = std::pow(10.0F, levelDb / 20.0F) *
+                     static_cast<float>(std::sin(6.283185307179586 * 1000.0 *
+                                                 (offset + i) / rate));
+        processor.process(audio.data(), nullptr, count, parameters);
+        reduction = std::max(reduction, processor.meters().gainReductionDb);
+        if (offset >= frames / 2) {
+          for (std::size_t i = 0; i < count; ++i)
+            outputPower += audio[i] * audio[i];
+          measuredFrames += count;
+        }
+      }
+      const double outputDb = 10.0 * std::log10(outputPower / measuredFrames);
+      require(levelDb != -18.0F || (outputDb > previousOutputDb &&
+                                    outputDb - previousOutputDb < 3.0),
+              "A 6 dB input rise is compressed in the actual blended output");
+      previousOutputDb = outputDb;
+      require(levelDb != -24.0F || (reduction > 3.0F && reduction < 5.0F),
+              "Default compression engages on a -24 dBFS peak track");
+      require(levelDb != -18.0F || (reduction > 8.0F && reduction < 11.0F),
+              "Default compression has authority at normal track levels");
+      require(levelDb != -30.0F || reduction == 0.0F,
+              "Quiet material remains below the default threshold");
+      if (rate == 48000.0)
+        std::cout << "{\"input_peak_dbfs\":" << levelDb
+                  << ",\"gain_reduction_db\":" << reduction
+                  << ",\"output_rms_dbfs\":" << outputDb << "}\n";
+    }
+  }
 }
 
 void testCrushCharacterMapping() {
@@ -180,6 +225,7 @@ void testOversamplerRealtimeBoundary() {
 void testDryAndLatency() {
   aste::density::Parameters parameters;
   parameters.blend = 0.0F;
+  parameters.outputDb = 0.0F;
   parameters.protection = false;
   aste::density::Processor processor;
   processor.prepare(48000.0, parameters);
@@ -213,6 +259,7 @@ void testCrushHasNoSampleDelay() {
 void testOversamplingPrototypeAlignment() {
   aste::density::Parameters parameters;
   parameters.blend = 0.0F;
+  parameters.outputDb = 0.0F;
   parameters.protection = false;
   aste::density::Processor processor;
   processor.prepareOversamplingPrototype(48000.0, parameters);
@@ -331,6 +378,7 @@ void testNoProcessAllocation() {
 int main() {
   testStrictDecimalParsing();
   testDensityMapping();
+  testTrackLevelCompression();
   testCrushCharacterMapping();
   testNonlinearNumericalSafety();
   testOversamplerRealtimeBoundary();

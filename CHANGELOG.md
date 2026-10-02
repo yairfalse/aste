@@ -3,6 +3,25 @@
 Versions apply to the complete six-instrument family. See
 [versioning](docs/VERSIONING.md) for numbering and compatibility rules.
 
+## 0.2.0 — 2026-10-02 — Track-level impact (development)
+
+- Density engages quieter tracks: the threshold mapping is 16 dB lower, with
+  additional crushed-path make-up, a 75% processed default blend, and -6 dB
+  default Output trim to avoid presenting increased loudness as the improvement.
+- Harmonic boosts shape wider frequency regions without exaggerating the dB
+  labels. Five coloured presets now provide stronger tonal contrasts. Zero
+  gain, the neutral Default preset, and clean cuts are preserved.
+- Fix Harmonic coefficient smoothing stopping short of low-frequency gain
+  targets after knob changes; use double-precision EQ coefficients and state.
+- **Audible compatibility change:** saved parameter values, IDs, ranges and
+  state schemas are unchanged, but Density and boosted Harmonic bands sound
+  different. Keep 0.1.1 for exact old renders. Saved Blend values are respected;
+  only new instances and the Default preset start at 75% Blend/-6 dB Output.
+- These are measured development changes, not listening-approved release
+  candidates. Level-match with Output when comparing in a DAW.
+- Local verification: 70 regression checks, 537 Steinberg validator checks per
+  changed plugin, DSP ASan/UBSan tests, static analysis and formatting passed.
+
 ## 0.1.1 — 2026-10-02 — Development update
 
 - Add an opt-in cleanup utility that previews older per-user Aste AU/VST3 copies

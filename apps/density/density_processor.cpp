@@ -298,11 +298,11 @@ void CrushOversampler4xHalfBand::process(float* samples, std::size_t frames,
 DensityMapping mapDensity(float density) noexcept {
   const float d = bounded(density, 0.0F, 1.0F, 0.5F);
   return {
-      .thresholdDb = -2.0F - 28.0F * d,
+      .thresholdDb = -18.0F - 28.0F * d,
       .ratio = 3.0F + 57.0F * d,
       .saturationDrive = 1.0F + 8.0F * d,
       .releaseCurve = 1.0F + 4.0F * d,
-      .crushMakeupDb = 10.0F * d,
+      .crushMakeupDb = 12.0F + 10.0F * d,
   };
 }
 
@@ -355,12 +355,12 @@ void Processor::prepare(double sampleRate, const Parameters& initial) noexcept {
   crush_.prepare(sampleRate_, 0.010, bounded(initial.crush, 0.0F, 1.0F, 0.65F));
   density_.prepare(sampleRate_, 0.010,
                    bounded(initial.density, 0.0F, 1.0F, 0.5F));
-  const float initialBlend = bounded(initial.blend, 0.0F, 1.0F, 0.5F);
+  const float initialBlend = bounded(initial.blend, 0.0F, 1.0F, 0.75F);
   blend_.prepare(sampleRate_, 0.003, initialBlend);
   blendStage2_.prepare(sampleRate_, 0.003, initialBlend);
   stereoLink_.prepare(sampleRate_, 0.010,
                       bounded(initial.stereoLink, 0.0F, 1.0F, 1.0F));
-  const float initialOutput = bounded(initial.outputDb, -24.0F, 12.0F, 0.0F);
+  const float initialOutput = bounded(initial.outputDb, -24.0F, 12.0F, -6.0F);
   output_.prepare(sampleRate_, 0.003, initialOutput);
   outputStage2_.prepare(sampleRate_, 0.003, initialOutput);
   reset();
@@ -415,7 +415,7 @@ void Processor::prepareBlendSmoothingPrototype(
     double sampleRate, double stageSeconds, bool cascade,
     const Parameters& initial) noexcept {
   prepare(sampleRate, initial);
-  const float initialBlend = bounded(initial.blend, 0.0F, 1.0F, 0.5F);
+  const float initialBlend = bounded(initial.blend, 0.0F, 1.0F, 0.75F);
   const double seconds = std::clamp(
       static_cast<double>(finiteOr(static_cast<float>(stageSeconds), 0.005F)),
       0.0001, 1.0);
@@ -432,7 +432,7 @@ void Processor::prepareAutomationReferencePrototype(
   drive_.prepare(sampleRate_, 0.005, initialDrive);
   driveCascade_ = false;
   attackSmoothing_ = false;
-  const float initialBlend = bounded(initial.blend, 0.0F, 1.0F, 0.5F);
+  const float initialBlend = bounded(initial.blend, 0.0F, 1.0F, 0.75F);
   blend_.prepare(sampleRate_, 0.005, initialBlend);
   blendCascade_ = false;
   reset();
@@ -463,9 +463,9 @@ void Processor::process(float* left, float* right, std::size_t frames,
   drive_.setTarget(bounded(parameters.driveDb, -12.0F, 24.0F, 0.0F));
   crush_.setTarget(bounded(parameters.crush, 0.0F, 1.0F, 0.65F));
   density_.setTarget(bounded(parameters.density, 0.0F, 1.0F, 0.5F));
-  blend_.setTarget(bounded(parameters.blend, 0.0F, 1.0F, 0.5F));
+  blend_.setTarget(bounded(parameters.blend, 0.0F, 1.0F, 0.75F));
   stereoLink_.setTarget(bounded(parameters.stereoLink, 0.0F, 1.0F, 1.0F));
-  output_.setTarget(bounded(parameters.outputDb, -24.0F, 12.0F, 0.0F));
+  output_.setTarget(bounded(parameters.outputDb, -24.0F, 12.0F, -6.0F));
 
   const float attackMs = bounded(parameters.attackMs, 0.02F, 30.0F, 1.0F);
   const float releaseMs = bounded(parameters.releaseMs, 20.0F, 1200.0F, 180.0F);

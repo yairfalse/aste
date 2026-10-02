@@ -236,6 +236,42 @@ void testStateAndPresets() {
   }
 }
 
+void testAudibleBandControls() {
+  constexpr std::array ids{"foundation_gain", "body_gain", "presence_gain",
+                           "air_gain"};
+  constexpr std::array frequencies{80.0, 400.0, 2500.0, 12000.0};
+  for (std::size_t band = 0; band < ids.size(); ++band) {
+    Harmonic processor;
+    processor.prepareToPlay(48000.0, 128);
+    setValue(processor, "harmonic", 0.0F);
+    setValue(processor, ids[band], 6.0F);
+    juce::AudioBuffer<float> audio{2, 128};
+    juce::MidiBuffer midi;
+    double inputPower{}, outputPower{};
+    for (int block = 0; block < 375; ++block) {
+      for (int i = 0; i < 128; ++i) {
+        const float value = static_cast<float>(
+            0.0630957344 *
+            std::sin(juce::MathConstants<double>::twoPi * frequencies[band] *
+                     (block * 128 + i) / 48000.0));
+        audio.setSample(0, i, value);
+        audio.setSample(1, i, value);
+        if (block >= 188) inputPower += value * value;
+      }
+      processor.processBlock(audio, midi);
+      if (block >= 188)
+        for (int i = 0; i < 128; ++i)
+          outputPower += audio.getSample(0, i) * audio.getSample(0, i);
+    }
+    const double measured = 10.0 * std::log10(outputPower / inputPower);
+    std::cout << "{\"host_eq_band\":\"" << ids[band]
+              << "\",\"measured_gain_db\":" << measured << "}\n";
+    require(std::abs(measured - 6.0) < 0.1,
+            "Host EQ automation reaches audio at its labelled gain");
+    processor.releaseResources();
+  }
+}
+
 void testStateFuzz() {
   Harmonic processor;
   std::uint32_t random = 0xA501U;
@@ -368,6 +404,7 @@ int main(int argc, char** argv) {
   juce::ScopedJuceInitialiser_GUI juce;
   testParameterContract();
   testStateAndPresets();
+  testAudibleBandControls();
   testStateFuzz();
   testLifecycleAndProcessingBoundary();
   testEditorContract(argc == 3 && juce::String{argv[1]} == "--editor-artifacts"

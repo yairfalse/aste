@@ -1,5 +1,10 @@
 # Harmonic H-01 DSP research
 
+The current 0.2.0 contour revision and track-level response measurements are in
+[ADR 0018](../../adr/0018-track-level-impact.md). The candidate comparisons below
+retain their original reference mappings; they are not silently regenerated as
+evidence for the revised contour.
+
 ## References
 
 The linear peaking reference uses the normalized peaking-EQ biquad equations
