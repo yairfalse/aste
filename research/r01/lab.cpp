@@ -52,9 +52,18 @@ const std::vector<Study> studies = [] {
   s.push_back({.name = "modal_inharmonic", .controls = {.inharmonic = .8}});
   s.push_back({.name = "modal_coupled_3hz", .controls = {.couplingHz = 3}});
   s.push_back({.name = "modal_coupled_15hz", .controls = {.couplingHz = 15}});
-  s.push_back({.name = "memory_reset", .memory = Memory::Reset});
-  s.push_back({.name = "memory_partial", .memory = Memory::Partial});
-  s.push_back({.name = "memory_overlap", .memory = Memory::Overlap});
+  s.push_back({.name = "memory_shared", .controls = {.t60 = 8}});
+  s.push_back({.name = "memory_reset",
+               .memory = Memory::Reset,
+               .controls = {.t60 = 8}});
+  s.push_back({.name = "memory_partial",
+               .memory = Memory::Partial,
+               .controls = {.t60 = 8}});
+  s.push_back({.name = "memory_overlap",
+               .memory = Memory::Overlap,
+               .controls = {.t60 = 8}});
+  s.push_back(
+      {.name = "memory_coupled", .controls = {.t60 = 8, .couplingHz = 3}});
   s.push_back({.name = "waveguide_overlap",
                .architecture = Architecture::Waveguide,
                .memory = Memory::Overlap});
