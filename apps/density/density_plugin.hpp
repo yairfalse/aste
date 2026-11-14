@@ -52,6 +52,9 @@ class DensityAudioProcessor final : public juce::AudioProcessor {
   [[nodiscard]] static int factoryPresetCount() noexcept;
   [[nodiscard]] static juce::String factoryPresetName(int index);
   void loadFactoryPreset(int index);
+  [[nodiscard]] bool usesLegacyBehavior() const noexcept {
+    return legacyBehavior_.load(std::memory_order_relaxed);
+  }
 
  private:
   enum ParameterIndex : std::size_t {
@@ -75,6 +78,7 @@ class DensityAudioProcessor final : public juce::AudioProcessor {
   void publishMeters(const MeterSnapshot&) noexcept;
 
   Processor processor_{};
+  std::atomic<bool> legacyBehavior_{};
   juce::AudioProcessorValueTreeState state_;
   std::array<std::atomic<float>*, parameterCount> parameterValues_{};
   std::atomic<float> inputPeak_{};
@@ -86,5 +90,6 @@ class DensityAudioProcessor final : public juce::AudioProcessor {
 
 static_assert(std::atomic<float>::is_always_lock_free,
               "Meter publication must remain lock-free on supported targets");
+static_assert(std::atomic<bool>::is_always_lock_free);
 
 }  // namespace aste::density::plugin

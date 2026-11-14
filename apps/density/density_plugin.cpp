@@ -12,7 +12,7 @@ namespace aste::density::plugin {
 namespace {
 
 constexpr auto kStateType = "density-d01";
-constexpr int kStateSchema = 1;
+constexpr int kStateSchema = 2;
 constexpr auto kSurface = 0xff111113U;
 constexpr auto kPanel = 0xff19191cU;
 constexpr auto kInk = 0xffe8e5dcU;
@@ -27,7 +27,7 @@ struct FactoryPreset {
   std::array<float, kParameterIds.size()> values;
 };
 
-constexpr std::array<FactoryPreset, 5> kFactoryPresets{{
+constexpr std::array<FactoryPreset, 6> kFactoryPresets{{
     {"Default",
      {0.0F, 65.0F, 1.0F, 180.0F, 50.0F, 90.0F, -7.0F, 100.0F, 90.0F, 1.0F,
       0.0F}},
@@ -42,6 +42,9 @@ constexpr std::array<FactoryPreset, 5> kFactoryPresets{{
       0.0F}},
     {"Transient Hold",
      {4.0F, 85.0F, 6.0F, 500.0F, 60.0F, 70.0F, -4.0F, 65.0F, 180.0F, 1.0F,
+      0.0F}},
+    {"Grip",
+     {6.0F, 85.0F, 6.0F, 80.0F, 65.0F, 100.0F, -9.0F, 100.0F, 90.0F, 1.0F,
       0.0F}},
 }};
 
@@ -61,12 +64,8 @@ juce::ValueTree migrateState(juce::ValueTree state) {
     return {};
   }
 
-  switch (static_cast<int>(state.getProperty("schema", -1))) {
-    case 1:
-      return state;
-    default:
-      return {};
-  }
+  const auto schema = state.getProperty("schema").toString();
+  return schema == "1" || schema == "2" ? state : juce::ValueTree{};
 }
 
 juce::NormalisableRange<float> skewed(float minimum, float maximum,
@@ -325,8 +324,8 @@ class DensityEditor final : public juce::AudioProcessorEditor {
     graphics.setFont(juce::FontOptions{11.0F});
     graphics.setColour(juce::Colour{kInk});
     graphics.drawText(
-        "Drive pushes / Density shapes / Crush intensifies / Blend mixes. "
-        "Hover a control for help.",
+        "Drive: color / Density: grip / Crush: intensity / Blend: parallel. "
+        "Legacy sessions keep their original response.",
         24, getHeight() - 24, getWidth() - 48, 20,
         juce::Justification::centredLeft);
   }
@@ -399,16 +398,16 @@ DensityAudioProcessor::createParameterLayout() {
 }
 
 DensityAudioProcessor::DensityAudioProcessor()
-    : AudioProcessor{BusesProperties{}
-                         .withInput("Input", juce::AudioChannelSet::stereo(),
-                                    true)
-                         .withOutput("Output", juce::AudioChannelSet::stereo(),
-                                     true)},
+    : AudioProcessor{
+          BusesProperties{}
+              .withInput("Input", juce::AudioChannelSet::stereo(), true)
+              .withOutput("Output", juce::AudioChannelSet::stereo(), true)},
       state_{*this, nullptr, kStateType, createParameterLayout()} {
   for (std::size_t i = 0; i < kParameterIds.size(); ++i) {
     parameterValues_[i] = state_.getRawParameterValue(kParameterIds[i]);
     jassert(parameterValues_[i] != nullptr);
   }
+  loadFactoryPreset(5);
 }
 
 Parameters DensityAudioProcessor::currentParameters() const noexcept {
@@ -427,6 +426,7 @@ Parameters DensityAudioProcessor::currentParameters() const noexcept {
           parameterValues_[detectorHpf]->load(std::memory_order_relaxed),
       .protection =
           parameterValues_[protection]->load(std::memory_order_relaxed) >= 0.5F,
+      .legacyBehavior = usesLegacyBehavior(),
   };
 }
 
@@ -510,6 +510,7 @@ void DensityAudioProcessor::loadFactoryPreset(int index) {
     return;
   }
   const auto& preset = kFactoryPresets[static_cast<std::size_t>(index)];
+  legacyBehavior_.store(index < 5, std::memory_order_relaxed);
   for (std::size_t parameterIndex = 0; parameterIndex < preset.values.size();
        ++parameterIndex) {
     auto* parameter = state_.getParameter(kParameterIds[parameterIndex]);
@@ -531,6 +532,7 @@ void DensityAudioProcessor::getStateInformation(
   auto state = state_.copyState();
   state.setProperty("schema", kStateSchema, nullptr);
   state.setProperty("product", kStateType, nullptr);
+  state.setProperty("behavior", usesLegacyBehavior() ? 0 : 1, nullptr);
   if (const auto xml = state.createXml()) {
     copyXmlToBinary(*xml, destination);
   }
@@ -545,6 +547,10 @@ void DensityAudioProcessor::setStateInformation(const void* data, int size) {
   if (!restored.isValid()) {
     return;
   }
+  const bool oldSchema = restored.getProperty("schema").toString() == "1";
+  const auto behavior = restored.getProperty("behavior").toString();
+  if (!oldSchema && behavior != "0" && behavior != "1") return;
+  const bool legacy = oldSchema || behavior == "0";
 
   auto validated = state_.copyState();
   for (int index = 0; index < validated.getNumChildren(); ++index) {
@@ -584,6 +590,8 @@ void DensityAudioProcessor::setStateInformation(const void* data, int size) {
   }
   validated.setProperty("schema", kStateSchema, nullptr);
   validated.setProperty("product", kStateType, nullptr);
+  validated.setProperty("behavior", legacy ? 0 : 1, nullptr);
+  legacyBehavior_.store(legacy, std::memory_order_relaxed);
   state_.replaceState(validated);
 }
 

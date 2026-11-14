@@ -490,10 +490,10 @@ void Processor::process(float* left, float* right, std::size_t frames,
     const float driveGain = dbToGain(driveDb);
     const float drivenLeft = dryLeft * driveGain;
     const float drivenRight = dryRight * driveGain;
-    const float detectorLeft =
-        std::abs(detectorHpf_[0].process(drivenLeft, hpfCoefficient));
-    const float detectorRight =
-        std::abs(detectorHpf_[1].process(drivenRight, hpfCoefficient));
+    const float detectorLeft = std::abs(detectorHpf_[0].process(
+        parameters.legacyBehavior ? drivenLeft : dryLeft, hpfCoefficient));
+    const float detectorRight = std::abs(detectorHpf_[1].process(
+        parameters.legacyBehavior ? drivenRight : dryRight, hpfCoefficient));
     const float linkedDetector = std::max(detectorLeft, detectorRight);
     const float stereoLink = stereoLink_.next();
     const std::array<float, 2> detectors{

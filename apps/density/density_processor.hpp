@@ -16,6 +16,7 @@ struct Parameters {
   float outputDb{-7.0F};
   float detectorHpfHz{90.0F};
   bool protection{true};
+  bool legacyBehavior{};
 };
 
 struct DensityMapping {
