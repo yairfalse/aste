@@ -221,8 +221,8 @@ void testStateAndPresets() {
   require(rawValue(restored, "harmonic") == before,
           "Duplicate Harmonic parameter IDs are rejected");
 
-  require(restored.factoryPresetCount() == 6,
-          "Harmonic exposes six internal-beta starting points");
+  require(restored.factoryPresetCount() == 7,
+          "Harmonic retains six starting points and adds Charged Presence");
   for (int index = 0; index < restored.factoryPresetCount(); ++index) {
     require(!restored.factoryPresetName(index).isEmpty(),
             "Every Harmonic preset has a visible name");
@@ -242,6 +242,8 @@ void testAudibleBandControls() {
   constexpr std::array frequencies{80.0, 400.0, 2500.0, 12000.0};
   for (std::size_t band = 0; band < ids.size(); ++band) {
     Harmonic processor;
+    processor.loadFactoryPreset(
+        0);  // Isolate the linear EQ, not Charged Presence.
     processor.prepareToPlay(48000.0, 128);
     setValue(processor, "harmonic", 0.0F);
     setValue(processor, ids[band], 6.0F);
@@ -376,6 +378,27 @@ void testEditorContract(const char* directory) {
   if (editor == nullptr) {
     return;
   }
+  auto* push =
+      dynamic_cast<juce::Button*>(findTitled(*editor, "PUSH OPERATING LEVEL"));
+  auto* pull =
+      dynamic_cast<juce::Button*>(findTitled(*editor, "PULL OPERATING LEVEL"));
+  require(push && pull, "Operating-level gestures are discoverable buttons");
+  if (push && pull) {
+    setValue(processor, "input", 17);
+    setValue(processor, "output", -7);
+    push->onClick();
+    require(rawValue(processor, "input") == 18 &&
+                rawValue(processor, "output") == -8,
+            "Linked push respects both limits without unmatched gain");
+    pull->onClick();
+    require(
+        processor.state().getParameter("input")->getValue() ==
+                processor.state().getParameter("input")->convertTo0to1(15) &&
+            processor.state().getParameter("output")->getValue() ==
+                processor.state().getParameter("output")->convertTo0to1(-5),
+        "Pull applies equal and opposite host parameter edits");
+  }
+  processor.loadFactoryPreset(6);
   for (const char* title : std::array<const char*, 12>{
            "HARMONIC", "INPUT", "OUTPUT", "FOUNDATION", "BODY", "PRESENCE",
            "AIR", "FOUNDATION FREQUENCY", "BODY FREQUENCY",
