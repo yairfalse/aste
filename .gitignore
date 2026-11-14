@@ -1,4 +1,8 @@
 /build*/
+/build-power-*.zip
+/.toimija/*
+!/.toimija/repo.yaml
+/.sykli/
 /ci-*/
 /dist/
 /.DS_Store
