@@ -286,6 +286,22 @@ void midiAndRealtime() {
   }
   check(allocations == 0 && frees == 0, "callback allocates and frees nothing");
 }
+void midiReplacement() {
+  Engine e;
+  Controls c;
+  c.persist = true;
+  check(e.prepare(48000, Architecture::Modal, Memory::Shared, c),
+        "MIDI replacement setup");
+  float input = .2F, output{};
+  const std::array first{Event{0, EventType::NoteOn, {}, 48}};
+  e.process(&input, &output, nullptr, 1, c, first);
+  const auto energy = e.snapshot().energy;
+  const std::array replacement{Event{0, EventType::NoteOff, {}, 48},
+                               Event{0, EventType::NoteOn, {}, 53}};
+  e.process(nullptr, &output, nullptr, 1, c, replacement);
+  check(std::abs(e.snapshot().energy - energy) < 1e-12,
+        "same-sample note replacement must not release the newly held chord");
+}
 }  // namespace
 int main() {
   analytic();
@@ -293,6 +309,7 @@ int main() {
   determinism();
   stability();
   midiAndRealtime();
+  midiReplacement();
   std::cout << "r01 contracts: " << failures << " failures\n";
   return failures ? 1 : 0;
 }

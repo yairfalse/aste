@@ -278,6 +278,7 @@ void Engine::eventsAt(std::span<const Event> events) noexcept {
         chord.intervals[n] = notes[n] - notes[0];
       change = true;
       strike |= e.type == EventType::NoteOn;
+      if (e.type == EventType::NoteOn) release = false;
     }
   }
   if (panic) {
