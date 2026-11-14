@@ -3,3 +3,6 @@
 /dist/
 /.DS_Store
 *.wav
+/.toimija/*
+!/.toimija/repo.yaml
+/.sykli/
