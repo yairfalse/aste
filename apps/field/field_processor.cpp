@@ -203,7 +203,8 @@ void Processor::process(float* left, float* right, std::size_t frames,
     smooth(smoothedBlend_, targetBlend);
     smooth(smoothedOutputGain_, targetOutput);
 
-    const float heldInfluence = 0.14F * smoothedForever_;
+    const float heldInfluence =
+        parameters.legacyBehavior ? 0.14F * smoothedForever_ : 0.0F;
     const float effectiveGrain = std::min(1.0F, smoothedGrain_ + heldInfluence);
     const float effectivePitch = std::min(1.0F, smoothedPitch_ + heldInfluence);
     const float effectiveMotion =

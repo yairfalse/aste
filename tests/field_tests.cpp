@@ -207,7 +207,30 @@ void testStereoFieldFormation() {
 
 }  // namespace
 
+void testHoldDoesNotAddHiddenColor() {
+  auto legacy = std::make_unique<aste::field::Processor>();
+  auto current = std::make_unique<aste::field::Processor>();
+  legacy->prepare(48000);
+  current->prepare(48000);
+  aste::field::Parameters old;
+  old.forever = true;
+  old.legacyBehavior = true;
+  old.grain = old.pitch = old.motion = 0;
+  old.blend = 1;
+  auto explicitColor = old;
+  explicitColor.legacyBehavior = false;
+  explicitColor.grain = explicitColor.pitch = explicitColor.motion = .14F;
+  std::vector<float> a(48000), b(48000);
+  a[0] = b[0] = .5F;
+  legacy->process(a.data(), nullptr, a.size(), old);
+  current->process(b.data(), nullptr, b.size(), explicitColor);
+  require(a == b,
+          "Current hold leaves color at the explicit knob values; legacy's "
+          "extra color remains reproducible");
+}
+
 int main() {
+  testHoldDoesNotAddHiddenColor();
   testDryAndBypass();
   testForeverAndPitchField();
   testDeterminismAndBlockIndependence();
