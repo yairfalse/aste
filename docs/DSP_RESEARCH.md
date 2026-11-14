@@ -12,6 +12,12 @@ Harmonic's pre-product topology results are recorded separately in
 Cycle reports in `docs/products/density/` retain the before/after evidence and
 decision sequence. The executable methods are documented in [TESTING.md](TESTING.md).
 
+Resonator R-01 is an isolated pre-product investigation of chord-generating
+resonators and retained energy. Its [laboratory](../research/r01/README.md),
+[report](../reports/Resonator%20harmonic%20memory.md) and
+[evidence](research/r01/EVIDENCE.md) distinguish rendered comparisons from
+the still-unperformed human musical evaluation.
+
 Rules:
 
 - Keep research-only algorithms unreachable from released product state until

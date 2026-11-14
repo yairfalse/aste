@@ -1,0 +1,5 @@
+architecture,drive,persist,base_guard_interventions,high_guard_interventions,base_fold_band_db,filtered_4x_fold_band_db
+modal,0.0001,0,0,0,-153.549231015,-154.7314201
+modal,1,1,93076,380895,-101.808272114,-156.621483602
+waveguide,0.0001,0,0,0,-156.464871041,-149.970196155
+waveguide,1,1,41952,238817,-43.8188015913,-70.5492953429
