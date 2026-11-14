@@ -39,6 +39,7 @@ void Processor::prepare(double sampleRate, const Parameters&) noexcept {
 void Processor::reset() noexcept {
   voices_ = {};
   lastTick_.fill(-1);
+  midiOrdinals_.fill(0);
   expectedPpq_ = 0.0;
   transportKnown_ = false;
   smoothedOutputGain_ = 1.0F;
@@ -83,7 +84,7 @@ void Processor::trigger(std::size_t track, float velocity,
                  -0.8F, 0.8F);
 }
 
-float Processor::renderVoice(std::size_t track) noexcept {
+float Processor::renderVoice(std::size_t track, bool legacyBehavior) noexcept {
   auto& voice = voices_[track];
   if (voice.amplitude < 1.0e-7F) return 0.0F;
   const double pitch = std::clamp(
@@ -119,7 +120,8 @@ float Processor::renderVoice(std::size_t track) noexcept {
     sample = sine + (0.25F + 0.45F * voice.tone) * second;
   } else if (track == 4) {
     const float edge = voice.pitchEnvelope > 0.6F ? voice.noiseState : 0.0F;
-    sample = 0.9F * sine + 0.12F * edge;
+    sample =
+        0.9F * sine + (legacyBehavior ? .12F : .03F + .18F * voice.tone) * edge;
     voice.pitchEnvelope *= 0.987F;
   } else if (track == 5) {
     const float coefficient = 0.08F + 0.52F * voice.tone;
@@ -158,6 +160,7 @@ void Processor::process(float* left, float* right, std::size_t frames,
       !transportKnown_ || std::abs(transport.ppq - expectedPpq_) >
                               std::max(0.02, ppqIncrement * frames * 2.0);
   if (discontinuity) lastTick_.fill(-1);
+  if (discontinuity && transport.playing) midiOrdinals_.fill(0);
   transportKnown_ = transport.playing;
   std::size_t midiIndex{};
   for (std::size_t sampleIndex = 0; sampleIndex < frames; ++sampleIndex) {
@@ -166,9 +169,14 @@ void Processor::process(float* left, float* right, std::size_t frames,
       if (event.noteOn && event.velocity > 0.0F && event.note >= 36 &&
           event.note < 36 + static_cast<int>(kTrackCount)) {
         const auto track = static_cast<std::size_t>(event.note - 36);
-        trigger(track, event.velocity, parameters.tracks[track],
-                parameters.energy, parameters.variation,
-                parameters.seed ^ static_cast<std::uint32_t>(sampleIndex));
+        trigger(
+            track, event.velocity, parameters.tracks[track], parameters.energy,
+            parameters.variation,
+            parameters.seed ^
+                (parameters.legacyBehavior
+                     ? static_cast<std::uint32_t>(sampleIndex)
+                     : hash(midiOrdinals_[track]++ ^
+                            static_cast<std::uint32_t>(track * 0x9e3779b9U))));
         measured.triggered[track] = true;
       }
     }
@@ -216,7 +224,7 @@ void Processor::process(float* left, float* right, std::size_t frames,
     float mono{};
     float side{};
     for (std::size_t track = 0; track < kTrackCount; ++track) {
-      const float signal = renderVoice(track);
+      const float signal = renderVoice(track, parameters.legacyBehavior);
       mono += signal;
       side += signal * voices_[track].pan;
     }

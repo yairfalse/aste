@@ -79,6 +79,23 @@ juce::Component* findTitled(juce::Component& c, const juce::String& title) {
 }
 void testContractState() {
   Impulse source;
+  require(
+      !source.usesLegacyBehavior() && value(source, "energy") == 30,
+      "New instances use a restrained two-object start and corrected engine");
+  int activeTracks{}, hits{};
+  for (const char* track :
+       {"kick", "click", "burst", "body", "low", "crack", "metal", "cut"}) {
+    int trackHits{};
+    for (int step = 1; step <= 32; ++step) {
+      const auto id = juce::String{track} + "_step_" +
+                      juce::String{step}.paddedLeft('0', 2);
+      trackHits += value(source, id.toRawUTF8()) > 0;
+    }
+    activeTracks += trackHits > 0;
+    hits += trackHits;
+  }
+  require(activeTracks == 2 && hits == 3,
+          "Space leaves structural silence rather than eight competing parts");
   require(value(source, "variation") == 0 && value(source, "mutation") == 0,
           "New instances start without random variation or mutation");
   for (const auto* track :
@@ -159,7 +176,8 @@ void testContractState() {
   restored.setStateInformation(bad, sizeof(bad));
   require(value(restored, "seed") == 4242,
           "Malformed Impulse state is rejected");
-  require(restored.factoryPresetCount() == 5, "Impulse exposes five snapshots");
+  require(restored.factoryPresetCount() == 6,
+          "Impulse retains five snapshots and adds Space");
   std::uint32_t random = 0x1a2b3c4dU;
   for (int test = 0; test < 256; ++test) {
     std::array<std::byte, 257> bytes{};
@@ -227,7 +245,18 @@ void testEditor(const char* directory) {
           "Stopped pattern cells refresh after an external parameter change");
   setValue(processor, "kick_step_02", 0);
   auto* kick = dynamic_cast<juce::Button*>(findTitled(*editor, "KICK TRACK"));
-  require(kick != nullptr, "Kick audition target exists");
+  require(kick != nullptr, "Kick selection target exists");
+  if (kick) {
+    processor.prepareToPlay(48000, 127);
+    kick->onClick();
+    juce::AudioBuffer<float> quiet{2, 127};
+    juce::MidiBuffer midi;
+    processor.processBlock(quiet, midi);
+    require(quiet.getMagnitude(0, 0, 127) == 0,
+            "Selecting a track does not trigger it");
+  }
+  kick = dynamic_cast<juce::Button*>(findTitled(*editor, "KICK AUDITION"));
+  require(kick != nullptr, "Explicit audition target exists");
   if (kick) {
     processor.prepareToPlay(48000, 127);
     kick->onClick();

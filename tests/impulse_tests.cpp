@@ -116,7 +116,35 @@ void testVisiblePatternIsPlaybackSource() {
 }
 }  // namespace
 
+std::vector<float> midiPhrase(std::size_t block, float tone = .5F,
+                              int note = 36) {
+  aste::impulse::Parameters p;
+  p.sequenceEnabled = false;
+  p.variation = .6F;
+  p.tracks[4].tone = tone;
+  aste::impulse::Processor processor;
+  processor.prepare(48000, p);
+  std::vector<float> audio(48000);
+  constexpr std::array<std::size_t, 3> times{4977, 21851, 38729};
+  for (std::size_t at = 0; at < audio.size();) {
+    const auto n = std::min(block, audio.size() - at);
+    std::array<aste::impulse::MidiEvent, 3> events{};
+    std::size_t count{};
+    for (auto time : times)
+      if (time >= at && time < at + n)
+        events[count++] = {time - at, note, .8F, true};
+    processor.process(audio.data() + at, nullptr, n, p, {},
+                      {events.data(), count});
+    at += n;
+  }
+  return audio;
+}
+
 int main() {
+  require(midiPhrase(127) == midiPhrase(511),
+          "MIDI variation belongs to events, not callback offsets");
+  require(midiPhrase(127, 0, 40) != midiPhrase(127, 1, 40),
+          "Low Tone changes the object's harmonic edge");
   testDeterminismAndBlocks();
   testRatesMidiAndRealtime();
   testVisiblePatternIsPlaybackSource();
