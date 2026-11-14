@@ -218,6 +218,8 @@ void Processor::reset() noexcept {
   currentStep_ = -1;
   sequenceGate_ = false;
   wasPlaying_ = false;
+  timelineKnown_ = false;
+  timelineFrames_ = 0;
   meters_ = {};
   meters_.currentStep = -1.0F;
 }
@@ -250,7 +252,7 @@ void Processor::startNote(int note, float velocity, bool accent, bool slide,
 void Processor::stopNote() noexcept { envelope_.noteOff(); }
 
 void Processor::handleMidi(const MidiEvent& event, bool sequencerRunning,
-                           float glideMs) noexcept {
+                           float glideMs, bool legacyBehavior) noexcept {
   const int note = std::clamp(event.note, 0, 127);
   switch (event.type) {
     case MidiEventType::noteOn:
@@ -262,7 +264,10 @@ void Processor::handleMidi(const MidiEvent& event, bool sequencerRunning,
       lastMidiNote_ = note;
       if (!sequencerRunning) {
         startNote(note, event.velocity, event.velocity > 0.9F,
-                  envelope_.active(), glideMs);
+                  envelope_.active() &&
+                      (legacyBehavior ||
+                       envelope_.stage_ != Envelope::Stage::release),
+                  glideMs);
       }
       break;
     case MidiEventType::noteOff:
@@ -384,15 +389,39 @@ void Processor::process(float* left, float* right, std::size_t frames,
   output_.setTarget(bounded(parameters.outputDb, -24.0F, 6.0F, -6.0F));
   const bool sequencerRunning =
       parameters.sequenceEnabled && transport.valid && transport.playing;
+  Transport clock = transport;
+  std::size_t clockOffset{};
+  if (!parameters.legacyBehavior && sequencerRunning &&
+      std::isfinite(transport.ppqPosition) && std::isfinite(transport.bpm) &&
+      transport.bpm > 0) {
+    const double increment = transport.bpm / (60.0 * sampleRate_);
+    const double expected = timeline_.ppqPosition + timelineFrames_ *
+                                                        timeline_.bpm /
+                                                        (60.0 * sampleRate_);
+    // Ignore sub-sample host rounding, not actual seeks or tempo changes.
+    if (!timelineKnown_ || timeline_.bpm != transport.bpm ||
+        std::abs(transport.ppqPosition - expected) > .5 * increment ||
+        timelineFrames_ > std::numeric_limits<std::size_t>::max() - frames) {
+      timeline_ = transport;
+      timelineFrames_ = 0;
+    }
+    timelineKnown_ = true;
+    clock = timeline_;
+    clockOffset = timelineFrames_;
+    timelineFrames_ += frames;
+  } else {
+    timelineKnown_ = false;
+  }
   std::size_t midiIndex = 0;
   MeterSnapshot measured{};
   measured.currentStep = static_cast<float>(currentStep_);
   for (std::size_t sample = 0; sample < frames; ++sample) {
     while (midiIndex < midi.size() && midi[midiIndex].sampleOffset <= sample) {
-      handleMidi(midi[midiIndex], sequencerRunning, parameters.glideMs);
+      handleMidi(midi[midiIndex], sequencerRunning, parameters.glideMs,
+                 parameters.legacyBehavior);
       ++midiIndex;
     }
-    updateSequencer(parameters, transport, sample);
+    updateSequencer(parameters, clock, clockOffset + sample);
     const float envelope =
         envelope_.process(sampleRate_, parameters.attackMs, parameters.decayMs,
                           parameters.sustain, parameters.releaseMs);

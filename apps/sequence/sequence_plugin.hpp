@@ -52,6 +52,9 @@ class SequenceAudioProcessor final : public juce::AudioProcessor {
   [[nodiscard]] static int factoryPresetCount() noexcept;
   [[nodiscard]] static juce::String factoryPresetName(int index);
   void loadFactoryPreset(int index);
+  [[nodiscard]] bool usesLegacyBehavior() const noexcept {
+    return legacyBehavior_.load(std::memory_order_relaxed);
+  }
 
  private:
   enum MainParameter : std::size_t {
@@ -88,6 +91,7 @@ class SequenceAudioProcessor final : public juce::AudioProcessor {
   void publishMeters(const MeterSnapshot&) noexcept;
 
   Processor processor_{};
+  std::atomic<bool> legacyBehavior_{};
   juce::AudioProcessorValueTreeState state_;
   std::array<std::atomic<float>*, mainParameterCount> mainValues_{};
   std::array<std::atomic<float>*, kStepCount> noteValues_{};
@@ -105,5 +109,6 @@ class SequenceAudioProcessor final : public juce::AudioProcessor {
 
 static_assert(std::atomic<float>::is_always_lock_free,
               "Sequence meter publication must remain lock-free");
+static_assert(std::atomic<bool>::is_always_lock_free);
 
 }  // namespace aste::sequence::plugin

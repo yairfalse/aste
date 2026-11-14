@@ -112,6 +112,8 @@ void testParameterAndStateContract() {
   juce::MemoryBlock state;
   source.getStateInformation(state);
   require(!state.isEmpty(), "Sequence state serialization produces data");
+  require(!source.usesLegacyBehavior(),
+          "New Sequence uses corrected articulation and clock");
   Sequence restored;
   restored.setStateInformation(state.getData(),
                                static_cast<int>(state.getSize()));
@@ -143,6 +145,23 @@ void testParameterAndStateContract() {
     Sequence migrated;
     migrated.setStateInformation(legacyBytes.getData(),
                                  static_cast<int>(legacyBytes.getSize()));
+    require(migrated.usesLegacyBehavior(),
+            "Old Sequence state keeps its original sound laws");
+    juce::MemoryBlock migratedBytes;
+    migrated.getStateInformation(migratedBytes);
+    Sequence reopened;
+    reopened.setStateInformation(migratedBytes.getData(),
+                                 static_cast<int>(migratedBytes.getSize()));
+    require(reopened.usesLegacyBehavior(),
+            "Legacy sound choice survives a new-schema save");
+    auto invalid = juce::ValueTree::fromXml(*xml);
+    invalid.setProperty("behavior", "invalid", nullptr);
+    juce::MemoryBlock invalidBytes;
+    juce::AudioProcessor::copyXmlToBinary(*invalid.createXml(), invalidBytes);
+    reopened.setStateInformation(invalidBytes.getData(),
+                                 static_cast<int>(invalidBytes.getSize()));
+    require(reopened.usesLegacyBehavior(),
+            "Invalid behavior rejects the complete state");
     require(std::abs(rawValue(migrated, "pressure") - 71.25F) < 0.011F &&
                 rawValue(migrated, "pulse_width") == 50.0F &&
                 rawValue(migrated, "filter_drive") == 25.0F,
