@@ -23,6 +23,9 @@ bool range(double x, double lo, double hi) noexcept {
 }  // namespace
 
 bool valid(const Pattern& p) noexcept {
+  if (!range(p.phraseLength, 1, 32) || !range(p.voidStart, 0, p.phraseLength) ||
+      !range(p.voidEnd, p.voidStart, p.phraseLength))
+    return false;
   for (const auto& t : p.tracks) {
     if (!range(t.length, 0.25, 32) || !range(t.phase, 0, 32)) return false;
     for (const auto& e : t.events) {
@@ -49,6 +52,7 @@ bool valid(const Pattern& p) noexcept {
 
 Pattern studyPattern() noexcept {
   Pattern p;
+  p.voidStart = 6.5;
   p.tracks[0].length = 4;
   p.tracks[1].length = 3;
   p.tracks[2].length = 5;
@@ -96,13 +100,18 @@ void Trace::add(const Hit& hit) noexcept {
     ++dropped;
 }
 
-bool Engine::prepare(double sampleRate, const Pattern& pattern) noexcept {
+bool Engine::prepare(double sampleRate, const Pattern& pattern) {
   prepared_ = false;
   if (!range(sampleRate, 8000, 192000) || !valid(pattern)) return false;
   rate_ = sampleRate;
   pattern_ = pattern;
+  for (auto& f : local_)
+    f.prepare(static_cast<std::size_t>(std::ceil(rate_ * .25)));
+  for (auto& f : master_)
+    f.prepare(static_cast<std::size_t>(std::ceil(rate_ * .5)));
   running_ = false;
   resets_ = 0;
+  rejected_ = 0;
   reset(0);
   prepared_ = true;
   return true;
@@ -147,6 +156,10 @@ Engine::Next Engine::next(std::size_t v, double beat) const noexcept {
 void Engine::reset(double ppq) noexcept {
   voices_ = {};
   phrase_ = ppq;
+  suspendedBeats_ = 0;
+  mode_ = Mode::Continue;
+  for (auto& f : local_) f.clear();
+  for (auto& f : master_) f.clear();
   for (std::size_t v = 0; v < kVoices; ++v) next_[v] = next(v, ppq);
 }
 
@@ -196,7 +209,8 @@ float Engine::sound(std::size_t index) noexcept {
 }
 
 void Engine::process(float* left, float* right, std::size_t frames,
-                     const Transport& t, Trace* trace) noexcept {
+                     const Transport& t, Trace* trace,
+                     std::span<const Command> commands) noexcept {
   if (left == nullptr || frames == 0) return;
   const bool usable = prepared_ && t.valid && t.playing &&
                       range(t.ppq, -1e8, 1e8) && range(t.bpm, 20, 400) &&
@@ -222,15 +236,32 @@ void Engine::process(float* left, float* right, std::size_t frames,
     bpm_ = t.bpm;
   }
   running_ = true;
+  bool commandsValid = commands.size() <= 64;
+  for (std::size_t c = 0; c < commands.size() && c < 64; ++c) {
+    commandsValid &=
+        commands[c].offset < frames && commands[c].target <= kVoices &&
+        (c == 0 || commands[c].offset >= commands[c - 1].offset) &&
+        commands[c].action >= Action::Capture &&
+        commands[c].action <= Action::Rejoin &&
+        commands[c].mode >= Mode::Continue && commands[c].mode <= Mode::Suspend;
+  }
+  if (!commandsValid) {
+    ++rejected_;
+    commands = {};
+  }
+  std::size_t commandIndex{};
   for (std::size_t i = 0; i < frames; ++i) {
     const auto sample = t.sample + static_cast<std::int64_t>(i);
     const double ppq = anchorPpq_ + (sample - anchorSample_) * increment;
-    phrase_ = ppq;
+    while (commandIndex < commands.size() && commands[commandIndex].offset == i)
+      command(commands[commandIndex++], ppq);
+    phrase_ = ppq - suspendedBeats_;
+    const bool frozen = mode_ == Mode::Suspend && master_[0].active();
     float l{}, r{};
-    for (std::size_t v = 0; v < kVoices; ++v) {
+    for (std::size_t v = 0; v < kVoices && !frozen; ++v) {
       // Half-open sample interval: never schedule early by more than one
       // sample.
-      if (next_[v].beat < ppq + increment - 1e-12) {
+      if (next_[v].beat < phrase_ + increment - 1e-12) {
         auto hit = next_[v].hit;
         hit.sample = sample;
         if (hit.gain > 0) {
@@ -239,17 +270,154 @@ void Engine::process(float* left, float* right, std::size_t frames,
         }
         // Collisions within one sample coalesce; later event slot wins exact
         // ties.
-        next_[v] = next(v, ppq + increment);
+        next_[v] = next(v, phrase_ + increment);
       }
-      const float value = sound(v) * 0.45F;
+      const float source = sound(v);
+      local_[v].record(source);
+      const float value = local_[v].process(source) * 0.45F;
       l += value * (v == 2 ? 0.65F : 1.0F);
       r += value * (v == 1 ? 0.65F : 1.0F);
     }
+    if (frozen)
+      suspendedBeats_ += increment;
+    else {
+      master_[0].record(l);
+      master_[1].record(r);
+    }
+    l = master_[0].process(l);
+    r = master_[1].process(r);
+    // Structural void is the outermost gate: repeats cannot fill it.
+    double phase = std::fmod(phrase_, pattern_.phraseLength);
+    if (phase < 0) phase += pattern_.phraseLength;
+    if (phase >= pattern_.voidStart && phase < pattern_.voidEnd) l = r = 0;
     left[i] = l;
     if (right) right[i] = r;
   }
   expectedSample_ = t.sample + static_cast<std::int64_t>(frames);
   expectedPpq_ = anchorPpq_ + (expectedSample_ - anchorSample_) * increment;
-  phrase_ = expectedPpq_;
+  phrase_ = expectedPpq_ - suspendedBeats_;
+}
+
+void Fragment::prepare(std::size_t capacity) {
+  for (auto& b : banks_) b.assign(std::max<std::size_t>(1, capacity), 0);
+  clear();
+}
+void Fragment::clear() noexcept {
+  writing_ = write_ = available_ = start_ = length_ = read_ = remaining_ =
+      transition_ = 0;
+  active_ = reverse_ = hard_ = false;
+  previous_ = from_ = 0;
+}
+void Fragment::record(float sample) noexcept {
+  if (banks_[0].empty()) return;
+  banks_[writing_][write_] = std::isfinite(sample) ? sample : 0;
+  write_ = (write_ + 1) % banks_[0].size();
+  available_ = std::min(available_ + 1, banks_[0].size());
+}
+bool Fragment::capture(std::size_t length, std::size_t lookback,
+                       std::size_t duration, bool hard) noexcept {
+  if (length == 0 || lookback > available_ || length > available_ - lookback)
+    return false;
+  start_ = (write_ + banks_[0].size() - length - lookback) % banks_[0].size();
+  length_ = length;
+  writing_ = 1 - writing_;
+  write_ = available_ = read_ = 0;
+  remaining_ = duration;
+  active_ = true;
+  reverse_ = false;
+  hard_ = hard;
+  from_ = previous_;
+  // The fragment's edge taper already fades in from silence. Do not multiply
+  // it by a second entry ramp (which doubles the slope near its end).
+  transition_ = hard || previous_ == 0 ? 0 : 32;
+  return true;
+}
+bool Fragment::shorten(std::size_t length) noexcept {
+  if (!active_ || length == 0 || length > length_) return false;
+  length_ = length;
+  read_ %= length_;
+  from_ = previous_;
+  transition_ = hard_ ? 0 : 32;
+  return true;
+}
+void Fragment::reverse() noexcept {
+  if (!active_) return;
+  reverse_ = !reverse_;
+  from_ = previous_;
+  transition_ = hard_ ? 0 : 32;
+}
+void Fragment::release(bool hard) noexcept {
+  if (!active_) return;
+  active_ = false;
+  from_ = previous_;
+  transition_ = hard ? 0 : 32;
+}
+float Fragment::process(float live) noexcept {
+  float result = live;
+  if (active_) {
+    const auto position = reverse_ ? length_ - 1 - read_ : read_;
+    result = banks_[1 - writing_][(start_ + position) % banks_[0].size()];
+    if (!hard_) {
+      const auto fade = std::min<std::size_t>(32, length_ / 2);
+      if (fade > 0) {
+        const double edge =
+            static_cast<double>(std::min(read_, length_ - 1 - read_));
+        result *= static_cast<float>(std::min(1.0, edge / fade));
+      }
+    }
+    read_ = (read_ + 1) % length_;
+  }
+  if (transition_ > 0) {
+    const float weight = static_cast<float>(transition_--) / 32;
+    result = result * (1 - weight) + from_ * weight;
+  }
+  previous_ = result;
+  if (active_ && remaining_ > 0 && --remaining_ == 0) release(hard_);
+  return result;
+}
+
+std::size_t Engine::audioBytes() const noexcept {
+  std::size_t bytes{};
+  for (const auto& f : local_) bytes += f.bytes();
+  for (const auto& f : master_) bytes += f.bytes();
+  return bytes;
+}
+void Engine::command(const Command& c, double hostBeat) noexcept {
+  if (c.action == Action::Rejoin) {
+    if (c.target != kVoices) {
+      ++rejected_;
+      return;
+    }
+    reset(hostBeat);
+    return;
+  }
+  auto apply = [&](Fragment& f) {
+    switch (c.action) {
+      case Action::Capture:
+        return f.capture(c.length, c.lookback, c.duration, c.hard);
+      case Action::Shorten:
+        return f.shorten(c.length);
+      case Action::Reverse:
+        if (!f.active()) return false;
+        f.reverse();
+        return true;
+      case Action::Release:
+        f.release(c.hard);
+        return true;
+      case Action::Rejoin:
+        return false;
+    }
+    return false;
+  };
+  if (c.target < kVoices) {
+    if (!apply(local_[c.target])) ++rejected_;
+  } else {
+    const bool accepted = apply(master_[0]);
+    const bool right = apply(master_[1]);
+    if (!accepted || !right)
+      ++rejected_;
+    else if (c.action == Action::Capture)
+      mode_ = c.mode;
+  }
 }
 }  // namespace aste::n01

@@ -1,0 +1,16 @@
+{
+  "schema": "sykli-contract.v1",
+  "tasks": [
+    {
+      "name": "n01-research",
+      "run": "cmake -S research/n01 -B build-n01-gate -DCMAKE_BUILD_TYPE=Release && cmake --build build-n01-gate --parallel 3 && ctest --test-dir build-n01-gate --output-on-failure",
+      "inputs": ["apps/impulse/impulse_plugin.cpp","apps/impulse/impulse_plugin.hpp","apps/impulse/impulse_processor.cpp","apps/impulse/impulse_processor.hpp","apps/loop/loop_plugin.cpp","apps/loop/loop_plugin.hpp","apps/loop/loop_processor.cpp","apps/loop/loop_processor.hpp","apps/loop/tape_snapshots.hpp","libs/parameters/decimal_parse.hpp","libs/parameters/plugin_ui.hpp","research/n01/CMakeLists.txt","research/n01/core.cpp","research/n01/core.hpp","research/n01/lab.cpp","research/n01/mutations.cpp","research/n01/tests.cpp","tests/density_plugin_tests.cpp","tests/density_tests.cpp","tests/editor_artifact.hpp","tests/field_plugin_tests.cpp","tests/field_tests.cpp","tests/golden/density-production-v1.csv","tests/golden/density-production-v2.csv","tests/harmonic_plugin_tests.cpp","tests/harmonic_tests.cpp","tests/impulse_plugin_tests.cpp","tests/impulse_tests.cpp","tests/loop_plugin_tests.cpp","tests/loop_tests.cpp","tests/macos_bundle_tests.rs","tests/realtime_audit_mac.cpp","tests/sequence_plugin_tests.cpp","tests/sequence_tests.cpp"]
+    },
+    {
+      "name": "n01-sanitizers",
+      "run": "cmake -S research/n01 -B build-n01-sanitize-gate -DCMAKE_BUILD_TYPE=Debug -DN01_SANITIZERS=ON && cmake --build build-n01-sanitize-gate --parallel 3 && ctest --test-dir build-n01-sanitize-gate --output-on-failure",
+      "after": ["n01-research"],
+      "inputs": ["apps/impulse/impulse_plugin.cpp","apps/impulse/impulse_plugin.hpp","apps/impulse/impulse_processor.cpp","apps/impulse/impulse_processor.hpp","apps/loop/loop_plugin.cpp","apps/loop/loop_plugin.hpp","apps/loop/loop_processor.cpp","apps/loop/loop_processor.hpp","apps/loop/tape_snapshots.hpp","libs/parameters/decimal_parse.hpp","libs/parameters/plugin_ui.hpp","research/n01/CMakeLists.txt","research/n01/core.cpp","research/n01/core.hpp","research/n01/lab.cpp","research/n01/mutations.cpp","research/n01/tests.cpp","tests/density_plugin_tests.cpp","tests/density_tests.cpp","tests/editor_artifact.hpp","tests/field_plugin_tests.cpp","tests/field_tests.cpp","tests/golden/density-production-v1.csv","tests/golden/density-production-v2.csv","tests/harmonic_plugin_tests.cpp","tests/harmonic_tests.cpp","tests/impulse_plugin_tests.cpp","tests/impulse_tests.cpp","tests/loop_plugin_tests.cpp","tests/loop_tests.cpp","tests/macos_bundle_tests.rs","tests/realtime_audit_mac.cpp","tests/sequence_plugin_tests.cpp","tests/sequence_tests.cpp"]
+    }
+  ]
+}
