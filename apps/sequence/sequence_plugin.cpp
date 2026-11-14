@@ -803,9 +803,9 @@ juce::AudioProcessorParameter* SequenceAudioProcessor::getBypassParameter()
 
 void SequenceAudioProcessor::getStateInformation(juce::MemoryBlock& output) {
   auto state = state_.copyState();
-  state.setProperty("behavior", usesLegacyBehavior() ? 0 : 1, nullptr);
   state.setProperty("schema", kStateSchema, nullptr);
   state.setProperty("product", kStateType, nullptr);
+  state.setProperty("behavior", usesLegacyBehavior() ? 0 : 1, nullptr);
   if (const auto xml = state.createXml()) {
     copyXmlToBinary(*xml, output);
   }
