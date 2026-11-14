@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="760" viewBox="0 0 1280 760" role="img" aria-labelledby="title desc">
+  <title id="title">Non-Machine temporal study: suspended master fragment wireframe</title>
+  <desc id="desc">Nonfunctional monochrome wireframe. Master fragment repeats while phrase and local sound state are suspended. Host position keeps advancing. A selected fragment inspector explains release resumes the held phrase, while a separate rejoin action realigns to the host.</desc>
+  <defs>
+    <pattern id="void" width="8" height="8" patternUnits="userSpaceOnUse"><path d="M0 8L8 0" stroke="#50565c" stroke-width="1"/></pattern>
+    <style>
+      text{font-family:Menlo,Consolas,monospace;fill:#eeeae2;font-size:14px}
+      .secondary{fill:#b2b7bb}.small{font-size:12px}.heading{font-size:18px;font-weight:bold}.rule{stroke:#777f86;stroke-width:1}.button{fill:#1d2023;stroke:#777f86}.event{fill:#b2b7bb}
+    </style>
+  </defs>
+  <rect width="1280" height="760" fill="#151719"/>
+  <text x="32" y="44" class="heading">NON-MACHINE / TEMPORAL STUDY</text>
+  <text x="860" y="44" class="secondary">N-01 RESEARCH · NOT A PLUGIN</text>
+  <path d="M32 64H1248" class="rule"/>
+  <text x="32" y="96" class="heading">MASTER HELD</text>
+  <text x="32" y="122" class="secondary">Phrase suspended</text>
+  <text x="32" y="147" class="secondary">Host keeps moving</text>
+  <text x="256" y="94">1</text><text x="376" y="94">2</text><text x="496" y="94">3</text><text x="616" y="94">4</text><text x="736" y="94">5</text><text x="856" y="94">6</text><text x="976" y="94">7</text><text x="1096" y="94">8</text>
+  <rect x="256" y="108" width="960" height="76" fill="#1d2023"/>
+  <path d="M256 108V184M376 108V184M496 108V184M616 108V184M736 108V184M856 108V184M976 108V184M1096 108V184M1216 108V184" stroke="#3f454b"/>
+  <rect x="736" y="108" width="120" height="76" fill="url(#void)" stroke="#b2b7bb"/>
+  <text x="756" y="139">VOID</text><text x="756" y="160" class="small">CUT EDGES</text>
+  <rect x="376" y="108" width="120" height="76" fill="#32373c" stroke="#eeeae2" stroke-width="2"/>
+  <path d="M384 152L392 147L398 162L406 124L414 169L422 140L430 154L442 147L450 153L464 149L488 150" fill="none" stroke="#b2b7bb"/>
+  <path d="M436 108V184" stroke="#eeeae2" stroke-width="2"/>
+  <text x="380" y="177" class="small">FRAGMENT ↶</text>
+  <path d="M616 103V184" stroke="#eeeae2" stroke-width="3"/><text x="558" y="177" class="small">PHRASE</text>
+  <path d="M946 103V184" stroke="#b2b7bb" stroke-width="2" stroke-dasharray="4 4"/><text x="956" y="177" class="small">HOST</text>
+  <text x="32" y="214" class="secondary">TIME MODE</text>
+  <rect x="168" y="192" width="124" height="36" class="button"/><text x="181" y="215">CONTINUE</text>
+  <rect x="292" y="192" width="124" height="36" fill="#eeeae2"/><text x="309" y="215" style="fill:#151719">SUSPEND</text>
+  <rect x="456" y="192" width="136" height="36" fill="#eeeae2"/><text x="479" y="215" style="fill:#151719">HELD / LATCH</text>
+  <rect x="604" y="192" width="104" height="36" class="button"/><text x="620" y="215">RELEASE</text>
+  <rect x="720" y="192" width="104" height="36" class="button"/><text x="738" y="215">REJOIN</text>
+  <text x="856" y="215">MASTER AUDIBLE / LOCAL FROZEN</text>
+  <path d="M32 248H1248" class="rule"/>
+  <text x="32" y="280" class="heading">PRESSURE</text><text x="32" y="304" class="secondary">Cycle 3.0 qn</text><text x="32" y="337" class="small secondary">FROZEN AT 0.0 qn</text>
+  <rect x="256" y="268" width="960" height="76" fill="#1d2023"/>
+  <path d="M616 268V344M976 268V344" stroke="#777f86" stroke-dasharray="4 4"/>
+  <rect x="266" y="286" width="24" height="28" class="event"/><rect x="536" y="286" width="24" height="28" class="event"/><rect x="626" y="286" width="24" height="28" class="event"/><rect x="896" y="286" width="24" height="28" class="event"/><rect x="986" y="286" width="24" height="28" class="event"/>
+  <path d="M616 268V344" stroke="#eeeae2" stroke-width="2"/>
+  <text x="32" y="384" class="heading">IMPACT</text><text x="32" y="408" class="secondary">Cycle 5.0 qn</text><text x="32" y="441" class="small">REPEAT ×4 / FROZEN</text>
+  <rect x="256" y="372" width="960" height="76" fill="#1d2023"/>
+  <path d="M856 372V448" stroke="#777f86" stroke-dasharray="4 4"/>
+  <rect x="386" y="388" width="24" height="28" class="event"/><rect x="614" y="388" width="20" height="28" class="event"/><path d="M652 390V416M673 390V416M689 390V416" stroke="#b2b7bb" stroke-width="4"/><rect x="986" y="388" width="24" height="28" class="event"/>
+  <path d="M596 382V430H716V382" fill="none" stroke="#eeeae2" stroke-width="2"/><text x="744" y="438" class="small secondary">LOCAL FRAGMENT RETAINED</text><path d="M616 372V448" stroke="#eeeae2" stroke-width="2"/>
+  <text x="32" y="488" class="heading">DUST</text><text x="32" y="512" class="secondary">Cycle 3.5 qn</text><text x="32" y="545" class="small secondary">FROZEN AT 3.0 qn</text>
+  <rect x="256" y="476" width="960" height="76" fill="#1d2023"/>
+  <path d="M676 476V552M1096 476V552" stroke="#777f86" stroke-dasharray="4 4"/>
+  <g fill="none" stroke="#b2b7bb" stroke-width="2"><rect x="326" y="494" width="24" height="28"/><rect x="566" y="494" width="24" height="28"/><rect x="746" y="494" width="24" height="28"/><rect x="986" y="494" width="24" height="28"/><rect x="1166" y="494" width="24" height="28"/></g>
+  <path d="M616 476V552" stroke="#eeeae2" stroke-width="2"/>
+  <path d="M32 576H1248" class="rule"/>
+  <text x="32" y="606" class="heading">MASTER / FRAGMENT</text><text x="32" y="630" class="secondary">Frozen audio selection</text>
+  <text x="320" y="606" class="secondary">START</text><text x="320" y="637">1.000 qn</text>
+  <text x="488" y="606" class="secondary">LENGTH</text><text x="488" y="637">1.000 qn</text>
+  <text x="656" y="606" class="secondary">DIRECTION</text><text x="656" y="637">REVERSE</text>
+  <text x="848" y="606" class="secondary">BOUNDARY</text><text x="848" y="637">SOFT</text>
+  <text x="1040" y="606" class="secondary">CAPTURE</text><text x="1040" y="637">AVAILABLE</text>
+  <text x="32" y="672">Release resumes held phrase. Rejoin realigns to host and clears temporal history.</text>
+  <path d="M32 692H1248" class="rule"/>
+  <rect x="32" y="708" width="192" height="32" class="button"/><text x="44" y="729" class="small">GESTURE 06 / 256</text>
+  <text x="256" y="729" class="secondary small">SUSPENDED ≠ STOPPED HOST · NO REJOIN PENDING</text>
+  <text x="920" y="729" class="secondary small">OUTPUT −12 dB · STATIC WIREFRAME</text>
+</svg>

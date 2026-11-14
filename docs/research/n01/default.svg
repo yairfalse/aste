@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="760" viewBox="0 0 1280 760" role="img" aria-labelledby="title desc">
+  <title id="title">Non-Machine temporal study: default phrase wireframe</title>
+  <desc id="desc">Nonfunctional monochrome performance layout. An eight-beat master timeline contains a visible silent span. Three object rows have independent cycles. Event details appear below, while time mode and master actions remain visible.</desc>
+  <defs>
+    <pattern id="void" width="8" height="8" patternUnits="userSpaceOnUse"><path d="M0 8L8 0" stroke="#50565c" stroke-width="1"/></pattern>
+    <style>
+      text{font-family:Menlo,Consolas,monospace;fill:#eeeae2;font-size:14px}
+      .secondary{fill:#b2b7bb}.small{font-size:12px}.heading{font-size:18px;font-weight:bold}.rule{stroke:#777f86;stroke-width:1}.button{fill:#1d2023;stroke:#777f86}.event{fill:#eeeae2}.conditional{fill:none;stroke:#eeeae2;stroke-width:2}
+    </style>
+  </defs>
+  <rect width="1280" height="760" fill="#151719"/>
+  <text x="32" y="44" class="heading">NON-MACHINE / TEMPORAL STUDY</text>
+  <text x="860" y="44" class="secondary">N-01 RESEARCH · NOT A PLUGIN</text>
+  <path d="M32 64H1248" class="rule"/>
+  <text x="32" y="96" class="heading">PHRASE</text>
+  <text x="32" y="122" class="secondary">8 quarter notes</text>
+  <text x="32" y="147" class="secondary">HOST + PHRASE 2.25</text>
+  <text x="256" y="94">1</text><text x="376" y="94">2</text><text x="496" y="94">3</text><text x="616" y="94">4</text><text x="736" y="94">5</text><text x="856" y="94">6</text><text x="976" y="94">7</text><text x="1096" y="94">8</text>
+  <rect x="256" y="108" width="960" height="76" fill="#1d2023"/>
+  <path d="M256 108V184M376 108V184M496 108V184M616 108V184M736 108V184M856 108V184M976 108V184M1096 108V184M1216 108V184" stroke="#3f454b"/>
+  <rect x="736" y="108" width="120" height="76" fill="url(#void)" stroke="#b2b7bb"/>
+  <text x="756" y="139">VOID</text><text x="756" y="160" class="small">CUT EDGES</text>
+  <path d="M526 103V190" stroke="#eeeae2" stroke-width="2"/>
+  <path d="M520 102H532L526 110Z" fill="#eeeae2"/>
+  <text x="32" y="214" class="secondary">TIME MODE</text>
+  <rect x="168" y="192" width="124" height="36" fill="#eeeae2"/><text x="181" y="215" style="fill:#151719">CONTINUE</text>
+  <rect x="292" y="192" width="124" height="36" class="button"/><text x="309" y="215">SUSPEND</text>
+  <rect x="456" y="192" width="136" height="36" class="button"/><text x="475" y="215">HOLD MASTER</text>
+  <rect x="604" y="192" width="104" height="36" class="button"/><text x="620" y="215">RELEASE</text>
+  <rect x="720" y="192" width="104" height="36" class="button"/><text x="738" y="215">REJOIN</text>
+  <text x="856" y="215" class="secondary">SOURCE AUDIBLE / ALIGNED</text>
+  <path d="M32 248H1248" class="rule"/>
+  <text x="32" y="280" class="heading">PRESSURE</text>
+  <text x="32" y="304" class="secondary">Cycle 3.0 qn</text>
+  <rect x="32" y="316" width="80" height="32" class="button"/><text x="42" y="337" class="small">AUDITION</text>
+  <text x="128" y="337" class="secondary small">LOCAL OFF</text>
+  <rect x="256" y="268" width="960" height="76" fill="#1d2023"/>
+  <path d="M616 268V344M976 268V344" stroke="#777f86" stroke-dasharray="4 4"/>
+  <rect x="266" y="286" width="24" height="28" class="event"/>
+  <rect x="536" y="286" width="24" height="28" class="event"/>
+  <rect x="626" y="286" width="24" height="28" class="event"/>
+  <rect x="896" y="286" width="24" height="28" class="event"/>
+  <rect x="986" y="286" width="24" height="28" class="event"/>
+  <text x="278" y="332" class="small secondary">1</text><text x="548" y="332" class="small secondary">2</text>
+  <path d="M526 268V344" stroke="#b2b7bb"/>
+  <text x="32" y="384" class="heading">IMPACT</text>
+  <text x="32" y="408" class="secondary">Cycle 5.0 qn</text>
+  <rect x="32" y="420" width="80" height="32" class="button"/><text x="42" y="441" class="small">AUDITION</text>
+  <text x="128" y="441" class="secondary small">LOCAL OFF</text>
+  <rect x="256" y="372" width="960" height="76" fill="#1d2023"/>
+  <path d="M856 372V448" stroke="#777f86" stroke-dasharray="4 4"/>
+  <rect x="386" y="388" width="24" height="28" class="event"/>
+  <rect x="606" y="382" width="100" height="42" fill="none" stroke="#eeeae2" stroke-width="2"/>
+  <rect x="614" y="388" width="20" height="28" class="event"/>
+  <path d="M652 390V416M673 390V416M689 390V416" stroke="#eeeae2" stroke-width="4"/>
+  <text x="614" y="441" class="small">1  2  3 4</text>
+  <rect x="986" y="388" width="24" height="28" class="event"/>
+  <path d="M526 372V448" stroke="#b2b7bb"/>
+  <text x="32" y="488" class="heading">DUST</text>
+  <text x="32" y="512" class="secondary">Cycle 3.5 qn</text>
+  <rect x="32" y="524" width="80" height="32" class="button"/><text x="42" y="545" class="small">AUDITION</text>
+  <text x="128" y="545" class="secondary small">LOCAL OFF</text>
+  <rect x="256" y="476" width="960" height="76" fill="#1d2023"/>
+  <path d="M676 476V552M1096 476V552" stroke="#777f86" stroke-dasharray="4 4"/>
+  <rect x="326" y="494" width="24" height="28" class="conditional"/>
+  <rect x="566" y="494" width="24" height="28" class="conditional"/>
+  <rect x="746" y="494" width="24" height="28" class="conditional"/>
+  <rect x="986" y="494" width="24" height="28" class="conditional"/>
+  <rect x="1166" y="494" width="24" height="28" class="conditional"/>
+  <text x="272" y="541" class="small secondary">EVERY SECOND CYCLE</text>
+  <path d="M526 476V552" stroke="#b2b7bb"/>
+  <path d="M32 576H1248" class="rule"/>
+  <text x="32" y="606" class="heading">IMPACT / EVENT 2</text>
+  <text x="32" y="630" class="secondary">One event selected</text>
+  <text x="320" y="606" class="secondary">REPEATS</text><text x="320" y="637">4</text>
+  <text x="456" y="606" class="secondary">INTERVAL</text><text x="456" y="637">1/8 qn</text>
+  <text x="624" y="606" class="secondary">ACCELERATE</text><text x="624" y="637">× 0.75</text>
+  <text x="816" y="606" class="secondary">REPEAT DECAY</text><text x="816" y="637">× 0.80</text>
+  <text x="1040" y="606" class="secondary">TIMING</text><text x="1040" y="637">−8.0 ms</text>
+  <text x="32" y="672" class="secondary">Select a mark to shape an event. Drag a span to repeat captured audio.</text>
+  <path d="M32 692H1248" class="rule"/>
+  <rect x="32" y="708" width="192" height="32" class="button"/><text x="44" y="729" class="small">RECORD GESTURE · OFF</text>
+  <text x="256" y="729" class="secondary small">SEED 1701 · EMPTY TIME IS INTENTIONAL</text>
+  <text x="920" y="729" class="secondary small">OUTPUT −12 dB · STATIC WIREFRAME</text>
+</svg>
