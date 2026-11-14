@@ -287,7 +287,7 @@ void pack(const std::filesystem::path& path) {
             << m.rms << ',' << m.delta << ',' << m.zeroFraction << ',' << gain
             << ',' << std::hex << m.hash << std::dec << '\n';
     key << id << ',' << name << '\n';
-    responses << id << ",,,,,,,,\n";
+    responses << id << ",,,,,,,\n";
     for (const auto& h : audio.hits)
       trace << name << ',' << h.sample << ',' << h.voice << ',' << h.event
             << ',' << h.cycle << ',' << h.repeat << ',' << h.gain << ','
