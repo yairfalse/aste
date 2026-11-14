@@ -1,5 +1,14 @@
 # Loop L-01 state
 
+Schema 4 retains the schema-3 tapes and adds required root `behavior="0"` or
+`behavior="1"`. New instances use 1: the shared motion phase wraps after the
+existing frequencies' common 1000-second period. Schemas 1–3 restore behavior
+0 and retain the original one-second clock. This choice travels with the
+prepared tape engine, survives save/reopen and changes neither parameter IDs
+nor tape data. Missing/invalid schema-4 behavior rejects the complete state.
+Older binaries reject schema 4; keep the original session when moving between
+binary revisions. No product release version is selected by this change.
+
 Loop uses a product-owned portable XML schema:
 
 ```xml

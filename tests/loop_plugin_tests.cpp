@@ -103,6 +103,10 @@ void testContractAndState() {
   juce::MemoryBlock repeated;
   restored.getStateInformation(repeated);
   require(state == repeated, "Loop control state bytes are deterministic");
+  auto currentXml = juce::AudioProcessor::getXmlFromBinary(
+      state.getData(), static_cast<int>(state.getSize()));
+  require(currentXml && currentXml->getStringAttribute("behavior") == "1",
+          "New Loop state selects continuous motion");
   constexpr char malformed[] = "bad-loop";
   restored.setStateInformation(malformed, sizeof(malformed));
   require(std::abs(value(restored, "feedback") - 73.25F) < 0.02F,
@@ -120,6 +124,20 @@ void testContractAndState() {
   require(std::abs(value(restored, "feedback") - 61.0F) < 0.02F &&
               std::abs(value(restored, "tape_speed") - 1.0F) < 0.02F,
           "Loop schema 1 migrates with the new tape speed default");
+  restored.getStateInformation(repeated);
+  auto legacyXml = juce::AudioProcessor::getXmlFromBinary(
+      repeated.getData(), static_cast<int>(repeated.getSize()));
+  require(legacyXml && legacyXml->getStringAttribute("behavior") == "0",
+          "Loop migration preserves the legacy clock on save");
+  Loop reopened;
+  reopened.setStateInformation(repeated.getData(),
+                               static_cast<int>(repeated.getSize()));
+  reopened.prepareToPlay(48000, 127);
+  reopened.getStateInformation(repeated);
+  legacyXml = juce::AudioProcessor::getXmlFromBinary(
+      repeated.getData(), static_cast<int>(repeated.getSize()));
+  require(legacyXml && legacyXml->getStringAttribute("behavior") == "0",
+          "Legacy Loop clock survives reopen and engine preparation");
   require(restored.factoryPresetCount() == 5, "Loop has five starting points");
 }
 

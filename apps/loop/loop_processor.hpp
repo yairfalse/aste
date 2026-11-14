@@ -28,6 +28,7 @@ struct Parameters {
   float mix{1.0F};
   float outputDb{-3.0F};
   bool bypass{};
+  bool legacyBehavior{};  // Saved with the tape engine, not automated.
 };
 
 struct MeterSnapshot {

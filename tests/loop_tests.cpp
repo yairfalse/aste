@@ -233,7 +233,39 @@ void testConcurrentTapeSnapshots() {
           "Snapshot publication and copy-on-write never allocate on audio");
 }
 
+void testCompleteMotionCycles() {
+  for (double rate :
+       {8000., 44100., 48000., 88200., 96000., 176400., 192000.}) {
+    aste::loop::Processor processor;
+    processor.prepare(rate, 1);
+    aste::loop::TapeState tape;
+    tape.sampleRate = rate;
+    tape.generations[0] = 1;
+    tape.audio[0].resize(static_cast<std::size_t>(rate) * 2, .001F);
+    processor.restoreTape(tape);
+    aste::loop::Parameters p;
+    p.loopLengthSeconds = 1;
+    p.wow = 1;
+    p.flutter = p.drift = p.amplifier = p.degradation = p.splice = 0;
+    std::vector<float> audio(static_cast<std::size_t>(rate / 2));
+    const int observations = rate == 8000 ? 2004 : 8;
+    for (int observation = 1; observation <= observations; ++observation) {
+      processor.process(audio.data(), nullptr, audio.size(), p);
+      const double n = static_cast<double>(observation * audio.size());
+      const double w = 2 * std::acos(-1.) * .47 / rate;
+      const double sum =
+          std::sin(n * w / 2) * std::sin((n + 1) * w / 2) / std::sin(w / 2);
+      const double expected = std::fmod(n + .012 * sum, rate) / rate;
+      const double delta = std::abs(processor.meters().position - expected);
+      require(std::min(delta, 1 - delta) * rate < .02,
+              "Wow follows a complete .47 Hz cycle, including the "
+              "common-period wrap");
+    }
+  }
+}
+
 int main() {
+  testCompleteMotionCycles();
   testConcurrentTapeSnapshots();
   testCapturePlaybackAndReset();
   testGenerationalReloop();
