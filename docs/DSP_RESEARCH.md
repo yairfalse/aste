@@ -1,5 +1,9 @@
 # DSP research policy
 
+The six-product musical-control revision, old-engine comparisons and remaining
+listening questions are in [the quality report](research/quality/README.md).
+It changes selected behavior on an isolated branch, not the release policy.
+
 Production algorithms must enter through a falsifiable question, a deterministic
 reference or comparison, machine-readable measurements, and listening where the
 decision is perceptual. A successful build is not evidence of sonic quality.

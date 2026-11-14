@@ -3,3 +3,8 @@
 /dist/
 /.DS_Store
 *.wav
+/quality-listening.zip
+/quality-vst3.zip
+/.sykli/
+/.toimija/*
+!/.toimija/repo.yaml
