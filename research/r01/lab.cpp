@@ -571,7 +571,7 @@ void alias(const std::filesystem::path& path) {
 void benchmark(const std::filesystem::path& path) {
   auto out = file(path);
   out << "commit,compiler,architecture,rate,block,trial,cpu_percent,max_block_"
-         "us,heap_bytes,state_bytes,guard_interventions,checksum\n";
+         "us,heap_bytes,state_bytes,guard_interventions,output_energy_probe\n";
   for (auto architecture : {Architecture::Modal, Architecture::Waveguide})
     for (double fs : {48000., 96000.})
       for (auto block : {128U, 511U})
@@ -591,20 +591,29 @@ void benchmark(const std::filesystem::path& path) {
                 block, static_cast<std::size_t>(fs * 5) - at);
             c.damping = (at / block) % 2 ? .1 : .7;
             Chord chord;
-            chord.root = (at / block) % 2 ? 48 : 53;
+            chord.root = (at / block / 16) % 2 ? 48 : 53;
             const std::array event{Event{0, EventType::Strike, chord}};
+            // Keep both banks sounding long enough for feedback to return;
+            // clearing every block can benchmark a silent short-delay prefix.
+            const auto events =
+                std::span(event).first((at / block) % 16 == 0 ? 1 : 0);
             const auto begin = std::chrono::steady_clock::now();
-            e.process(input.data(), left.data(), right.data(), count, c, event);
+            e.process(input.data(), left.data(), right.data(), count, c,
+                      events);
             maximum =
                 std::max(maximum, std::chrono::duration<double, std::micro>(
                                       std::chrono::steady_clock::now() - begin)
                                       .count());
-            checksum += left[0] + right[0];
+            checksum += left[0] * static_cast<double>(left[0]) +
+                        right[0] * static_cast<double>(right[0]);
             at += count;
           }
           const double elapsed = std::chrono::duration<double>(
                                      std::chrono::steady_clock::now() - start)
                                      .count();
+          if (!(checksum > 0) || !std::isfinite(checksum))
+            throw std::runtime_error(
+                "benchmark did not exercise sounding state");
           out << R01_COMMIT << ',' << R01_COMPILER << ','
               << (architecture == Architecture::Modal ? "modal" : "waveguide")
               << ',' << fs << ',' << block << ',' << trial << ','
