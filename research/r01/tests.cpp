@@ -302,6 +302,52 @@ void midiReplacement() {
   check(std::abs(e.snapshot().energy - energy) < 1e-12,
         "same-sample note replacement must not release the newly held chord");
 }
+void validationAndWaveguide() {
+  Engine e;
+  Controls c;
+  check(!e.prepare(8000, Architecture::Modal, Memory::Shared, c),
+        "unsupported sample rate rejected");
+  check(!e.prepare(48000, Architecture::Waveguide, Memory::Partial, c),
+        "unsupported waveguide partial policy rejected");
+  c.couplingHz = 1;
+  check(!e.prepare(48000, Architecture::Waveguide, Memory::Shared, c),
+        "unsupported waveguide coupling rejected");
+  c = {};
+  check(e.prepare(48000, Architecture::Modal, Memory::Shared, c),
+        "validation setup");
+  std::array<float, 128> output{};
+  auto invalid = c;
+  invalid.t60 = std::numeric_limits<double>::quiet_NaN();
+  e.process(nullptr, output.data(), nullptr, output.size(), invalid);
+  const std::array unsorted{Event{7}, Event{3}};
+  e.process(nullptr, output.data(), nullptr, output.size(), c, unsorted);
+  const std::array outside{Event{128}};
+  e.process(nullptr, output.data(), nullptr, output.size(), c, outside);
+  Chord bad;
+  bad.count = 5;
+  const std::array chord{Event{0, EventType::Strike, bad}};
+  e.process(nullptr, output.data(), nullptr, output.size(), c, chord);
+  check(
+      e.snapshot().rejected == 4 && e.snapshot().energy == 0,
+      "invalid controls, batches and chords rejected without injecting energy");
+  c.t60 = .1;
+  check(e.prepare(48000, Architecture::Waveguide, Memory::Reset, c),
+        "waveguide decay setup");
+  float impulse = .2F, sample{};
+  e.process(&impulse, &sample, nullptr, 1, c);
+  std::vector<float> tail(48000);
+  e.process(nullptr, tail.data(), nullptr, tail.size(), c);
+  check(e.snapshot().energy < 1e-15 && e.snapshot().safetyInterventions == 0,
+        "unforced damped waveguide decays without safety intervention");
+  c.persist = true;
+  e.process(&impulse, &sample, nullptr, 1, c);
+  e.process(nullptr, tail.data(), nullptr, 4000, c);
+  check(e.snapshot().energy > 0, "waveguide history populated before clear");
+  const std::array reset{Event{0, EventType::Strike}};
+  e.process(nullptr, tail.data(), nullptr, tail.size(), c, reset);
+  check(std::all_of(tail.begin(), tail.end(), [](float x) { return x == 0; }),
+        "reset and restrike never expose stale delay history");
+}
 }  // namespace
 int main() {
   analytic();
@@ -310,6 +356,7 @@ int main() {
   stability();
   midiAndRealtime();
   midiReplacement();
+  validationAndWaveguide();
   std::cout << "r01 contracts: " << failures << " failures\n";
   return failures ? 1 : 0;
 }

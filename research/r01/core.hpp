@@ -77,7 +77,8 @@ class Engine {
   struct String {
     std::vector<float> data;
     std::size_t write{}, available{};
-    double delay{2}, gain{}, lowpass{}, allpass{}, coefficient{}, energy{};
+    double delay{2}, gain{}, lowpass{}, allpass{}, coefficient{}, energy{},
+        energyCorrection{};
     void clear() noexcept;
     double read(double age) const noexcept;
   };

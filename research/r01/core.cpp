@@ -74,7 +74,7 @@ float Exciter::next() noexcept {
 
 void Engine::String::clear() noexcept {
   write = available = 0;
-  lowpass = allpass = energy = 0;
+  lowpass = allpass = energy = energyCorrection = 0;
 }
 double Engine::String::read(double age) const noexcept {
   const auto whole = static_cast<std::size_t>(age);
@@ -346,8 +346,16 @@ double Engine::waveguide(Bank& b, double input, double& right) noexcept {
     if (std::abs(value) < 1e-30) value = 0;
     const auto old = s.available == s.data.size() ? s.data[s.write] : 0;
     const auto stored = static_cast<float>(value);
-    s.energy = std::max(0.0, s.energy + stored * static_cast<double>(stored) -
-                                 old * static_cast<double>(old));
+    // Compensate each term separately: computing new^2 - old^2 first would
+    // already lose small energy contributions before compensation can help.
+    for (double term : {-old * static_cast<double>(old),
+                        stored * static_cast<double>(stored)}) {
+      const double total = s.energy + term;
+      s.energyCorrection += std::abs(s.energy) >= std::abs(term)
+                                ? (s.energy - total) + term
+                                : (term - total) + s.energy;
+      s.energy = total;
+    }
     s.data[s.write] = stored;
     s.write = (s.write + 1) % s.data.size();
     s.available = std::min(s.available + 1, s.data.size());
@@ -425,7 +433,11 @@ Snapshot Engine::snapshot() const noexcept {
         const double energy =
             architecture_ == Architecture::Modal
                 ? m.x * m.x + m.y * m.y
-                : (i % kPartials == 0 ? b.strings[i / kPartials].energy : 0);
+                : (i % kPartials == 0
+                       ? std::max(0.0,
+                                  b.strings[i / kPartials].energy +
+                                      b.strings[i / kPartials].energyCorrection)
+                       : 0);
         result.bankEnergies[bank][i] = energy;
         result.bankFrequencies[bank][i] =
             architecture_ == Architecture::Modal || i % kPartials == 0

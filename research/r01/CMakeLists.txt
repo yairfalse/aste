@@ -20,3 +20,13 @@ if(APPLE)
 endif()
 enable_testing()
 add_test(NAME r01_contracts COMMAND r01_tests)
+add_executable(r01_lab lab.cpp ../../apps/sequence/sequence_processor.cpp ../../apps/field/field_processor.cpp)
+target_include_directories(r01_lab PRIVATE ../../apps/sequence ../../apps/field ../../libs/parameters)
+target_link_libraries(r01_lab PRIVATE r01_core)
+execute_process(COMMAND git rev-parse HEAD WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+                OUTPUT_VARIABLE R01_COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE)
+target_compile_definitions(r01_lab PRIVATE R01_COMMIT="${R01_COMMIT}"
+                           R01_COMPILER="${CMAKE_CXX_COMPILER_ID}-${CMAKE_CXX_COMPILER_VERSION}")
+add_test(NAME r01_render_reproducibility COMMAND r01_lab --check)
+add_test(NAME r01_long_stress COMMAND r01_lab --stress ${CMAKE_CURRENT_BINARY_DIR}/stress.csv)
+add_executable(r01_mutations mutations.cpp)
