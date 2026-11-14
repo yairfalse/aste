@@ -11,7 +11,7 @@ decimal parser for text entry while retaining independent parameter layouts.
 |---|---|---|---:|---|---|
 | `drive` | Drive | -12..24 dB | 0 | linear dB | cascaded 3+3 ms |
 | `crush` | Crush | 0..100 % | 65 | linear | 10 ms |
-| `attack` | Attack | 0.02..30 ms | 1 | logarithmic | 5 ms in log-time space |
+| `attack` | Attack | 0.02..30 ms | 1 | logarithmic | 5 ms coefficient space; legacy: log-time |
 | `release` | Release | 20..1200 ms | 180 | logarithmic | coefficient per block |
 | `density` | Density | 0..100 % | 50 | linear | 10 ms |
 | `blend` | Blend | 0..100 % | 90 | linear | cascaded 3+3 ms |
@@ -37,10 +37,13 @@ At the default Density/Crush settings the effective threshold is -27.8 dBFS.
 
 ## Factory starting points
 
-The compact `PRESETS` action menu applies five product-local parameter snapshots
-through normal host-notifying parameter updates. Presets add no state field or
-binary format: the resulting stable parameter values serialize through schema 1
-like any manual setting. Protection is on and bypass is off in every snapshot.
+The compact `PRESETS` action menu applies six product-local parameter snapshots
+through normal host-notifying parameter updates. The original five select legacy
+behavior; appended `Grip` selects the new direct-Drive behavior and is the new
+instance starting point. The table above remains the host reset defaults, not
+the initial preset. Schema 2 stores behavior separately from stable parameter
+values; see [STATE_FORMAT.md](STATE_FORMAT.md). Protection is on and bypass is
+off in every snapshot.
 
 | Name | Drive | Crush | Attack | Release | Density | Blend | Output | Stereo | HPF |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -49,6 +52,7 @@ like any manual setting. Protection is on and bypass is off in every snapshot.
 | Proximity | 6 dB | 75% | 0.5 ms | 140 ms | 70% | 80% | -5 dB | 85% | 100 Hz |
 | Parallel Crush | 12 dB | 95% | 0.05 ms | 80 ms | 90% | 50% | -8 dB | 100% | 140 Hz |
 | Transient Hold | 4 dB | 85% | 6 ms | 500 ms | 60% | 70% | -4 dB | 65% | 180 Hz |
+| Grip | 6 dB | 85% | 6 ms | 80 ms | 65% | 100% | -9 dB | 100% | 90 Hz |
 
 These are internal-beta starting points, not yet listening-approved factory
 content. Their names and values may change before the first external release;

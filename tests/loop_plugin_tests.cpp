@@ -1,5 +1,6 @@
 #include "loop_plugin.hpp"
 #include "editor_artifact.hpp"
+#include "behavior_state_checks.hpp"
 
 #include <array>
 #include <atomic>
@@ -394,6 +395,7 @@ void testTapeRecallAndMidiRelease() {
 
 int main(int argc, char** argv) {
   juce::ScopedJuceInitialiser_GUI juce;
+  aste::tests::behaviorStateChecks<Loop>(require, 3, 4);
   testContractAndState();
   testProcessingMidiAndRealtime();
   testRecallBeforePreparePreservesSamples();

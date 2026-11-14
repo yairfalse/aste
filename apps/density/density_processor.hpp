@@ -153,6 +153,8 @@ class Processor {
   Smoother drive_{};
   Smoother driveStage2_{};
   Smoother attackLog_{};
+  Smoother attackCoefficient_{};
+  bool coefficientAttack_{};
   Smoother attackLogStage2_{};
   Smoother crush_{};
   Smoother density_{};

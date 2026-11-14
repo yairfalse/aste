@@ -849,7 +849,10 @@ int productionGolden(const std::filesystem::path& directory,
   manifest << kGoldenHeader << '\n';
   manifest << std::fixed << std::setprecision(9);
 
-  const auto parameters = productionParameters();
+  auto parameters = productionParameters();
+  // Historical goldens describe recalled sessions, not the new Drive law.
+  // Current behavior remains covered by production consistency and quality lab.
+  parameters.legacyBehavior = true;
 
   std::vector<GoldenMetrics> results;
   bool valid = true;
