@@ -6,6 +6,9 @@
       "run": "test \"$(git -C '/Users/yair/projects/aste/build-n01/worktree/build-plugin/_deps/juce-src' rev-parse HEAD)\" = 7c9d3783b127263d72bb65fe0a7e2dc8a02a7ac2 && test -z \"$(git -C '/Users/yair/projects/aste/build-n01/worktree/build-plugin/_deps/juce-src' status --porcelain)\" && cmake -S . -B build-plugin -DCMAKE_BUILD_TYPE=Release -DASTE_BUILD_VST3=ON -DASTE_BUILD_AU=OFF -DFETCHCONTENT_SOURCE_DIR_JUCE='/Users/yair/projects/aste/build-n01/worktree/build-plugin/_deps/juce-src' && cmake --build build-plugin --parallel 3 && ctest --test-dir build-plugin -E '^dependency_security$' --output-on-failure",
       "inputs": [
         ".github/workflows/ci.yml",
+        "CMakeLists.txt",
+        "LICENSE",
+        "README.md",
         "apps/density/density_plugin.cpp",
         "apps/density/density_plugin.hpp",
         "apps/density/density_processor.cpp",
@@ -186,9 +189,16 @@
         "docs/products/sequence/PARAMETERS.md",
         "docs/products/sequence/SPECIFICATION.md",
         "docs/products/sequence/STATE_FORMAT.md",
+        "docs/research/quality/LISTENING.md",
         "docs/research/quality/README.md",
+        "docs/research/quality/evidence/artifacts.json",
         "docs/research/quality/evidence/callback-cost.csv",
+        "docs/research/quality/evidence/density-automation.csv",
         "docs/research/quality/evidence/density-spectral.csv",
+        "docs/research/quality/evidence/full-ctest.txt",
+        "docs/research/quality/evidence/listening-measurements.csv",
+        "docs/research/quality/evidence/negative-control.txt",
+        "docs/research/quality/evidence/regressions-before.txt",
         "docs/research/quality/screenshots/density-minimum.png",
         "docs/research/quality/screenshots/field-minimum.png",
         "docs/research/quality/screenshots/harmonic-minimum.png",
@@ -238,10 +248,7 @@
         "tools/install_sequence_macos.sh",
         "tools/macos_cleanup.rs",
         "tools/macos_productbuild.rs",
-        "tools/package_density.py",
-        "CMakeLists.txt",
-        "README.md",
-        "LICENSE"
+        "tools/package_density.py"
       ]
     },
     {

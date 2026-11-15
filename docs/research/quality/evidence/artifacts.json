@@ -1,0 +1,35 @@
+{
+  "source_commit": "6ef06126e7543a53c9a87eb5907f9b808aaf06be",
+  "reference_commit": "8a603dcbc59b52a58637fe6305676efc5a406f80",
+  "artifacts": [
+    {
+      "file": "quality-quick-listen.zip",
+      "bytes": 18995406,
+      "sha256": "6589e60a3dcf9026d7f2ce38a870ece2477f54fbfb7e4c9e49835fd8d0e1f1f2",
+      "contents": "12 matched WAVs: six pairs, plus comparison guide"
+    },
+    {
+      "file": "quality-listening.zip",
+      "bytes": 509117881,
+      "sha256": "86b0712428eccaef0162804c0796aab6ed2d9c8642f667bfe557272bd98d0092",
+      "contents": "356 WAVs, 178 measurement rows, methods and listening guide"
+    },
+    {
+      "file": "quality-vst3.zip",
+      "bytes": 18689844,
+      "sha256": "2370fdbe2f33e83c7959287d7ad75211479abb8923cafddd5221c30a622882e7",
+      "contents": "Six native arm64 test bundles, build metadata, compatibility notes"
+    }
+  ],
+  "checks": {
+    "zip_integrity": "All three archives passed unzip -tq",
+    "wav_repeatability": "Two exports had byte-identical WAVs and measurements",
+    "vst3_architecture": "Mach-O 64-bit bundle arm64, all six",
+    "vst3_local_signature": "codesign --verify --deep --strict passed, all six",
+    "developer_id_or_notarization": "Not performed",
+    "human_listening": "Not performed",
+    "cubase": "Not performed",
+    "installation": "Not performed",
+    "release": "Not approved; dependency-security review expired 2026-11-07"
+  }
+}

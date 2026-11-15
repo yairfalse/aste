@@ -51,6 +51,12 @@ Old binaries reject the new schemas. Retain original project copies when
 switching binaries. Backward recall has automated evidence; this is not a claim
 of backward opening of newly saved projects, nor actual Cubase validation.
 The legacy switches are not exposed as additional performance knobs.
+To try current behavior, use new instances. Grip, Space and Still Field also
+select it in their respective existing instances. Sequence and Loop presets
+inherit the recalled behavior: there is no in-place upgrade action in this
+revision. In particular, an old Loop tape state keeps its old motion clock;
+loading it into a new instance intentionally restores legacy behavior too.
+Opt-in migration of existing recorded tapes remains a workflow limitation.
 
 ## Correctness evidence and negative controls
 
@@ -80,6 +86,15 @@ The legacy switches are not exposed as additional performance knobs.
 
 These finite tests do not establish equality for every old session, transport
 arrangement, platform or floating-point implementation.
+
+The declared `research/quality/sykli.json` gate runs the 67 functional checks,
+all six core suites with AddressSanitizer/UndefinedBehaviorSanitizer, and the
+144-reference comparison with both sanitizers. Its receipt is deliberately
+functional-only, not a security/release pass. The initial run's functional
+checks passed but its receipt was invalidated when this report changed during
+execution. A final run must be made with inputs frozen and verified against the
+exact committed tree; see `build-evidence/final-receipt.json` and
+`build-evidence/final-verify.json` in the working copy for the final outcome.
 
 ### Density automation repair, not a relaxed test
 
@@ -146,6 +161,21 @@ silent. Keyboard/screen-reader behavior has component-level checks, not a new
 native assistive-technology or Cubase accessibility signoff.
 
 ## Listening decision and next priorities
+
+Local exports are `quality-quick-listen.zip` (12 matched WAVs, about 19 MB),
+`quality-listening.zip` (356 WAVs, about 509 MB), and `quality-vst3.zip` (six
+arm64 test bundles, about 19 MB). [Artifact hashes and checks](evidence/artifacts.json)
+record their source commit and SHA-256 values. All archives passed integrity
+checks; all six bundles passed local strict signature verification and arm64
+inspection. Local ad-hoc signatures are not Developer ID signing/notarization.
+
+The [short listening guide](LISTENING.md) names the first comparisons to try.
+Two complete exports from source commit `6ef0612` produced **356 WAVs each**
+and byte-identical audio and measurement files. The 178 measurement rows span
+30 product/source groups. Every row had measurable gated loudness; the largest
+within-group matched difference was below 0.000001 LU. That is repeatability of
+this algorithm, not external meter certification or a human loudness judgment.
+WAV inspection confirmed stereo Float32, 48 kHz and 384000 frames (8 seconds).
 
 Use matched `audio/` files, not `raw/`, for preference comparisons. Listen to
 `before_start` versus `after_start` first, then `after_start` versus
