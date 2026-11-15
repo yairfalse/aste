@@ -417,7 +417,9 @@ void testEditorContract(const char* directory) {
                 processor.state().getParameter("output")->convertTo0to1(-5),
         "Pull applies equal and opposite host parameter edits");
   }
-  processor.loadFactoryPreset(6);
+  processor.loadFactoryPreset(7);
+  juce::Thread::sleep(260);
+  juce::Timer::callPendingTimersSynchronously();
   for (const char* title : std::array<const char*, 12>{
            "HARMONIC", "INPUT", "OUTPUT", "FOUNDATION", "BODY", "PRESENCE",
            "AIR", "FOUNDATION FREQUENCY", "BODY FREQUENCY",

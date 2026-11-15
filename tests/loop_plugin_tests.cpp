@@ -407,6 +407,9 @@ void testTapeRecallAndMidiRelease() {
     source.getStateInformation(concurrent);
     source.setStateInformation(concurrent.getData(),
                                static_cast<int>(concurrent.getSize()));
+    source.useCurrentResponse();
+    require(!source.usesLegacyBehavior(),
+            "Concurrent engine adoption keeps the explicit response choice");
   }
   finished.store(true);
   callback.join();

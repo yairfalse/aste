@@ -1,0 +1,13 @@
+Test project /Users/yair/projects/aste/build-quality/worktree/build-plugin
+    Start 52: density_plugin_tests
+1/1 Test #52: density_plugin_tests .............***Failed    0.77 sec
+FAIL: Recalled response offers an explicit upgrade action
+
+
+0% tests passed, 1 tests failed out of 1
+
+Total Test time (real) =   0.77 sec
+
+The following tests FAILED:
+	 52 - density_plugin_tests (Failed)
+Errors while running CTest

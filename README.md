@@ -14,11 +14,11 @@ real-time testing. It is not a hardware-cloning exercise and does not use
 > **Project status:** Density D-01, Harmonic H-01, Sequence S-01, Loop L-01,
 > Impulse I-01, and Field F-01 are complete working internal VST3 prototypes.
 > All six have
-> product-owned DSP, state, tests, industrial UIs, and universal macOS bundles.
+> product-owned DSP, state, tests and industrial UIs.
 > This branch contains a compatibility-preserving musical-control revision;
-> see [changes and measured limitations](docs/research/quality/README.md).
-> The current local plugin run passes 67/68 checks: the dependency-security
-> review expired on 2026-11-07 and has not been waived. Current artifacts are
+> see the [playability fixes and remaining musical questions](docs/research/playability/README.md).
+> The complete local plugin run passes 68/68 checks. The dependency-security
+> review was renewed from fresh public evidence on 2026-11-15. Current artifacts are
 > native arm64 test builds, not a newly validated universal release. None
 > is a supported release: Developer ID
 > signing, notarization, final company identity, and DAW compatibility remain open.

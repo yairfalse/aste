@@ -1,0 +1,20 @@
+Test project /Users/yair/projects/aste/build-quality/worktree/build-plugin
+    Start 55: sequence_plugin_tests
+1/2 Test #55: sequence_plugin_tests ............***Failed    1.72 sec
+FAIL: Step shortcuts edit the actual host parameter
+FAIL: Step shortcuts edit the actual host parameter
+FAIL: Step shortcuts edit the actual host parameter
+
+    Start 59: impulse_plugin_tests
+2/2 Test #59: impulse_plugin_tests .............***Failed    2.07 sec
+FAIL: Click/sub focus shows programmed objects without eight empty rows
+
+
+0% tests passed, 2 tests failed out of 2
+
+Total Test time (real) =   3.80 sec
+
+The following tests FAILED:
+	 55 - sequence_plugin_tests (Failed)
+	 59 - impulse_plugin_tests (Failed)
+Errors while running CTest

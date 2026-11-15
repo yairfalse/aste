@@ -1,5 +1,8 @@
 # Aste musical-power audit: second pass
 
+Historical audit findings are retained below. The [playability follow-up](../playability/README.md)
+records the subsequent fixes, current evidence and remaining musical acceptance.
+
 2026-11-15. Audited product source: `73760000a12b5a22638548d04f7d50ecaf205eb2`,
 including the click/sub follow-up. This pass changes **no production code,
 presets, parameters, state formats or installed plugins**. No PR or release.

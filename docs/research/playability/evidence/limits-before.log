@@ -1,0 +1,17 @@
+Test project /Users/yair/projects/aste/build-quality/worktree/build-plugin
+    Start 54: harmonic_plugin_tests
+1/1 Test #54: harmonic_plugin_tests ............***Failed    0.36 sec
+{"host_eq_band":"foundation_gain","measured_gain_db":3.00176}
+{"host_eq_band":"body_gain","measured_gain_db":6}
+{"host_eq_band":"presence_gain","measured_gain_db":6}
+{"host_eq_band":"air_gain","measured_gain_db":3}
+FAIL: PUSH visibly disables when either paired limit is reached
+
+
+0% tests passed, 1 tests failed out of 1
+
+Total Test time (real) =   0.36 sec
+
+The following tests FAILED:
+	 54 - harmonic_plugin_tests (Failed)
+Errors while running CTest

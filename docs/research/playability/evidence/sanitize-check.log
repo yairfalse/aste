@@ -1,0 +1,17 @@
+Test project /Users/yair/projects/aste/build-quality/worktree/build-sanitize
+    Start 4: density_tests
+1/6 Test #4: density_tests ....................   Passed    1.94 sec
+    Start 5: harmonic_tests
+2/6 Test #5: harmonic_tests ...................   Passed   57.67 sec
+    Start 6: sequence_tests
+3/6 Test #6: sequence_tests ...................   Passed    9.65 sec
+    Start 7: loop_tests
+4/6 Test #7: loop_tests .......................   Passed   10.26 sec
+    Start 8: impulse_tests
+5/6 Test #8: impulse_tests ....................   Passed   18.60 sec
+    Start 9: field_tests
+6/6 Test #9: field_tests ......................   Passed   10.37 sec
+
+100% tests passed out of 6
+
+Total Test time (real) = 108.51 sec

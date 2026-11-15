@@ -1,0 +1,30 @@
+Test project /Users/yair/projects/aste/build-quality/worktree/build-plugin
+    Start 52: density_plugin_tests
+1/3 Test #52: density_plugin_tests .............***Failed    0.72 sec
+FAIL: Density exposes the reviewed factory preset count
+FAIL: Pulse starts with dry attack retained; old reset defaults remain unchanged
+FAIL: The previous Grip snapshot is not reinterpreted
+
+    Start 54: harmonic_plugin_tests
+2/3 Test #54: harmonic_plugin_tests ............***Failed    0.43 sec
+FAIL: Harmonic appends Color / open without replacing seven snapshots
+{"host_eq_band":"foundation_gain","measured_gain_db":3.00176}
+{"host_eq_band":"body_gain","measured_gain_db":6}
+{"host_eq_band":"presence_gain","measured_gain_db":6}
+{"host_eq_band":"air_gain","measured_gain_db":3}
+
+    Start 57: loop_plugin_tests
+3/3 Test #57: loop_plugin_tests ................***Failed    0.54 sec
+FAIL: Loop appends First take without replacing five snapshots
+FAIL: A fresh Loop records full input on its first take
+
+
+0% tests passed, 3 tests failed out of 3
+
+Total Test time (real) =   1.69 sec
+
+The following tests FAILED:
+	 52 - density_plugin_tests (Failed)
+	 54 - harmonic_plugin_tests (Failed)
+	 57 - loop_plugin_tests (Failed)
+Errors while running CTest
