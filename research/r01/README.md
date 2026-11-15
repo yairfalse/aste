@@ -42,3 +42,9 @@ and generated audio are complete; human listening is not claimed.
 No dependency or plugin integration is needed. The lab links unmodified Sequence
 and Field processors only for the four-voice chord reference and same-noise
 reference. The R-01 core itself does not depend on either product.
+
+The original research branch is now integrated with the six-instrument
+musical-control revision. Historical measurements retain their recorded source
+commit; regenerating the comparison pack uses the checked-out Sequence and Field
+implementations. Integration is not musical acceptance or authorization for a
+finished R-01 plugin.

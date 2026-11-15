@@ -1,8 +1,9 @@
 # DSP research policy
 
 The six-product musical-control revision, old-engine comparisons and remaining
-listening questions are in [the quality report](research/quality/README.md).
-It changes selected behavior on an isolated branch, not the release policy.
+listening questions are in [the quality report](research/quality/README.md) and
+the [playability follow-up](research/playability/README.md). The completed work
+is integrated with the offline laboratories; this does not change release policy.
 
 Non-Machine N-01 has an [isolated temporal instrument study](research/n01/README.md):
 offline DSP, captured-fragment time semantics, comparison WAVs and interface

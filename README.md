@@ -15,7 +15,7 @@ real-time testing. It is not a hardware-cloning exercise and does not use
 > Impulse I-01, and Field F-01 are complete working internal VST3 prototypes.
 > All six have
 > product-owned DSP, state, tests and industrial UIs.
-> This branch contains a compatibility-preserving musical-control revision;
+> The repository includes a compatibility-preserving musical-control revision;
 > see the [playability fixes and remaining musical questions](docs/research/playability/README.md).
 > The complete local plugin run passes 68/68 checks. The dependency-security
 > review was renewed from fresh public evidence on 2026-11-15. Current artifacts are
@@ -24,6 +24,13 @@ real-time testing. It is not a hardware-cloning exercise and does not use
 > signing, notarization, final company identity, and DAW compatibility remain open.
 
 ## The instrument family
+
+The [Non-Machine temporal study](docs/research/n01/README.md) and
+[Resonator harmonic-memory laboratory](research/r01/README.md) are also included
+as offline research, not additional released plugins. Their original reports
+retain their measured source revisions and open musical-evaluation questions.
+The [combined verification contract](research/integration/README.md) checks the
+six-instrument revision and both laboratories together.
 
 | Product | Purpose | Status |
 |---|---|---|

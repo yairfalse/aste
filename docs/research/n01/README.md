@@ -8,9 +8,11 @@ captured fragments and explicit phrase-time ownership enable controllable
 rhythmic composition that Impulse and Loop cannot already provide conveniently.
 Silence is programmed structure, not a missing event to fill with randomness.
 
-Baseline: `8a603dcbc59b52a58637fe6305676efc5a406f80`. Existing product sources,
-contracts and tests remain unchanged. Work is isolated on
-`research/n01-temporal-lab`; the main checkout is untouched.
+Original research baseline: `8a603dcbc59b52a58637fe6305676efc5a406f80`. The
+experiment was developed on `research/n01-temporal-lab` without modifying
+existing products. It is now integrated alongside the subsequent musical-control
+revision. Historical measurements still refer to their recorded source commit;
+new comparison renders link the checked-out Impulse and Loop implementations.
 
 ## Results and boundaries
 
