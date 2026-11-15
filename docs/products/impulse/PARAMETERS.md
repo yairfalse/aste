@@ -1,6 +1,6 @@
 # Impulse I-01 parameter contract
 
-Schema 4 retains 368 stable parameters: eight global controls, thirteen sound
+Schema 5 retains 368 stable parameters: eight global controls, thirteen sound
 and cycle controls for each of eight tracks, and 32 pattern cells for each
 track. The original 60 IDs remain unchanged.
 

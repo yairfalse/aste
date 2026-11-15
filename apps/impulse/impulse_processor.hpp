@@ -37,6 +37,7 @@ struct Parameters {
   bool sequenceEnabled{true};
   bool bypass{};
   bool legacyBehavior{};
+  bool sampleClock{true};  // Session-owned; older states retain their clock.
   std::array<TrackParameters, kTrackCount> tracks{{
       {.level = 0.9F,
        .pitchHz = 48.0F,
@@ -194,6 +195,10 @@ class Processor {
   std::array<std::uint32_t, kTrackCount> midiOrdinals_{};
   double expectedPpq_{};
   bool transportKnown_{};
+  bool timelineKnown_{};
+  double timelinePpq_{};
+  double timelineBpm_{};
+  std::size_t timelineFrames_{};
   float smoothedOutputGain_{1.0F};
   float outputSmoothing_{1.0F};
   MeterSnapshot meters_{};

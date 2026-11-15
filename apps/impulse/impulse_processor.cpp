@@ -42,6 +42,8 @@ void Processor::reset() noexcept {
   midiOrdinals_.fill(0);
   expectedPpq_ = 0.0;
   transportKnown_ = false;
+  timelineKnown_ = false;
+  timelineFrames_ = 0;
   smoothedOutputGain_ = 1.0F;
   meters_ = {};
 }
@@ -156,9 +158,34 @@ void Processor::process(float* left, float* right, std::size_t frames,
       std::isfinite(transport.bpm) ? transport.bpm : 120.0, 20.0, 400.0);
   const double ppqIncrement = bpm / (60.0 * sampleRate_);
   const double stepDuration = divisionPpq(parameters.division);
-  const bool discontinuity =
+  bool discontinuity =
       !transportKnown_ || std::abs(transport.ppq - expectedPpq_) >
                               std::max(0.02, ppqIncrement * frames * 2.0);
+  double anchor = transport.ppq;
+  std::size_t clockOffset{};
+  // Bound conversion to integer ticks, including malicious host positions.
+  const bool positionValid =
+      std::isfinite(transport.ppq) && std::abs(transport.ppq) < 1.0e12;
+  if (parameters.sampleClock && !parameters.legacyBehavior &&
+      transport.playing && positionValid) {
+    const double expected =
+        timelinePpq_ + timelineFrames_ * timelineBpm_ / (60.0 * sampleRate_);
+    discontinuity =
+        !timelineKnown_ || timelineBpm_ != bpm ||
+        std::abs(transport.ppq - expected) > .5 * ppqIncrement ||
+        timelineFrames_ > std::numeric_limits<std::size_t>::max() - frames;
+    if (discontinuity) {
+      timelinePpq_ = transport.ppq;
+      timelineBpm_ = bpm;
+      timelineFrames_ = 0;
+    }
+    timelineKnown_ = true;
+    anchor = timelinePpq_;
+    clockOffset = timelineFrames_;
+    timelineFrames_ += frames;
+  } else {
+    timelineKnown_ = false;
+  }
   if (discontinuity) lastTick_.fill(-1);
   if (discontinuity && transport.playing) midiOrdinals_.fill(0);
   transportKnown_ = transport.playing;
@@ -180,8 +207,8 @@ void Processor::process(float* left, float* right, std::size_t frames,
         measured.triggered[track] = true;
       }
     }
-    const double ppq = transport.ppq + ppqIncrement * sampleIndex;
-    if (transport.playing && parameters.sequenceEnabled) {
+    const double ppq = anchor + ppqIncrement * (clockOffset + sampleIndex);
+    if (transport.playing && parameters.sequenceEnabled && positionValid) {
       for (std::size_t track = 0; track < kTrackCount; ++track) {
         const auto& trackParameters = parameters.tracks[track];
         const int length = std::clamp(trackParameters.length, 1, 32);
@@ -197,7 +224,7 @@ void Processor::process(float* left, float* right, std::size_t frames,
         measured.currentStep[track] = step;
         if (tick == lastTick_[track] || step < 0) continue;
         lastTick_[track] = tick;
-        const int cycle = static_cast<int>(absoluteStep / length);
+        const auto cycle = absoluteStep / length;
         const int condition = std::clamp(trackParameters.condition, 1, 4);
         const auto programmed =
             trackParameters.pattern[static_cast<std::size_t>(step)];

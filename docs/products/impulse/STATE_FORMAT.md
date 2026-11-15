@@ -3,7 +3,7 @@
 Impulse stores 368 scalar parameters in product-owned XML:
 
 ```xml
-<impulse-i01 schema="4" product="impulse-i01" behavior="1">
+<impulse-i01 schema="5" product="impulse-i01" behavior="1" clock="1">
   <PARAM id="seed" value="1701"/>
   <PARAM id="kick_length" value="16"/>
   <PARAM id="click_probability" value="100"/>
@@ -19,7 +19,17 @@ Missing known IDs restore defaults for their schema and unknown IDs are ignored.
 IDs, non-finite values, malformed roots, cross-product state, and unknown schema
 versions leave current state unchanged. Values are bounded before publication.
 
-Schema 4 requires behavior 0 (legacy) or 1 (corrected). Schemas 1–3 restore 0;
+Schema 5 additionally requires `clock="0"` (historical) or `clock="1"`
+(sample-owned). Schemas 1–4 restore clock 0 without changing their timing.
+New instances use clock 1; explicit current-response selection upgrades a
+recalled instance. Invalid/missing clock rejects the entire schema-5 restore.
+Clock 1 is used only with corrected sound behavior. Its sample timeline anchors
+to host PPQ and re-anchors on start, tempo change, seek or a discrepancy over
+half a sample. It preserves sounding tails and reevaluates the destination step
+on discontinuity; negative PPQ does not trigger steps. No timing epsilon is added
+to step boundaries. Both choices survive save/reopen and are not host parameters.
+
+Schemas 4–5 require behavior 0 (legacy) or 1 (corrected). Schemas 1–3 restore 0;
 re-saving preserves that choice. Corrected MIDI variation uses a per-track
 event ordinal, reset on prepare/reset or a playing transport discontinuity,
 not the callback-local sample offset. Repeated stopped MIDI performances are
@@ -30,7 +40,7 @@ No new voice, host parameter or modulation system is added.
 New instances select appended `Clicks / sub` (index 6): three Click events and
 two Low events. `Cuts / pressure` (index 7) substitutes a Cut and a deeper Low
 on the same rhythm. Both are complete parameter snapshots with behavior 1.
-There is no new DSP behavior or schema for these scenes: schema 4 is unchanged.
+The scene values are unchanged by schema 5; timing choice belongs to the session.
 All six preceding snapshot indices/names/values are retained, including
 `Space / two objects` (index 5): three hits, two tracks, no random variation,
 reduced Energy and shorter Kick decay.

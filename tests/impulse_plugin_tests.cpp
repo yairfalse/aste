@@ -78,6 +78,50 @@ juce::Component* findTitled(juce::Component& c, const juce::String& title) {
     if (auto* found = findTitled(*c.getChildComponent(i), title)) return found;
   return nullptr;
 }
+void testClockState() {
+  Impulse fresh;
+  juce::MemoryBlock bytes;
+  fresh.getStateInformation(bytes);
+  auto xml = juce::AudioProcessor::getXmlFromBinary(
+      bytes.getData(), static_cast<int>(bytes.getSize()));
+  require(xml && xml->getIntAttribute("schema") == 5 && fresh.usesSampleClock(),
+          "Fresh Impulse uses the sample-owned clock");
+  if (!xml) return;
+  xml->setAttribute("schema", 4);
+  xml->removeAttribute("clock");
+  juce::AudioProcessor::copyXmlToBinary(*xml, bytes);
+  Impulse old;
+  old.setStateInformation(bytes.getData(), static_cast<int>(bytes.getSize()));
+  require(!old.usesLegacyBehavior() && !old.usesSampleClock(),
+          "Schema 4 preserves its direct sound and historical clock");
+  old.getStateInformation(bytes);
+  Impulse reopened;
+  reopened.setStateInformation(bytes.getData(),
+                               static_cast<int>(bytes.getSize()));
+  juce::MemoryBlock repeated;
+  reopened.getStateInformation(repeated);
+  require(bytes == repeated && !reopened.usesSampleClock(),
+          "Old clock choice survives save and reopen");
+  auto saved = juce::AudioProcessor::getXmlFromBinary(
+      bytes.getData(), static_cast<int>(bytes.getSize()));
+  for (const char* clock : {"", "2", "-1", "1.0", "true", "NaN"}) {
+    auto invalid = std::make_unique<juce::XmlElement>(*saved);
+    if (*clock)
+      invalid->setAttribute("clock", clock);
+    else
+      invalid->removeAttribute("clock");
+    juce::MemoryBlock bad;
+    juce::AudioProcessor::copyXmlToBinary(*invalid, bad);
+    reopened.setStateInformation(bad.getData(),
+                                 static_cast<int>(bad.getSize()));
+    reopened.getStateInformation(repeated);
+    require(bytes == repeated, "Invalid clock rejects the entire state");
+  }
+  reopened.useCurrentResponse();
+  require(reopened.usesSampleClock() && !reopened.usesLegacyBehavior(),
+          "Explicit upgrade enables the repaired clock");
+}
+
 void testContractState() {
   Impulse source;
   require(!source.usesLegacyBehavior() && value(source, "energy") == 18,
@@ -209,7 +253,7 @@ void testContractState() {
     juce::MemoryBlock again;
     reopened.getStateInformation(again);
     require(saved == again && !reopened.usesLegacyBehavior(),
-            "Click/sub scenes recall byte-stably through existing schema 4");
+            "Click/sub scenes recall byte-stably through schema 5");
   }
   std::uint32_t random = 0x1a2b3c4dU;
   for (int test = 0; test < 256; ++test) {
@@ -363,7 +407,8 @@ void testEditor(const char* directory) {
 }  // namespace
 int main(int argc, char** argv) {
   juce::ScopedJuceInitialiser_GUI juce;
-  aste::tests::behaviorStateChecks<Impulse>(require, 3, 4);
+  aste::tests::behaviorStateChecks<Impulse>(require, 3, 5);
+  testClockState();
   testContractState();
   testProcessing();
   testEditor(argc == 3 && std::string{argv[1]} == "--editor-artifacts"

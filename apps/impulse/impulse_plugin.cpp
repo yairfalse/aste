@@ -14,7 +14,7 @@
 namespace aste::impulse::plugin {
 namespace {
 constexpr auto kStateType = "impulse-i01";
-constexpr int kStateSchema = 4;
+constexpr int kStateSchema = 5;
 constexpr auto kSurface = 0xff10100dU;
 constexpr auto kPanel = 0xff1d1c16U;
 constexpr auto kInk = 0xffece9dcU;
@@ -598,6 +598,7 @@ Parameters ImpulseAudioProcessor::currentParameters() const noexcept {
   Parameters result;
   result.energy = global(0) * 0.01F;
   result.legacyBehavior = usesLegacyBehavior();
+  result.sampleClock = usesSampleClock();
   result.division = static_cast<int>(global(1));
   result.variation = global(2) * 0.01F;
   result.mutation = global(3) * 0.01F;
@@ -853,6 +854,7 @@ void ImpulseAudioProcessor::getStateInformation(
   state.setProperty("schema", kStateSchema, nullptr);
   state.setProperty("product", kStateType, nullptr);
   state.setProperty("behavior", usesLegacyBehavior() ? 0 : 1, nullptr);
+  state.setProperty("clock", usesSampleClock() ? 1 : 0, nullptr);
   if (const auto xml = state.createXml()) copyXmlToBinary(*xml, destination);
 }
 void ImpulseAudioProcessor::setStateInformation(const void* data, int size) {
@@ -861,7 +863,7 @@ void ImpulseAudioProcessor::setStateInformation(const void* data, int size) {
   const auto restored = juce::ValueTree::fromXml(*xml);
   const auto schemaText = restored.getProperty("schema").toString();
   if (schemaText != "1" && schemaText != "2" && schemaText != "3" &&
-      schemaText != "4")
+      schemaText != "4" && schemaText != "5")
     return;
   const int restoredSchema =
       static_cast<int>(restored.getProperty("schema", -1));
@@ -870,7 +872,10 @@ void ImpulseAudioProcessor::setStateInformation(const void* data, int size) {
       (restoredSchema < 1 || restoredSchema > kStateSchema))
     return;
   const auto behavior = restored.getProperty("behavior").toString();
-  if (restoredSchema == 4 && behavior != "0" && behavior != "1") return;
+  if (restoredSchema >= 4 && behavior != "0" && behavior != "1") return;
+  const auto clock = restored.getProperty("clock").toString();
+  if (restoredSchema == 5 && clock != "0" && clock != "1") return;
+  const bool sampleClock = restoredSchema == 5 && clock == "1";
   const bool legacyBehavior = restoredSchema < 4 || behavior == "0";
   auto validated = state_.copyState();
   for (int index = 0; index < validated.getNumChildren(); ++index) {
@@ -937,7 +942,9 @@ void ImpulseAudioProcessor::setStateInformation(const void* data, int size) {
   validated.setProperty("schema", kStateSchema, nullptr);
   validated.setProperty("product", kStateType, nullptr);
   validated.setProperty("behavior", legacyBehavior ? 0 : 1, nullptr);
+  validated.setProperty("clock", sampleClock ? 1 : 0, nullptr);
   legacyBehavior_.store(legacyBehavior, std::memory_order_relaxed);
+  sampleClock_.store(sampleClock, std::memory_order_relaxed);
   state_.replaceState(validated);
 }
 juce::AudioProcessorEditor* ImpulseAudioProcessor::createEditor() {

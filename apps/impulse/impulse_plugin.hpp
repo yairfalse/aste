@@ -50,6 +50,14 @@ class ImpulseAudioProcessor final : public juce::AudioProcessor {
   [[nodiscard]] bool usesLegacyBehavior() const noexcept {
     return legacyBehavior_.load(std::memory_order_relaxed);
   }
+  [[nodiscard]] bool usesSampleClock() const noexcept {
+    return sampleClock_.load();
+  }
+  void useCurrentResponse() {
+    legacyBehavior_.store(false);
+    sampleClock_.store(true);
+    updateHostDisplay(ChangeDetails{}.withNonParameterStateChanged(true));
+  }
   void audition(std::size_t track) noexcept {
     if (track < kTrackCount) auditionRequests_.fetch_or(1U << track);
   }
@@ -68,6 +76,7 @@ class ImpulseAudioProcessor final : public juce::AudioProcessor {
   Processor processor_{};
   std::atomic<unsigned> auditionRequests_{};
   std::atomic<bool> legacyBehavior_{};
+  std::atomic<bool> sampleClock_{true};
   juce::AudioProcessorValueTreeState state_;
   std::array<std::atomic<float>*, kGlobalCount> globals_{};
   std::array<std::array<std::atomic<float>*, kTrackParameterCount>, kTrackCount>
