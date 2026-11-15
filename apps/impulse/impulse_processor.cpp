@@ -39,8 +39,11 @@ void Processor::prepare(double sampleRate, const Parameters&) noexcept {
 void Processor::reset() noexcept {
   voices_ = {};
   lastTick_.fill(-1);
+  midiOrdinals_.fill(0);
   expectedPpq_ = 0.0;
   transportKnown_ = false;
+  timelineKnown_ = false;
+  timelineFrames_ = 0;
   smoothedOutputGain_ = 1.0F;
   meters_ = {};
 }
@@ -83,7 +86,7 @@ void Processor::trigger(std::size_t track, float velocity,
                  -0.8F, 0.8F);
 }
 
-float Processor::renderVoice(std::size_t track) noexcept {
+float Processor::renderVoice(std::size_t track, bool legacyBehavior) noexcept {
   auto& voice = voices_[track];
   if (voice.amplitude < 1.0e-7F) return 0.0F;
   const double pitch = std::clamp(
@@ -119,7 +122,8 @@ float Processor::renderVoice(std::size_t track) noexcept {
     sample = sine + (0.25F + 0.45F * voice.tone) * second;
   } else if (track == 4) {
     const float edge = voice.pitchEnvelope > 0.6F ? voice.noiseState : 0.0F;
-    sample = 0.9F * sine + 0.12F * edge;
+    sample =
+        0.9F * sine + (legacyBehavior ? .12F : .03F + .18F * voice.tone) * edge;
     voice.pitchEnvelope *= 0.987F;
   } else if (track == 5) {
     const float coefficient = 0.08F + 0.52F * voice.tone;
@@ -154,10 +158,36 @@ void Processor::process(float* left, float* right, std::size_t frames,
       std::isfinite(transport.bpm) ? transport.bpm : 120.0, 20.0, 400.0);
   const double ppqIncrement = bpm / (60.0 * sampleRate_);
   const double stepDuration = divisionPpq(parameters.division);
-  const bool discontinuity =
+  bool discontinuity =
       !transportKnown_ || std::abs(transport.ppq - expectedPpq_) >
                               std::max(0.02, ppqIncrement * frames * 2.0);
+  double anchor = transport.ppq;
+  std::size_t clockOffset{};
+  // Bound conversion to integer ticks, including malicious host positions.
+  const bool positionValid =
+      std::isfinite(transport.ppq) && std::abs(transport.ppq) < 1.0e12;
+  if (parameters.sampleClock && !parameters.legacyBehavior &&
+      transport.playing && positionValid) {
+    const double expected =
+        timelinePpq_ + timelineFrames_ * timelineBpm_ / (60.0 * sampleRate_);
+    discontinuity =
+        !timelineKnown_ || timelineBpm_ != bpm ||
+        std::abs(transport.ppq - expected) > .5 * ppqIncrement ||
+        timelineFrames_ > std::numeric_limits<std::size_t>::max() - frames;
+    if (discontinuity) {
+      timelinePpq_ = transport.ppq;
+      timelineBpm_ = bpm;
+      timelineFrames_ = 0;
+    }
+    timelineKnown_ = true;
+    anchor = timelinePpq_;
+    clockOffset = timelineFrames_;
+    timelineFrames_ += frames;
+  } else {
+    timelineKnown_ = false;
+  }
   if (discontinuity) lastTick_.fill(-1);
+  if (discontinuity && transport.playing) midiOrdinals_.fill(0);
   transportKnown_ = transport.playing;
   std::size_t midiIndex{};
   for (std::size_t sampleIndex = 0; sampleIndex < frames; ++sampleIndex) {
@@ -166,14 +196,19 @@ void Processor::process(float* left, float* right, std::size_t frames,
       if (event.noteOn && event.velocity > 0.0F && event.note >= 36 &&
           event.note < 36 + static_cast<int>(kTrackCount)) {
         const auto track = static_cast<std::size_t>(event.note - 36);
-        trigger(track, event.velocity, parameters.tracks[track],
-                parameters.energy, parameters.variation,
-                parameters.seed ^ static_cast<std::uint32_t>(sampleIndex));
+        trigger(
+            track, event.velocity, parameters.tracks[track], parameters.energy,
+            parameters.variation,
+            parameters.seed ^
+                (parameters.legacyBehavior
+                     ? static_cast<std::uint32_t>(sampleIndex)
+                     : hash(midiOrdinals_[track]++ ^
+                            static_cast<std::uint32_t>(track * 0x9e3779b9U))));
         measured.triggered[track] = true;
       }
     }
-    const double ppq = transport.ppq + ppqIncrement * sampleIndex;
-    if (transport.playing && parameters.sequenceEnabled) {
+    const double ppq = anchor + ppqIncrement * (clockOffset + sampleIndex);
+    if (transport.playing && parameters.sequenceEnabled && positionValid) {
       for (std::size_t track = 0; track < kTrackCount; ++track) {
         const auto& trackParameters = parameters.tracks[track];
         const int length = std::clamp(trackParameters.length, 1, 32);
@@ -189,7 +224,7 @@ void Processor::process(float* left, float* right, std::size_t frames,
         measured.currentStep[track] = step;
         if (tick == lastTick_[track] || step < 0) continue;
         lastTick_[track] = tick;
-        const int cycle = static_cast<int>(absoluteStep / length);
+        const auto cycle = absoluteStep / length;
         const int condition = std::clamp(trackParameters.condition, 1, 4);
         const auto programmed =
             trackParameters.pattern[static_cast<std::size_t>(step)];
@@ -216,7 +251,7 @@ void Processor::process(float* left, float* right, std::size_t frames,
     float mono{};
     float side{};
     for (std::size_t track = 0; track < kTrackCount; ++track) {
-      const float signal = renderVoice(track);
+      const float signal = renderVoice(track, parameters.legacyBehavior);
       mono += signal;
       side += signal * voices_[track].pan;
     }

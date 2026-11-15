@@ -12,7 +12,7 @@ namespace aste::loop::plugin {
 namespace {
 
 constexpr auto kStateType = "loop-l01";
-constexpr int kStateSchema = 3;
+constexpr int kStateSchema = 4;
 constexpr auto kSurface = 0xff0d1212U;
 constexpr auto kPanel = 0xff172120U;
 constexpr auto kInk = 0xffe5ece8U;
@@ -345,6 +345,12 @@ class LoopEditor final : public juce::AudioProcessorEditor,
     preset_.setTextWhenNothingSelected("PRESETS");
     for (int index = 0; index < processor_.factoryPresetCount(); ++index)
       preset_.addItem(processor_.factoryPresetName(index), index + 1);
+    for (const auto& snapshot : kPresets)
+      preset_.addSnapshot(processor_, processor_.state(), [&](auto set) {
+        for (std::size_t i = 0; i < snapshot.values.size(); ++i)
+          set(kParameterIds[i], snapshot.values[i]);
+      });
+    preset_.watch(processor_);
     preset_.onChange = [this] {
       if (preset_.getSelectedId() > 0) {
         processor_.loadFactoryPreset(preset_.getSelectedId() - 1);
@@ -479,11 +485,10 @@ LoopAudioProcessor::createParameterLayout() {
 }
 
 LoopAudioProcessor::LoopAudioProcessor()
-    : AudioProcessor{BusesProperties{}
-                         .withInput("Input", juce::AudioChannelSet::stereo(),
-                                    true)
-                         .withOutput("Output", juce::AudioChannelSet::stereo(),
-                                     true)},
+    : AudioProcessor{
+          BusesProperties{}
+              .withInput("Input", juce::AudioChannelSet::stereo(), true)
+              .withOutput("Output", juce::AudioChannelSet::stereo(), true)},
       state_{*this, nullptr, kStateType, createParameterLayout()} {
   for (std::size_t index = 0; index < kParameterIds.size(); ++index) {
     parameterValues_[index] = state_.getRawParameterValue(kParameterIds[index]);
@@ -523,7 +528,8 @@ Parameters LoopAudioProcessor::currentParameters() const noexcept {
               juce::jlimit(0, 2, static_cast<int>(value(tapeSpeed))))],
           .mix = value(mix) * 0.01F,
           .outputDb = value(output),
-          .bypass = value(bypass) >= 0.5F};
+          .bypass = value(bypass) >= 0.5F,
+          .legacyBehavior = engine_.load()->legacyBehavior};
 }
 
 LoopAudioProcessor::~LoopAudioProcessor() {
@@ -557,6 +563,7 @@ void LoopAudioProcessor::prepareToPlay(double sampleRate, int) {
   adoptPending();
   auto tape = engine_.load()->processor.tapeState();
   auto ready = std::make_unique<Engine>();
+  ready->legacyBehavior = engine_.load()->legacyBehavior;
   hostRate_ = juce::jlimit(8000.0, 384000.0,
                            std::isfinite(sampleRate) ? sampleRate : 48000.0);
   hostPrepared_ = true;
@@ -744,6 +751,7 @@ void LoopAudioProcessor::getStateInformation(juce::MemoryBlock& destination) {
   state.setProperty("product", kStateType, nullptr);
   auto* source = pending_.load();
   if (!source) source = engine_.load();
+  state.setProperty("behavior", source->legacyBehavior ? 0 : 1, nullptr);
   const auto tape = source->processor.tapeState();
   juce::ValueTree tapes{"TAPES"};
   tapes.setProperty("sample_rate", tape.sampleRate, nullptr);
@@ -775,14 +783,19 @@ void LoopAudioProcessor::setStateInformation(const void* data, int size) {
   if (xml == nullptr) return;
   const auto restored = juce::ValueTree::fromXml(*xml);
   const auto schemaText = restored.getProperty("schema").toString();
-  if (schemaText != "1" && schemaText != "2" && schemaText != "3") return;
+  if (schemaText != "1" && schemaText != "2" && schemaText != "3" &&
+      schemaText != "4")
+    return;
   const int schema = static_cast<int>(restored.getProperty("schema", -1));
   if (!restored.isValid() || restored.getType().toString() != kStateType ||
       restored.getProperty("product").toString() != kStateType ||
       (schema < 1 || schema > kStateSchema))
     return;
   TapeState tape;
-  if (schema == 3) {
+  const auto behavior = restored.getProperty("behavior").toString();
+  if (schema == 4 && behavior != "0" && behavior != "1") return;
+  const bool legacy = schema < 4 || behavior == "0";
+  if (schema >= 3) {
     const auto tapes = restored.getChildWithName("TAPES");
     if (!tapes.isValid() || tapes.getNumChildren() != 3) return;
     int tapeRoots{};
@@ -872,7 +885,9 @@ void LoopAudioProcessor::setStateInformation(const void* data, int size) {
   }
   validated.setProperty("schema", kStateSchema, nullptr);
   validated.setProperty("product", kStateType, nullptr);
+  validated.setProperty("behavior", legacy ? 0 : 1, nullptr);
   auto ready = std::make_unique<Engine>();
+  ready->legacyBehavior = legacy;
   // Hosts may restore before announcing their rate. Keep the source samples
   // intact until prepareToPlay rather than resampling through a guessed rate.
   ready->processor.prepare(hostPrepared_ ? hostRate_ : tape.sampleRate, 16.0,

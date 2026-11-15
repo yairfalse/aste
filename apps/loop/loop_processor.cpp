@@ -410,7 +410,8 @@ void Processor::process(float* left, float* right, std::size_t frames,
         std::max(measured.outputPeak,
                  std::max(std::abs(outputLeft), std::abs(outputRight)));
     modulationPhase_ += 1.0 / sampleRate_;
-    modulationPhase_ -= std::floor(modulationPhase_);
+    const double period = parameters.legacyBehavior ? 1.0 : 1000.0;
+    modulationPhase_ -= period * std::floor(modulationPhase_ / period);
     const float wow = bounded(parameters.wow, 0.0F, 1.0F, 0.08F);
     const float flutter = bounded(parameters.flutter, 0.0F, 1.0F, 0.03F);
     const float drift = bounded(parameters.drift, 0.0F, 1.0F, 0.02F);

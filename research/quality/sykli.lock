@@ -1,0 +1,6 @@
+{
+  "schema": "sykli-lock.v2",
+  "contracts": {
+    "sykli.json": "ff9bc3869173cd63c4d1d7c874b343bfc980043cb5187cce3e875d69792432a5"
+  }
+}

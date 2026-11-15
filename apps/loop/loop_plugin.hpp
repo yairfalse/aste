@@ -113,6 +113,7 @@ class LoopAudioProcessor final : public juce::AudioProcessor {
 
   struct Engine {
     Processor processor;
+    bool legacyBehavior{};
     Engine* retiredNext{};
   };
   void adoptPending() noexcept;

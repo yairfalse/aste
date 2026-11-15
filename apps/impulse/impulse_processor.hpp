@@ -36,6 +36,8 @@ struct Parameters {
   float outputDb{-6.0F};
   bool sequenceEnabled{true};
   bool bypass{};
+  bool legacyBehavior{};
+  bool sampleClock{true};  // Session-owned; older states retain their clock.
   std::array<TrackParameters, kTrackCount> tracks{{
       {.level = 0.9F,
        .pitchHz = 48.0F,
@@ -184,13 +186,19 @@ class Processor {
   void trigger(std::size_t track, float velocity,
                const TrackParameters& parameters, float energy, float variation,
                std::uint32_t random) noexcept;
-  [[nodiscard]] float renderVoice(std::size_t track) noexcept;
+  [[nodiscard]] float renderVoice(std::size_t track,
+                                  bool legacyBehavior) noexcept;
 
   double sampleRate_{48000.0};
   std::array<Voice, kTrackCount> voices_{};
   std::array<std::int64_t, kTrackCount> lastTick_{};
+  std::array<std::uint32_t, kTrackCount> midiOrdinals_{};
   double expectedPpq_{};
   bool transportKnown_{};
+  bool timelineKnown_{};
+  double timelinePpq_{};
+  double timelineBpm_{};
+  std::size_t timelineFrames_{};
   float smoothedOutputGain_{1.0F};
   float outputSmoothing_{1.0F};
   MeterSnapshot meters_{};

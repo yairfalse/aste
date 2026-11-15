@@ -1,5 +1,7 @@
 #include "density_plugin.hpp"
+#include "preset_recall_checks.hpp"
 #include "editor_artifact.hpp"
+#include "behavior_state_checks.hpp"
 
 #include <array>
 #include <atomic>
@@ -250,6 +252,7 @@ bool verifyFuzzedState(
 
 void testStateRoundTrip() {
   aste::density::plugin::DensityAudioProcessor source;
+  require(!source.usesLegacyBehavior(), "Fresh Density uses direct Drive");
   setValue(source, "density", 83.25F);
   setValue(source, "drive", 7.5F);
   setValue(source, "release", 432.1F);
@@ -291,7 +294,7 @@ void testStateRoundTrip() {
           "Malformed state leaves current state unchanged");
 
   auto futureSchema = source.state().copyState();
-  futureSchema.setProperty("schema", 2, nullptr);
+  futureSchema.setProperty("schema", 3, nullptr);
   futureSchema.setProperty("product", "density-d01", nullptr);
   futureSchema.getChildWithProperty("id", "density")
       .setProperty("value", 12.0, nullptr);
@@ -345,7 +348,7 @@ void testStateRoundTrip() {
 
 void testFactoryPresets() {
   aste::density::plugin::DensityAudioProcessor processor;
-  require(processor.factoryPresetCount() == 5,
+  require(processor.factoryPresetCount() == 6,
           "Density exposes the reviewed factory preset count");
   for (int index = 0; index < processor.factoryPresetCount(); ++index) {
     require(!processor.factoryPresetName(index).isEmpty(),
@@ -661,8 +664,12 @@ void testProcessingBoundary() {
 void testTrackLevelCompression() {
   aste::density::plugin::DensityAudioProcessor processor;
   require(std::abs(processor.state().getRawParameterValue("blend")->load() -
-                   90.0F) < 0.01F,
-          "New instances start with the audible processed blend");
+                   100.0F) < 0.01F,
+          "Grip starts fully processed; old parameter reset defaults remain "
+          "unchanged");
+  processor.loadFactoryPreset(0);
+  require(processor.usesLegacyBehavior(),
+          "Original Default retains its detector law");
   processor.prepareToPlay(48000.0, 128);
   juce::AudioBuffer<float> audio{2, 128};
   juce::MidiBuffer midi;
@@ -740,7 +747,7 @@ void testEditorContract() {
           "Protection is keyboard and accessibility reachable");
 
   auto* presets = dynamic_cast<juce::ComboBox*>(findTitled(*editor, "PRESETS"));
-  require(presets != nullptr && presets->getNumItems() == 5 &&
+  require(presets != nullptr && presets->getNumItems() == 6 &&
               presets->getWantsKeyboardFocus() && presets->isAccessible(),
           "Factory presets are compact, keyboard reachable, and accessible");
   if (presets != nullptr) {
@@ -863,6 +870,10 @@ int createEditorArtifacts(const char* directoryPath) {
 
 int main(int argc, char** argv) {
   juce::ScopedJuceInitialiser_GUI juce;
+  aste::tests::presetRecallChecks<aste::density::plugin::DensityAudioProcessor>(
+      require);
+  aste::tests::behaviorStateChecks<
+      aste::density::plugin::DensityAudioProcessor>(require, 1, 2);
   if (argc == 3 && std::string_view{argv[1]} == "--editor-artifacts") {
     return createEditorArtifacts(argv[2]);
   }

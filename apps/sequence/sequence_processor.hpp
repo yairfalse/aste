@@ -37,6 +37,7 @@ struct Parameters {
   int division{16};
   bool sequenceEnabled{true};
   bool bypass{};
+  bool legacyBehavior{};  // Session-owned; not a host parameter.
   std::array<Step, kStepCount> steps{{
       {0, true, true, false},
       {0, true, false, true},
@@ -134,8 +135,8 @@ class Processor {
     std::array<float, 4> state_{};
   };
 
-  void handleMidi(const MidiEvent& event, bool sequencerRunning,
-                  float glideMs) noexcept;
+  void handleMidi(const MidiEvent& event, bool sequencerRunning, float glideMs,
+                  bool legacyBehavior) noexcept;
   void startNote(int note, float velocity, bool accent, bool slide,
                  float glideMs) noexcept;
   void stopNote() noexcept;
@@ -170,6 +171,9 @@ class Processor {
   int currentStep_{-1};
   bool sequenceGate_{};
   bool wasPlaying_{};
+  Transport timeline_{};
+  std::size_t timelineFrames_{};
+  bool timelineKnown_{};
   MeterSnapshot meters_{};
 };
 

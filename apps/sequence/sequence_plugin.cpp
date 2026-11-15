@@ -13,7 +13,7 @@ namespace aste::sequence::plugin {
 namespace {
 
 constexpr auto kStateType = "sequence-s01";
-constexpr int kStateSchema = 2;
+constexpr int kStateSchema = 3;
 constexpr auto kSurface = 0xff0d1114U;
 constexpr auto kPanel = 0xff171d21U;
 constexpr auto kInk = 0xffe7ece8U;
@@ -48,8 +48,9 @@ bool parseFiniteFloat(const juce::var& value, float& result) {
 juce::ValueTree migrateState(juce::ValueTree state) {
   if (!state.isValid() || state.getType().toString() != kStateType ||
       state.getProperty("product").toString() != kStateType ||
-      (static_cast<int>(state.getProperty("schema", -1)) != 1 &&
-       static_cast<int>(state.getProperty("schema", -1)) != kStateSchema)) {
+      (state.getProperty("schema").toString() != "1" &&
+       state.getProperty("schema").toString() != "2" &&
+       state.getProperty("schema").toString() != "3")) {
     return {};
   }
   return state;
@@ -361,6 +362,20 @@ class SequenceEditor final : public juce::AudioProcessorEditor,
     for (int index = 0; index < processor_.factoryPresetCount(); ++index) {
       preset_.addItem(processor_.factoryPresetName(index), index + 1);
     }
+    for (const auto& snapshot : kPresets)
+      preset_.addSnapshot(processor_, processor_.state(), [&](auto set) {
+        for (std::size_t i = 0; i < snapshot.main.size(); ++i)
+          set(kMainIds[i], snapshot.main[i]);
+        for (std::size_t step = 0; step < kStepCount; ++step) {
+          set(stepId(step, "note"), static_cast<float>(snapshot.notes[step]));
+          set(stepId(step, "gate"), (snapshot.gates >> step) & 1U ? 1.F : 0.F);
+          set(stepId(step, "accent"),
+              (snapshot.accents >> step) & 1U ? 1.F : 0.F);
+          set(stepId(step, "slide"),
+              (snapshot.slides >> step) & 1U ? 1.F : 0.F);
+        }
+      });
+    preset_.watch(processor_);
     preset_.onChange = [this] {
       if (const int selected = preset_.getSelectedId(); selected > 0) {
         processor_.loadFactoryPreset(selected - 1);
@@ -480,9 +495,11 @@ class SequenceEditor final : public juce::AudioProcessorEditor,
         processor_.state().getRawParameterValue("sequence")->load() >= 0.5F;
     const bool running = processor_.currentStep() >= 0;
     mode_.setText(
-        enabled ? (running ? "HOST SEQUENCE / MIDI transposes (C4 = root)"
-                           : "Play MIDI, or start the host for the pattern")
-                : "KEYBOARD / Play MIDI notes",
+        juce::String{processor_.usesLegacyBehavior() ? "LEGACY / " : ""} +
+            (enabled
+                 ? (running ? "HOST SEQUENCE / MIDI transposes (C4 = root)"
+                            : "Play MIDI, or start the host for the pattern")
+                 : "KEYBOARD / Play MIDI notes"),
         juce::dontSendNotification);
     displayedPeak_ = std::max(processor_.outputPeak(), displayedPeak_ * 0.84F);
     const int active = processor_.currentStep();
@@ -602,6 +619,7 @@ SequenceAudioProcessor::SequenceAudioProcessor()
 
 Parameters SequenceAudioProcessor::currentParameters() const noexcept {
   Parameters parameters;
+  parameters.legacyBehavior = usesLegacyBehavior();
   parameters.pressure =
       mainValues_[pressure]->load(std::memory_order_relaxed) * 0.01F;
   parameters.shape =
@@ -801,6 +819,7 @@ void SequenceAudioProcessor::getStateInformation(juce::MemoryBlock& output) {
   auto state = state_.copyState();
   state.setProperty("schema", kStateSchema, nullptr);
   state.setProperty("product", kStateType, nullptr);
+  state.setProperty("behavior", usesLegacyBehavior() ? 0 : 1, nullptr);
   if (const auto xml = state.createXml()) {
     copyXmlToBinary(*xml, output);
   }
@@ -815,6 +834,10 @@ void SequenceAudioProcessor::setStateInformation(const void* data, int size) {
   if (!restored.isValid()) {
     return;
   }
+  const bool oldSchema = restored.getProperty("schema").toString() != "3";
+  const auto behavior = restored.getProperty("behavior").toString();
+  if (!oldSchema && behavior != "0" && behavior != "1") return;
+  const bool legacy = oldSchema || behavior == "0";
   auto validated = state_.copyState();
   for (int index = 0; index < validated.getNumChildren(); ++index) {
     auto child = validated.getChild(index);
@@ -851,6 +874,8 @@ void SequenceAudioProcessor::setStateInformation(const void* data, int size) {
   }
   validated.setProperty("schema", kStateSchema, nullptr);
   validated.setProperty("product", kStateType, nullptr);
+  validated.setProperty("behavior", legacy ? 0 : 1, nullptr);
+  legacyBehavior_.store(legacy, std::memory_order_relaxed);
   state_.replaceState(validated);
 }
 

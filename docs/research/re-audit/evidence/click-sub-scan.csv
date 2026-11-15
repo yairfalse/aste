@@ -1,0 +1,9 @@
+file,rate,channels,frames,peak_dbfs,rms_dbfs,max_adjacent_step_dbfs,fraction_within_1pct_peak,samples_over_unity,quiet_10ms_windows,total_10ms_windows,exact_mono
+"build-audit2-clicks/01_previous_space.wav",48000,2,384000,-8.704113452,-24.367500736,-11.436907895,0.000028646,0,249,800,true
+"build-audit2-clicks/02_clicks_sub.wav",48000,2,384000,-7.078964505,-23.630718314,-14.498744928,0.000135417,0,272,800,true
+"build-audit2-clicks/03_cuts_pressure.wav",48000,2,384000,-6.876314225,-21.490813538,-14.468990632,0.000158854,0,196,800,true
+"build-audit2-clicks/04_previous_voices_same_rhythm.wav",48000,2,384000,-9.732962810,-25.190311132,-12.422944145,0.000028646,0,238,800,true
+"build-audit2-clicks/clicks_edge.wav",48000,2,192000,-7.568145045,-51.013356709,-6.271801419,0.000005208,0,398,400,true
+"build-audit2-clicks/clicks_sub.wav",48000,2,192000,-5.486463045,-24.308849249,-24.021995591,0.000255208,0,247,400,true
+"build-audit2-clicks/cuts_edge.wav",48000,2,192000,-8.848697948,-53.341984100,-7.546253546,0.000005208,0,397,400,true
+"build-audit2-clicks/cuts_sub.wav",48000,2,192000,-5.795977394,-22.759736146,-23.691991632,0.000296875,0,175,400,true

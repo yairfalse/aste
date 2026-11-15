@@ -33,9 +33,11 @@ void require(bool condition, const char* message) {
 }
 
 std::vector<float> render(std::uint32_t seed,
-                          const std::vector<std::size_t>& blocks) {
+                          const std::vector<std::size_t>& blocks,
+                          int ratchet = 1) {
   aste::impulse::Parameters parameters;
   parameters.seed = seed;
+  parameters.tracks[1].ratchet = ratchet;
   aste::impulse::Processor processor;
   processor.prepare(48000, parameters);
   std::vector<float> output(96000);
@@ -52,6 +54,8 @@ std::vector<float> render(std::uint32_t seed,
 }
 
 void testDeterminismAndBlocks() {
+  require(render(1701, {127}, 3) == render(1701, {1, 7, 127, 511}, 3),
+          "Triplet retriggers own the same samples across callback partitions");
   const auto first = render(1701, {127});
   const auto second = render(1701, {1, 7, 127, 511});
   const auto changed = render(1702, {127});
@@ -116,7 +120,74 @@ void testVisiblePatternIsPlaybackSource() {
 }
 }  // namespace
 
+std::vector<float> midiPhrase(std::size_t block, float tone = .5F,
+                              int note = 36) {
+  aste::impulse::Parameters p;
+  p.sequenceEnabled = false;
+  p.variation = .6F;
+  p.tracks[4].tone = tone;
+  aste::impulse::Processor processor;
+  processor.prepare(48000, p);
+  std::vector<float> audio(48000);
+  constexpr std::array<std::size_t, 3> times{4977, 21851, 38729};
+  for (std::size_t at = 0; at < audio.size();) {
+    const auto n = std::min(block, audio.size() - at);
+    std::array<aste::impulse::MidiEvent, 3> events{};
+    std::size_t count{};
+    for (auto time : times)
+      if (time >= at && time < at + n)
+        events[count++] = {time - at, note, .8F, true};
+    processor.process(audio.data() + at, nullptr, n, p, {},
+                      {events.data(), count});
+    at += n;
+  }
+  return audio;
+}
+
+std::vector<float> hostTransitions(double rate, std::size_t block, int ratchet,
+                                   float timing) {
+  aste::impulse::Parameters p;
+  for (auto& track : p.tracks) track.pattern.fill(0);
+  p.tracks[1].pattern.fill(1);
+  p.tracks[1].ratchet = ratchet;
+  p.tracks[1].timing = timing;
+  p.tracks[1].condition = 2;
+  p.variation = .6F;
+  aste::impulse::Processor processor;
+  processor.prepare(rate, p);
+  std::vector<float> audio(static_cast<std::size_t>(rate));
+  const auto quarter = audio.size() / 4;
+  for (std::size_t at = 0; at < audio.size();) {
+    const auto epoch = std::min<std::size_t>(at / quarter, 3);
+    const auto end = epoch == 3 ? audio.size() : (epoch + 1) * quarter;
+    const auto n = std::min(block, end - at);
+    const double tempo = epoch == 3 ? 87 : 120;
+    const double origin = epoch == 1 ? 8.125 : (epoch == 3 ? -.125 : 0);
+    const double ppq = origin + (at - epoch * quarter) * tempo / (60 * rate);
+    processor.process(audio.data() + at, nullptr, n, p,
+                      {epoch != 2, tempo, ppq});
+    at += n;
+  }
+  return audio;
+}
+
+void testAllRatchetsAndHostTransitions() {
+  for (double rate : {44100., 48000., 88200., 96000., 176400., 192000.})
+    for (int ratchet : {1, 2, 3, 4})
+      for (float timing : {-.49F, 0.F, .49F})
+        require(
+            hostTransitions(rate, 127, ratchet, timing) ==
+                hostTransitions(rate, 511, ratchet, timing),
+            "All ratchets/microtiming survive seeks, stop/restart and tempo "
+            "changes sample-identically");
+}
+
 int main() {
+  testAllRatchetsAndHostTransitions();
+  require(midiPhrase(127) == midiPhrase(511),
+          "MIDI variation belongs to events, not callback offsets");
+  require(midiPhrase(127, 0, 40) != midiPhrase(127, 1, 40),
+          "Low Tone changes the object's harmonic edge");
   testDeterminismAndBlocks();
   testRatesMidiAndRealtime();
   testVisiblePatternIsPlaybackSource();

@@ -15,8 +15,11 @@ real-time testing. It is not a hardware-cloning exercise and does not use
 > Impulse I-01, and Field F-01 are complete working internal VST3 prototypes.
 > All six have
 > product-owned DSP, state, tests, industrial UIs, and universal macOS bundles.
-> The local and hosted 67-test, sanitizer, universal signature/slice, ABI-host,
-> and Steinberg extensive-validation gates pass for the six-product line. None
+> This branch contains a compatibility-preserving musical-control revision;
+> see [changes and measured limitations](docs/research/quality/README.md).
+> The current local plugin run passes 67/68 checks: the dependency-security
+> review expired on 2026-11-07 and has not been waived. Current artifacts are
+> native arm64 test builds, not a newly validated universal release. None
 > is a supported release: Developer ID
 > signing, notarization, final company identity, and DAW compatibility remain open.
 
@@ -65,7 +68,7 @@ change.
 
 | Control | Range | Default | Role |
 |---|---:|---:|---|
-| Drive | -12 to +24 dB | 0 dB | Pushes the crush audio, detector, and positive-drive saturation |
+| Drive | -12 to +24 dB | 0 dB | Pushes crush audio and saturation; legacy behavior also drives the detector |
 | Crush | 0–100% | 65% | Sets the hard-compression contribution |
 | Attack | 0.02–30 ms | 1 ms | Shapes transient entry |
 | Release | 20–1200 ms | 180 ms | Sets recovery time |
@@ -173,8 +176,11 @@ Stored seeds make probability, variation, and mutation reproducible from host
 PPQ across block partitions and project recall. MIDI pitch classes C through G
 trigger the eight objects directly.
 
-New instances start with a predictable shared 16-step groove, 100% hit
-probability, and variation/mutation off. Click a track name to audition its drum.
+New instances start with `Clicks / sub`: three tiny clicks, two low-frequency
+events and eleven empty positions in a shared 16-step cycle. Probability is
+100%, with variation/mutation off. Track selection is silent; AUDITION plays
+the selected object. RHYTHM DETAILS reveals the cycle controls. The
+[click/sub study](docs/research/click-sub/README.md) includes measured renders.
 Polymetric and mutation-based starting points remain explicitly labelled
 experimental choices. No drum samples, genre kits, named circuit clone, or nondeterministic
 “analog” behavior defines the product. See

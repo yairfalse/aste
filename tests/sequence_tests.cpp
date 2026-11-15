@@ -229,7 +229,64 @@ void testNumericalAndRealtimeSafety() {
 
 }  // namespace
 
+void testFreshAttackDuringRelease() {
+  for (double rate : {44100., 48000., 88200., 96000., 176400., 192000.}) {
+    aste::sequence::Parameters p;
+    p.sequenceEnabled = false;
+    p.attackMs = 1;
+    aste::sequence::Processor processor;
+    processor.prepare(rate, p);
+    float peak{};
+    for (std::size_t i = 0; i < static_cast<std::size_t>(rate * .16); ++i) {
+      std::array<aste::sequence::MidiEvent, 1> event{};
+      std::size_t count{};
+      if (i == 0 || i == static_cast<std::size_t>(rate * .12))
+        event[count++] = {0, aste::sequence::MidiEventType::noteOn, 48, .8F};
+      if (i == static_cast<std::size_t>(rate * .1))
+        event[count++] = {0, aste::sequence::MidiEventType::noteOff, 48, 0};
+      float sample{};
+      processor.process(&sample, nullptr, 1, p, {}, {event.data(), count});
+      if (i >= static_cast<std::size_t>(rate * .12))
+        peak = std::max(peak, processor.meters().envelope);
+    }
+    require(peak > .95F,
+            "A separated MIDI note attacks during the prior release");
+  }
+}
+
+std::vector<float> hostPhrase(double rate, double bpm, std::size_t block) {
+  const auto count = static_cast<std::size_t>(rate * 2);
+  std::vector<float> audio(count);
+  aste::sequence::Parameters p;
+  aste::sequence::Processor processor;
+  processor.prepare(rate, p);
+  for (std::size_t at = 0; at < count;) {
+    const auto epoch = at >= count / 2 ? count / 2 : 0U;
+    const double tempo = epoch ? bpm * .73 : bpm;
+    const double origin = epoch ? -1.125 : 0.;
+    const auto boundary = std::min(count, epoch ? count : count / 2);
+    const auto n = std::min({block, boundary - at, 512 - at % 512});
+    p.cutoffHz = (at / 512) % 2 ? 6000 : 150;
+    p.pressure = (at / 512) % 2 ? 1 : 0;
+    const aste::sequence::Transport t{
+        true, true, tempo, origin + (at - epoch) / rate * tempo / 60.};
+    processor.process(audio.data() + at, nullptr, n, p, t);
+    at += n;
+  }
+  return audio;
+}
+
+void testHostPartitionWithAutomationAndSeek() {
+  for (double rate : {44100., 48000., 88200., 96000., 176400., 192000.})
+    for (double bpm : {87., 120., 173.})
+      require(hostPhrase(rate, bpm, 127) == hostPhrase(rate, bpm, 511),
+              "Host gates are sample-identical across blocks, automation, "
+              "tempo and seek");
+}
+
 int main() {
+  testFreshAttackDuringRelease();
+  testHostPartitionWithAutomationAndSeek();
   testMidiVoiceAndRates();
   testBlockIndependenceAndReset();
   testHostSequence();

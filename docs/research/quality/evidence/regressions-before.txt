@@ -1,0 +1,34 @@
+Regression tests run before their corresponding fixes.
+Loop excerpt is truncated; the complete run recorded 2038 lines.
+These are actual test failures, not musical listening judgments.
+
+sequence
+FAIL: A separated MIDI note attacks during the prior release
+FAIL: A separated MIDI note attacks during the prior release
+FAIL: A separated MIDI note attacks during the prior release
+FAIL: A separated MIDI note attacks during the prior release
+FAIL: A separated MIDI note attacks during the prior release
+FAIL: A separated MIDI note attacks during the prior release
+FAIL: Host gates are sample-identical across blocks, automation, tempo and seek
+FAIL: Host gates are sample-identical across blocks, automation, tempo and seek
+FAIL: Host gates are sample-identical across blocks, automation, tempo and seek
+FAIL: Host gates are sample-identical across blocks, automation, tempo and seek
+
+loop
+FAIL: Wow follows a complete .47 Hz cycle, including the common-period wrap
+FAIL: Wow follows a complete .47 Hz cycle, including the common-period wrap
+FAIL: Wow follows a complete .47 Hz cycle, including the common-period wrap
+
+impulse
+FAIL: MIDI variation belongs to events, not callback offsets
+FAIL: Low Tone changes the object's harmonic edge
+
+density
+FAIL: Drive pushes color without the detector cancelling that push
+{"input_peak_dbfs":-30,"gain_reduction_db":0,"output_rms_dbfs":-19.8087}
+{"input_peak_dbfs":-24,"gain_reduction_db":3.37085,"output_rms_dbfs":-17.3575}
+{"input_peak_dbfs":-18,"gain_reduction_db":9.09337,"output_rms_dbfs":-16.9929}
+{"input_peak_dbfs":-12,"gain_reduction_db":14.8214,"output_rms_dbfs":-16.5272}
+
+field
+FAIL: Current hold leaves color at the explicit knob values; legacy's extra color remains reproducible

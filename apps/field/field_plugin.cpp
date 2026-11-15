@@ -12,7 +12,7 @@ namespace aste::field::plugin {
 namespace {
 
 constexpr auto kStateType = "field-f01";
-constexpr int kStateSchema = 1;
+constexpr int kStateSchema = 2;
 constexpr auto kSurface = 0xff101316U;
 constexpr auto kPanel = 0xff181e22U;
 constexpr auto kInk = 0xffe7e9e4U;
@@ -27,7 +27,7 @@ struct FactoryPreset {
   std::array<float, kParameterIds.size()> values;
 };
 
-constexpr std::array<FactoryPreset, 5> kPresets{{
+constexpr std::array<FactoryPreset, 6> kPresets{{
     {"Open Field",
      {0.0F, 62.0F, 34.0F, 28.0F, 24.0F, 45.0F, 48.0F, -3.0F, 0.0F}},
     {"Broadcast Hall",
@@ -38,6 +38,8 @@ constexpr std::array<FactoryPreset, 5> kPresets{{
      {0.0F, 88.0F, 72.0F, 36.0F, 66.0F, 74.0F, 72.0F, -7.0F, 0.0F}},
     {"White Horizon",
      {1.0F, 94.0F, 58.0F, 82.0F, 45.0F, 38.0F, 76.0F, -9.0F, 0.0F}},
+    {"Still Field",
+     {0.0F, 82.0F, 12.0F, 0.0F, 8.0F, 45.0F, 55.0F, -6.0F, 0.0F}},
 }};
 
 bool parseFiniteFloat(const juce::var& value, float& result) {
@@ -168,6 +170,11 @@ class Knob final : public juce::Component {
 class FieldMeter final : public juce::Component, private juce::Timer {
  public:
   explicit FieldMeter(FieldAudioProcessor& processor) : processor_{processor} {
+    setTitle("FIELD OBSERVATION");
+    setDescription(
+        "Field activity measures the mono delay taps, not total stored energy. "
+        "Retention target is a coefficient before damping and pitch losses, "
+        "not a measured decay time.");
     startTimerHz(30);
   }
 
@@ -184,11 +191,11 @@ class FieldMeter final : public juce::Component, private juce::Timer {
               "IN");
     drawLevel(graphics, levels, output_, "OUT");
     area.removeFromTop(18.0F);
-    graphics.drawText("STORED ENERGY", area.removeFromTop(20.0F),
+    graphics.drawText("FIELD ACTIVITY", area.removeFromTop(20.0F),
                       juce::Justification::centredLeft);
     drawBar(graphics, area.removeFromTop(15.0F), energy_ * 12.0F);
     area.removeFromTop(16.0F);
-    graphics.drawText("RETENTION", area.removeFromTop(20.0F),
+    graphics.drawText("RETENTION TARGET", area.removeFromTop(20.0F),
                       juce::Justification::centredLeft);
     drawBar(graphics, area.removeFromTop(15.0F), retention_);
   }
@@ -279,6 +286,12 @@ class FieldEditor final : public juce::AudioProcessorEditor,
     preset_.setColour(juce::ComboBox::outlineColourId, juce::Colour{kMuted});
     for (int index = 0; index < processor_.factoryPresetCount(); ++index)
       preset_.addItem(processor_.factoryPresetName(index), index + 1);
+    for (const auto& snapshot : kPresets)
+      preset_.addSnapshot(processor_, processor_.state(), [&](auto set) {
+        for (std::size_t i = 0; i < snapshot.values.size(); ++i)
+          set(kParameterIds[i], snapshot.values[i]);
+      });
+    preset_.watch(processor_);
     preset_.onChange = [this] {
       if (const int selected = preset_.getSelectedId(); selected > 0) {
         processor_.loadFactoryPreset(selected - 1);
@@ -315,8 +328,8 @@ class FieldEditor final : public juce::AudioProcessorEditor,
     graphics.setColour(juce::Colour{kInk});
     graphics.setFont(juce::FontOptions{11.0F});
     graphics.drawText(
-        "Feed audio or MIDI notes, then hold. FOREVER also adds grain, pitch "
-        "and motion.",
+        "FOREVER extends persistence; Grain, Pitch and Motion shape it. "
+        "Legacy presets keep their coupled hold.",
         24, getHeight() - 24, getWidth() - 48, 20,
         juce::Justification::centredLeft);
   }
@@ -347,15 +360,18 @@ class FieldEditor final : public juce::AudioProcessorEditor,
 
  private:
   void timerCallback() override {
-    const juce::String status =
-        forever_.getToggleState()
-            ? (processor_.fieldEnergy() > 0.00001F ? "HOLDING AUDIO"
-                                                   : "HOLD ARMED / FEED AUDIO")
-            : "PRESS TO HOLD";
+    const juce::String status = forever_.getToggleState()
+                                    ? (processor_.usesLegacyBehavior()
+                                           ? "LEGACY HOLD / COUPLED COLOR"
+                                           : "HOLD ACTIVE / COLOR INDEPENDENT")
+                                    : "PRESS TO HOLD";
     if (forever_.getProperties()["holdStatus"].toString() != status) {
       forever_.getProperties().set("holdStatus", status);
-      forever_.setDescription(status +
-                              ". Hold also adds grain, pitch and motion.");
+      forever_.setDescription(
+          status + (processor_.usesLegacyBehavior()
+                        ? ". Legacy hold also adds grain, pitch and motion."
+                        : ". Hold changes persistence; grain, pitch and motion "
+                          "stay at their controls. Not a lossless freeze."));
       forever_.repaint();
     }
   }
@@ -399,16 +415,16 @@ FieldAudioProcessor::createParameterLayout() {
 }
 
 FieldAudioProcessor::FieldAudioProcessor()
-    : AudioProcessor{BusesProperties{}
-                         .withInput("Input", juce::AudioChannelSet::stereo(),
-                                    true)
-                         .withOutput("Output", juce::AudioChannelSet::stereo(),
-                                     true)},
+    : AudioProcessor{
+          BusesProperties{}
+              .withInput("Input", juce::AudioChannelSet::stereo(), true)
+              .withOutput("Output", juce::AudioChannelSet::stereo(), true)},
       state_{*this, nullptr, kStateType, createParameterLayout()} {
   for (std::size_t index = 0; index < kParameterIds.size(); ++index) {
     parameterValues_[index] = state_.getRawParameterValue(kParameterIds[index]);
     jassert(parameterValues_[index] != nullptr);
   }
+  loadFactoryPreset(5);
 }
 
 Parameters FieldAudioProcessor::currentParameters() const noexcept {
@@ -423,7 +439,8 @@ Parameters FieldAudioProcessor::currentParameters() const noexcept {
           .distance = value(distance) * 0.01F,
           .blend = value(blend) * 0.01F,
           .outputDb = value(output),
-          .bypass = value(bypass) >= 0.5F};
+          .bypass = value(bypass) >= 0.5F,
+          .legacyBehavior = usesLegacyBehavior()};
 }
 
 void FieldAudioProcessor::prepareToPlay(double sampleRate, int) {
@@ -518,6 +535,7 @@ juce::String FieldAudioProcessor::factoryPresetName(int index) {
 void FieldAudioProcessor::loadFactoryPreset(int index) {
   if (!juce::isPositiveAndBelow(index, factoryPresetCount())) return;
   const auto& preset = kPresets[static_cast<std::size_t>(index)];
+  legacyBehavior_.store(index < 5, std::memory_order_relaxed);
   for (std::size_t parameter = 0; parameter < preset.values.size(); ++parameter)
     if (auto* target = state_.getParameter(kParameterIds[parameter]))
       target->setValueNotifyingHost(
@@ -532,6 +550,7 @@ void FieldAudioProcessor::getStateInformation(juce::MemoryBlock& destination) {
   auto state = state_.copyState();
   state.setProperty("schema", kStateSchema, nullptr);
   state.setProperty("product", kStateType, nullptr);
+  state.setProperty("behavior", usesLegacyBehavior() ? 0 : 1, nullptr);
   if (const auto xml = state.createXml()) copyXmlToBinary(*xml, destination);
 }
 
@@ -541,8 +560,13 @@ void FieldAudioProcessor::setStateInformation(const void* data, int size) {
   const auto restored = juce::ValueTree::fromXml(*xml);
   if (!restored.isValid() || restored.getType().toString() != kStateType ||
       restored.getProperty("product").toString() != kStateType ||
-      static_cast<int>(restored.getProperty("schema", -1)) != kStateSchema)
+      (restored.getProperty("schema").toString() != "1" &&
+       restored.getProperty("schema").toString() != "2"))
     return;
+  const bool oldSchema = restored.getProperty("schema").toString() == "1";
+  const auto behavior = restored.getProperty("behavior").toString();
+  if (!oldSchema && behavior != "0" && behavior != "1") return;
+  const bool legacy = oldSchema || behavior == "0";
   auto validated = state_.copyState();
   for (int index = 0; index < validated.getNumChildren(); ++index) {
     auto child = validated.getChild(index);
@@ -570,6 +594,8 @@ void FieldAudioProcessor::setStateInformation(const void* data, int size) {
   }
   validated.setProperty("schema", kStateSchema, nullptr);
   validated.setProperty("product", kStateType, nullptr);
+  validated.setProperty("behavior", legacy ? 0 : 1, nullptr);
+  legacyBehavior_.store(legacy, std::memory_order_relaxed);
   state_.replaceState(validated);
 }
 

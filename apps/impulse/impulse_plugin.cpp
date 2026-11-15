@@ -1,4 +1,5 @@
 #include "impulse_plugin.hpp"
+#include "impulse_starting_points.hpp"
 
 #include "decimal_parse.hpp"
 #include "plugin_ui.hpp"
@@ -13,7 +14,7 @@
 namespace aste::impulse::plugin {
 namespace {
 constexpr auto kStateType = "impulse-i01";
-constexpr int kStateSchema = 3;
+constexpr int kStateSchema = 5;
 constexpr auto kSurface = 0xff10100dU;
 constexpr auto kPanel = 0xff1d1c16U;
 constexpr auto kInk = 0xffece9dcU;
@@ -289,22 +290,42 @@ class SoundPanel final : public juce::Component {
     generate_.setButtonText("GENERATE FROM PULSES");
     generate_.setTitle(juce::String{kTrackNames[track]} + " GENERATE");
     generate_.onClick = [this] { generatePattern(processor_.state(), track_); };
-    addAndMakeVisible(generate_);
+    addChildComponent(generate_);
+    audition_.setButtonText("AUDITION");
+    audition_.setTitle(juce::String{kTrackNames[track]} + " AUDITION");
+    audition_.onClick = [this] { processor_.audition(track_); };
+    addAndMakeVisible(audition_);
+    detail_.setButtonText("RHYTHM DETAILS");
+    detail_.setTitle(juce::String{kTrackNames[track]} + " RHYTHM DETAILS");
+    detail_.onClick = [this] { resized(); };
+    addAndMakeVisible(detail_);
   }
   void paint(juce::Graphics& g) override {
     g.fillAll(juce::Colour{kPanel});
     g.setColour(juce::Colour{kInk});
     g.setFont(juce::FontOptions{14.0F, juce::Font::bold});
     g.drawText(juce::String{kTrackNames[track_]} + " / SOUND", 12, 8,
-               getWidth() - 260, 22, juce::Justification::centredLeft);
+               getWidth() - 510, 22, juce::Justification::centredLeft);
+  }
+  void refreshCompatibility() {
+    knobs_[3]->setEnabled(track_ != 4 || !processor_.usesLegacyBehavior());
+    knobs_[3]->setDescription(
+        track_ == 4 && processor_.usesLegacyBehavior()
+            ? "Inactive in legacy Low sessions; original sound retained."
+            : "Shape this object's bright or noisy component.");
   }
   void resized() override {
     auto area = getLocalBounds().reduced(8);
     auto header = area.removeFromTop(30);
+    audition_.setBounds(header.removeFromRight(100).reduced(2));
+    detail_.setBounds(header.removeFromRight(160).reduced(2));
     generate_.setBounds(header.removeFromRight(220).reduced(2));
-    const int height = area.getHeight() / 2;
+    const bool expanded = detail_.getToggleState();
+    generate_.setVisible(expanded);
+    const int height = area.getHeight() / (expanded ? 2 : 1);
     for (std::size_t index = 0; index < knobs_.size(); ++index) {
       const bool sound = index < 5;
+      knobs_[index]->setVisible(sound || expanded);
       const int width = area.getWidth() / (sound ? 5 : 8);
       knobs_[index]->setBounds(
           area.getX() + static_cast<int>(sound ? index : index - 5) * width,
@@ -317,7 +338,96 @@ class SoundPanel final : public juce::Component {
   std::size_t track_{};
   std::array<std::unique_ptr<Knob>, 13> knobs_{};
   juce::TextButton generate_;
+  juce::TextButton audition_;
+  juce::ToggleButton detail_;
 };
+
+template <class Set>
+void applyFactoryValues(int index, Set set) {
+  if (index == 0) return;
+  if (index >= 6) {
+    const auto p =
+        sparseStartingPoint(index == 6 ? SparseStartingPoint::clicksAndSub
+                                       : SparseStartingPoint::cutsAndPressure);
+    set("energy", p.energy * 100);
+    set("division", static_cast<float>(p.division));
+    set("variation", p.variation * 100);
+    set("mutation", p.mutation * 100);
+    set("seed", static_cast<float>(p.seed));
+    set("output", p.outputDb);
+    set("sequence", p.sequenceEnabled ? 1 : 0);
+    set("bypass", p.bypass ? 1 : 0);
+    for (std::size_t track = 0; track < kTrackCount; ++track) {
+      const auto& t = p.tracks[track];
+      const std::array<float, 13> fields{t.level * 100,
+                                         t.pitchHz,
+                                         t.decayMs,
+                                         t.tone * 100,
+                                         t.drive * 100,
+                                         static_cast<float>(t.length),
+                                         static_cast<float>(t.pulses),
+                                         static_cast<float>(t.rotation),
+                                         t.probability * 100,
+                                         static_cast<float>(t.ratchet),
+                                         t.timing * 100,
+                                         static_cast<float>(t.condition),
+                                         t.accent * 100};
+      for (std::size_t field = 0; field < fields.size(); ++field)
+        set(trackId(track, field), fields[field]);
+      for (std::size_t step = 0; step < kPatternSteps; ++step)
+        set(stepId(track, step), t.pattern[step]);
+    }
+    return;
+  }
+  if (index == 5) {
+    set("energy", 30);
+    set("kick_decay", 320);
+    for (std::size_t track = 0; track < kTrackCount; ++track) {
+      set(trackId(track, 6), track == 0 ? 2 : (track == 5 ? 1 : 0));
+      for (std::size_t step = 0; step < kPatternSteps; ++step)
+        set(stepId(track, step), (track == 0 && (step == 0 || step == 9)) ||
+                                         (track == 5 && step == 6)
+                                     ? 1
+                                     : 0);
+    }
+    return;
+  }
+  set("energy", std::array{45.0F, 72.0F, 38.0F, 58.0F,
+                           50.0F}[static_cast<std::size_t>(index)]);
+  set("variation", std::array{12.0F, 8.0F, 28.0F, 20.0F,
+                              15.0F}[static_cast<std::size_t>(index)]);
+  set("mutation", std::array{0.0F, 0.0F, 18.0F, 10.0F,
+                             0.0F}[static_cast<std::size_t>(index)]);
+  set("sequence", index == 4 ? 0.0F : 1.0F);
+  constexpr std::array<std::array<int, kTrackCount>, 5> lengths{{
+      {{15, 23, 11, 16, 16, 13, 17, 9}},
+      {{16, 19, 13, 16, 15, 11, 21, 7}},
+      {{7, 11, 5, 9, 13, 7, 15, 5}},
+      {{15, 23, 11, 16, 19, 13, 17, 9}},
+      {{16, 16, 16, 16, 16, 16, 16, 16}},
+  }};
+  constexpr std::array<std::array<int, kTrackCount>, 5> pulses{{
+      {{4, 7, 4, 5, 3, 5, 6, 3}},
+      {{4, 5, 3, 4, 4, 3, 5, 2}},
+      {{3, 7, 2, 4, 2, 5, 7, 3}},
+      {{5, 9, 4, 7, 5, 6, 7, 4}},
+      {{0, 0, 0, 0, 0, 0, 0, 0}},
+  }};
+  for (std::size_t track = 0; track < kTrackCount; ++track) {
+    set(trackId(track, 5),
+        static_cast<float>(lengths[static_cast<std::size_t>(index)][track]));
+    set(trackId(track, 6),
+        static_cast<float>(pulses[static_cast<std::size_t>(index)][track]));
+    const int length = lengths[static_cast<std::size_t>(index)][track];
+    const int pulseCount = pulses[static_cast<std::size_t>(index)][track];
+    for (std::size_t step = 0; step < kPatternSteps; ++step) {
+      const bool active =
+          static_cast<int>(step) < length && pulseCount > 0 &&
+          (static_cast<int>(step) * pulseCount) % length < pulseCount;
+      set(stepId(track, step), active ? (step == 0U ? 2.0F : 1.0F) : 0.0F);
+    }
+  }
+}
 
 class ImpulseEditor final : public juce::AudioProcessorEditor,
                             private juce::Timer {
@@ -347,14 +457,12 @@ class ImpulseEditor final : public juce::AudioProcessorEditor,
       sounds_[track] = std::make_unique<SoundPanel>(
           processor, track, 10 + static_cast<int>(track * 13));
       addChildComponent(*sounds_[track]);
-      selectors_[track].setButtonText(kTrackNames[track]);
+      selectors_[track].setButtonText(track == 4 ? "LOW / SUB"
+                                                 : kTrackNames[track]);
       selectors_[track].setTitle(juce::String{kTrackNames[track]} + " TRACK");
       selectors_[track].setTooltip(
-          "Click to hear this drum and select its sound controls.");
-      selectors_[track].onClick = [this, track] {
-        selectTrack(track);
-        processor_.audition(track);
-      };
+          "Select sound controls silently. Use AUDITION to hear the object.");
+      selectors_[track].onClick = [this, track] { selectTrack(track); };
       addAndMakeVisible(selectors_[track]);
       for (std::size_t step = 0; step < kPatternSteps; ++step) {
         pattern_[track][step] =
@@ -362,14 +470,21 @@ class ImpulseEditor final : public juce::AudioProcessorEditor,
         addAndMakeVisible(*pattern_[track][step]);
       }
     }
-    selectTrack(0);
+    selectTrack(1);
     preset_.setTitle("PRESETS");
     preset_.setTextWhenNothingSelected("SNAPSHOTS");
     for (int index = 0; index < processor.factoryPresetCount(); ++index)
       preset_.addItem(processor.factoryPresetName(index), index + 1);
+    for (int index = 0; index < processor.factoryPresetCount(); ++index)
+      preset_.addSnapshot(processor_, processor_.state(), [index](auto set) {
+        applyFactoryValues(index, set);
+      });
+    preset_.watch(processor_);
     preset_.onChange = [this] {
       if (preset_.getSelectedId() > 0) {
         processor_.loadFactoryPreset(preset_.getSelectedId() - 1);
+        if (preset_.getSelectedId() == 7) selectTrack(1);
+        if (preset_.getSelectedId() == 8) selectTrack(7);
         preset_.remember(processor_);
       }
     };
@@ -402,8 +517,8 @@ class ImpulseEditor final : public juce::AudioProcessorEditor,
     g.setFont(juce::FontOptions{11.0F});
     g.setColour(juce::Colour{kInk});
     g.drawText(
-        "Click a drum to audition. Start host playback for the groove. Steps: "
-        "Off / Hit / Accent.",
+        "CLICK / CUT: tiny attacks. LOW: sub weight. Select silently; AUDITION "
+        "plays. RHYTHM DETAILS opens cycle controls.",
         24, getHeight() - 24, getWidth() - 48, 20,
         juce::Justification::centredLeft);
   }
@@ -439,7 +554,10 @@ class ImpulseEditor final : public juce::AudioProcessorEditor,
       }
     }
     area.removeFromTop(12);
-    for (auto& sound : sounds_) sound->setBounds(area);
+    for (auto& sound : sounds_) {
+      sound->setBounds(area);
+      sound->refreshCompatibility();
+    }
   }
 
  private:
@@ -466,6 +584,7 @@ class ImpulseEditor final : public juce::AudioProcessorEditor,
         pattern_[track][step]->setActive(static_cast<int>(step) == current);
       }
     }
+    for (auto& sound : sounds_) sound->refreshCompatibility();
     repaint(getWidth() - 220, 65, 190, 30);
   }
   ImpulseLookAndFeel lookAndFeel_;
@@ -560,6 +679,7 @@ ImpulseAudioProcessor::ImpulseAudioProcessor()
   for (std::size_t track = 0; track < kTrackCount; ++track)
     for (std::size_t step = 0; step < kPatternSteps; ++step)
       patterns_[track][step] = state_.getRawParameterValue(stepId(track, step));
+  loadFactoryPreset(6);
   publishMeters({});
 }
 
@@ -569,6 +689,8 @@ Parameters ImpulseAudioProcessor::currentParameters() const noexcept {
   };
   Parameters result;
   result.energy = global(0) * 0.01F;
+  result.legacyBehavior = usesLegacyBehavior();
+  result.sampleClock = usesSampleClock();
   result.division = static_cast<int>(global(1));
   result.variation = global(2) * 0.01F;
   result.mutation = global(3) * 0.01F;
@@ -707,17 +829,23 @@ juce::AudioProcessorParameter* ImpulseAudioProcessor::getBypassParameter()
   return state_.getParameter("bypass");
 }
 
-int ImpulseAudioProcessor::factoryPresetCount() noexcept { return 5; }
+int ImpulseAudioProcessor::factoryPresetCount() noexcept { return 8; }
 juce::String ImpulseAudioProcessor::factoryPresetName(int index) {
-  constexpr std::array names{"Steady Start", "Deep Cycle / evolving",
+  constexpr std::array names{"Steady Start",
+                             "Deep Cycle / evolving",
                              "Microscopic Cuts / wild",
-                             "Polymetric Field / wild", "Manual Surface"};
+                             "Polymetric Field / wild",
+                             "Manual Surface",
+                             "Space / two objects",
+                             "Clicks / sub",
+                             "Cuts / pressure"};
   return juce::isPositiveAndBelow(index, factoryPresetCount())
              ? names[static_cast<std::size_t>(index)]
              : juce::String{};
 }
 void ImpulseAudioProcessor::loadFactoryPreset(int index) {
   if (!juce::isPositiveAndBelow(index, factoryPresetCount())) return;
+  legacyBehavior_.store(index < 5, std::memory_order_relaxed);
   for (auto* parameter : getParameters()) {
     parameter->beginChangeGesture();
     parameter->setValueNotifyingHost(parameter->getDefaultValue());
@@ -728,41 +856,7 @@ void ImpulseAudioProcessor::loadFactoryPreset(int index) {
     if (auto* p = state_.getParameter(id))
       p->setValueNotifyingHost(p->convertTo0to1(plain));
   };
-  set("energy", std::array{45.0F, 72.0F, 38.0F, 58.0F,
-                           50.0F}[static_cast<std::size_t>(index)]);
-  set("variation", std::array{12.0F, 8.0F, 28.0F, 20.0F,
-                              15.0F}[static_cast<std::size_t>(index)]);
-  set("mutation", std::array{0.0F, 0.0F, 18.0F, 10.0F,
-                             0.0F}[static_cast<std::size_t>(index)]);
-  set("sequence", index == 4 ? 0.0F : 1.0F);
-  constexpr std::array<std::array<int, kTrackCount>, 5> lengths{{
-      {{15, 23, 11, 16, 16, 13, 17, 9}},
-      {{16, 19, 13, 16, 15, 11, 21, 7}},
-      {{7, 11, 5, 9, 13, 7, 15, 5}},
-      {{15, 23, 11, 16, 19, 13, 17, 9}},
-      {{16, 16, 16, 16, 16, 16, 16, 16}},
-  }};
-  constexpr std::array<std::array<int, kTrackCount>, 5> pulses{{
-      {{4, 7, 4, 5, 3, 5, 6, 3}},
-      {{4, 5, 3, 4, 4, 3, 5, 2}},
-      {{3, 7, 2, 4, 2, 5, 7, 3}},
-      {{5, 9, 4, 7, 5, 6, 7, 4}},
-      {{0, 0, 0, 0, 0, 0, 0, 0}},
-  }};
-  for (std::size_t track = 0; track < kTrackCount; ++track) {
-    set(trackId(track, 5),
-        static_cast<float>(lengths[static_cast<std::size_t>(index)][track]));
-    set(trackId(track, 6),
-        static_cast<float>(pulses[static_cast<std::size_t>(index)][track]));
-    const int length = lengths[static_cast<std::size_t>(index)][track];
-    const int pulseCount = pulses[static_cast<std::size_t>(index)][track];
-    for (std::size_t step = 0; step < kPatternSteps; ++step) {
-      const bool active =
-          static_cast<int>(step) < length && pulseCount > 0 &&
-          (static_cast<int>(step) * pulseCount) % length < pulseCount;
-      set(stepId(track, step), active ? (step == 0U ? 2.0F : 1.0F) : 0.0F);
-    }
-  }
+  applyFactoryValues(index, set);
 }
 
 void ImpulseAudioProcessor::getStateInformation(
@@ -770,6 +864,8 @@ void ImpulseAudioProcessor::getStateInformation(
   auto state = state_.copyState();
   state.setProperty("schema", kStateSchema, nullptr);
   state.setProperty("product", kStateType, nullptr);
+  state.setProperty("behavior", usesLegacyBehavior() ? 0 : 1, nullptr);
+  state.setProperty("clock", usesSampleClock() ? 1 : 0, nullptr);
   if (const auto xml = state.createXml()) copyXmlToBinary(*xml, destination);
 }
 void ImpulseAudioProcessor::setStateInformation(const void* data, int size) {
@@ -777,13 +873,21 @@ void ImpulseAudioProcessor::setStateInformation(const void* data, int size) {
   if (!xml) return;
   const auto restored = juce::ValueTree::fromXml(*xml);
   const auto schemaText = restored.getProperty("schema").toString();
-  if (schemaText != "1" && schemaText != "2" && schemaText != "3") return;
+  if (schemaText != "1" && schemaText != "2" && schemaText != "3" &&
+      schemaText != "4" && schemaText != "5")
+    return;
   const int restoredSchema =
       static_cast<int>(restored.getProperty("schema", -1));
   if (!restored.isValid() || restored.getType().toString() != kStateType ||
       restored.getProperty("product").toString() != kStateType ||
       (restoredSchema < 1 || restoredSchema > kStateSchema))
     return;
+  const auto behavior = restored.getProperty("behavior").toString();
+  if (restoredSchema >= 4 && behavior != "0" && behavior != "1") return;
+  const auto clock = restored.getProperty("clock").toString();
+  if (restoredSchema == 5 && clock != "0" && clock != "1") return;
+  const bool sampleClock = restoredSchema == 5 && clock == "1";
+  const bool legacyBehavior = restoredSchema < 4 || behavior == "0";
   auto validated = state_.copyState();
   for (int index = 0; index < validated.getNumChildren(); ++index) {
     auto child = validated.getChild(index);
@@ -848,6 +952,10 @@ void ImpulseAudioProcessor::setStateInformation(const void* data, int size) {
   }
   validated.setProperty("schema", kStateSchema, nullptr);
   validated.setProperty("product", kStateType, nullptr);
+  validated.setProperty("behavior", legacyBehavior ? 0 : 1, nullptr);
+  validated.setProperty("clock", sampleClock ? 1 : 0, nullptr);
+  legacyBehavior_.store(legacyBehavior, std::memory_order_relaxed);
+  sampleClock_.store(sampleClock, std::memory_order_relaxed);
   state_.replaceState(validated);
 }
 juce::AudioProcessorEditor* ImpulseAudioProcessor::createEditor() {

@@ -1,5 +1,13 @@
 # Density production golden
 
+The current CTest uses `density-production-v2.csv`. Both historical files are
+retained unchanged. The golden renderer explicitly selects legacy behavior to
+test the original graph, including log-time Attack smoothing. Current behavior
+is checked by production-consistency, automation and direct-Drive tests; the
+quality laboratory also compares legacy audio with independently compiled
+original source. A legacy golden pass is not evidence that the new graph sounds
+identical or better.
+
 `density-production-v1.csv` is the reviewed metric baseline for four generated
 stereo fixtures at 48 kHz, rendered in 127-sample blocks with production DSP.
 

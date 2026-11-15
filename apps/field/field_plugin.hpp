@@ -54,6 +54,9 @@ class FieldAudioProcessor final : public juce::AudioProcessor {
   [[nodiscard]] static int factoryPresetCount() noexcept;
   [[nodiscard]] static juce::String factoryPresetName(int index);
   void loadFactoryPreset(int index);
+  [[nodiscard]] bool usesLegacyBehavior() const noexcept {
+    return legacyBehavior_.load(std::memory_order_relaxed);
+  }
 
  private:
   enum ParameterIndex : std::size_t {
@@ -77,6 +80,7 @@ class FieldAudioProcessor final : public juce::AudioProcessor {
   void publishMeters(const MeterSnapshot&) noexcept;
 
   Processor processor_{};
+  std::atomic<bool> legacyBehavior_{};
   std::atomic<bool> clearRequested_{};
   juce::AudioProcessorValueTreeState state_;
   std::array<std::atomic<float>*, parameterCount> parameterValues_{};

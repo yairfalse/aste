@@ -1,5 +1,7 @@
 #include "field_plugin.hpp"
+#include "preset_recall_checks.hpp"
 #include "editor_artifact.hpp"
+#include "behavior_state_checks.hpp"
 
 #include <array>
 #include <atomic>
@@ -109,7 +111,7 @@ void testContractAndState() {
   restored.setStateInformation(malformed, sizeof(malformed));
   require(std::abs(value(restored, "grain") - 73.25F) < 0.02F,
           "Malformed Field state is rejected");
-  require(restored.factoryPresetCount() == 5,
+  require(restored.factoryPresetCount() == 6,
           "Field provides five deliberate starting points");
 }
 
@@ -192,8 +194,10 @@ void testEmptyHoldAndClear() {
   setValue(processor, "forever", 1);
   std::unique_ptr<juce::AudioProcessorEditor> editor{processor.createEditor()};
   auto* hold = findTitled(*editor, "FOREVER");
-  require(hold && hold->getDescription().contains("HOLD ARMED"),
-          "Empty memory reports an armed hold, not held audio");
+  require(hold && hold->getDescription().contains("HOLD ACTIVE") &&
+              !hold->getDescription().contains("HOLDING AUDIO"),
+          "Hold reports its control state without claiming to know total "
+          "stored energy");
   juce::AudioBuffer<float> audio{2, 127};
   juce::MidiBuffer midi;
   midi.addEvent(juce::MidiMessage::noteOn(1, 60, 1.0F), 0);
@@ -216,6 +220,9 @@ void testEmptyHoldAndClear() {
 
 int main(int argc, char** argv) {
   juce::ScopedJuceInitialiser_GUI juce;
+  aste::tests::presetRecallChecks<aste::field::plugin::FieldAudioProcessor>(
+      require);
+  aste::tests::behaviorStateChecks<Field>(require, 1, 2);
   testContractAndState();
   testProcessingMidiAndRealtime();
   testEmptyHoldAndClear();

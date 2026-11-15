@@ -36,7 +36,7 @@ struct FactoryPreset {
   std::array<float, kParameterIds.size()> values;
 };
 
-constexpr std::array<FactoryPreset, 6> kFactoryPresets{{
+constexpr std::array<FactoryPreset, 7> kFactoryPresets{{
     {"Default",
      {0.0F, 0.0F, 80.0F, 0.0F, 400.0F, 0.0F, 2500.0F, 0.0F, 12000.0F, 35.0F,
       0.0F, 0.0F}},
@@ -55,6 +55,9 @@ constexpr std::array<FactoryPreset, 6> kFactoryPresets{{
     {"Negative Space",
      {0.0F, -6.0F, 70.0F, -4.0F, 300.0F, 4.0F, 1800.0F, 2.0F, 10000.0F, 30.0F,
       0.0F, 0.0F}},
+    {"Charged Presence",
+     {12.0F, 0.0F, 80.0F, 0.0F, 400.0F, 6.0F, 2500.0F, 0.0F, 12000.0F, 100.0F,
+      -15.0F, 0.0F}},
 }};
 
 bool parseFiniteFloat(const juce::var& value, float& result) {
@@ -235,7 +238,8 @@ class MeterPanel final : public juce::Component, private juce::Timer {
   float activity_{};
 };
 
-class HarmonicEditor final : public juce::AudioProcessorEditor {
+class HarmonicEditor final : public juce::AudioProcessorEditor,
+                             private juce::Timer {
  public:
   explicit HarmonicEditor(HarmonicAudioProcessor& processor)
       : AudioProcessorEditor{processor},
@@ -283,6 +287,12 @@ class HarmonicEditor final : public juce::AudioProcessorEditor {
     for (int index = 0; index < processor_.factoryPresetCount(); ++index) {
       preset_.addItem(processor_.factoryPresetName(index), index + 1);
     }
+    for (const auto& snapshot : kFactoryPresets)
+      preset_.addSnapshot(processor_, processor_.state(), [&](auto set) {
+        for (std::size_t i = 0; i < snapshot.values.size(); ++i)
+          set(kParameterIds[i], snapshot.values[i]);
+      });
+    preset_.watch(processor_);
     preset_.onChange = [this] {
       if (const int selected = preset_.getSelectedId(); selected > 0) {
         processor_.loadFactoryPreset(selected - 1);
@@ -295,9 +305,28 @@ class HarmonicEditor final : public juce::AudioProcessorEditor {
              &presenceFrequency_, &airGain_, &airFrequency_, &preset_}) {
       addAndMakeVisible(component);
     }
+    engagement_.setTitle("COLOR STATUS");
+    engagement_.setFont(juce::FontOptions{11.0F});
+    addAndMakeVisible(engagement_);
+    push_.setButtonText("PUSH +3 dB");
+    pull_.setButtonText("PULL -3 dB");
+    push_.setTitle("PUSH OPERATING LEVEL");
+    pull_.setTitle("PULL OPERATING LEVEL");
+    push_.setTooltip(
+        "Increase Input and decrease Output equally. Changes nonlinear color, "
+        "not a loudness match.");
+    pull_.setTooltip(
+        "Decrease Input and increase Output equally, within both controls' "
+        "ranges.");
+    push_.onClick = [this] { shiftOperatingLevel(3); };
+    pull_.onClick = [this] { shiftOperatingLevel(-3); };
+    addAndMakeVisible(push_);
+    addAndMakeVisible(pull_);
     setResizable(true, true);
     setResizeLimits(860, 480, 1720, 960);
     setSize(1120, 620);
+    timerCallback();
+    startTimerHz(20);
   }
 
   ~HarmonicEditor() override { setLookAndFeel(nullptr); }
@@ -333,6 +362,10 @@ class HarmonicEditor final : public juce::AudioProcessorEditor {
     meter_.setBounds(area.removeFromLeft(136));
     area.removeFromLeft(16);
     auto hero = area.removeFromRight(214);
+    engagement_.setBounds(hero.removeFromTop(22));
+    auto gestures = hero.removeFromBottom(26);
+    push_.setBounds(gestures.removeFromLeft(107).reduced(1));
+    pull_.setBounds(gestures.reduced(1));
     input_.setBounds(hero.removeFromTop(hero.getHeight() / 3));
     output_.setBounds(hero.removeFromBottom(hero.getHeight() / 2));
     harmonic_.setBounds(hero);
@@ -353,6 +386,38 @@ class HarmonicEditor final : public juce::AudioProcessorEditor {
   }
 
  private:
+  void shiftOperatingLevel(float requested) {
+    auto* in = processor_.state().getParameter("input");
+    auto* out = processor_.state().getParameter("output");
+    const float input = in->convertFrom0to1(in->getValue());
+    const float output = out->convertFrom0to1(out->getValue());
+    const float low = std::max(in->getNormalisableRange().start - input,
+                               output - out->getNormalisableRange().end);
+    const float high = std::min(in->getNormalisableRange().end - input,
+                                output - out->getNormalisableRange().start);
+    const float delta = juce::jlimit(low, high, requested);
+    in->beginChangeGesture();
+    out->beginChangeGesture();
+    in->setValueNotifyingHost(in->convertTo0to1(input + delta));
+    out->setValueNotifyingHost(out->convertTo0to1(output - delta));
+    out->endChangeGesture();
+    in->endChangeGesture();
+  }
+  void timerCallback() override {
+    bool boosted{};
+    for (const char* id :
+         {"foundation_gain", "body_gain", "presence_gain", "air_gain"})
+      boosted |= processor_.state().getRawParameterValue(id)->load() > 0;
+    const bool active =
+        boosted &&
+        processor_.state().getRawParameterValue("harmonic")->load() > 0;
+    engagement_.setText(active ? "COLOR READY / level dependent"
+                               : (boosted ? "CLEAN / Harmonic is zero"
+                                          : "CLEAN / boost a band to color"),
+                        juce::dontSendNotification);
+  }
+  juce::Label engagement_;
+  juce::TextButton push_, pull_;
   HarmonicLookAndFeel lookAndFeel_;
   HarmonicAudioProcessor& processor_;
   MeterPanel meter_;
@@ -399,16 +464,16 @@ HarmonicAudioProcessor::createParameterLayout() {
 }
 
 HarmonicAudioProcessor::HarmonicAudioProcessor()
-    : AudioProcessor{BusesProperties{}
-                         .withInput("Input", juce::AudioChannelSet::stereo(),
-                                    true)
-                         .withOutput("Output", juce::AudioChannelSet::stereo(),
-                                     true)},
+    : AudioProcessor{
+          BusesProperties{}
+              .withInput("Input", juce::AudioChannelSet::stereo(), true)
+              .withOutput("Output", juce::AudioChannelSet::stereo(), true)},
       state_{*this, nullptr, kStateType, createParameterLayout()} {
   for (std::size_t index = 0; index < kParameterIds.size(); ++index) {
     parameterValues_[index] = state_.getRawParameterValue(kParameterIds[index]);
     jassert(parameterValues_[index] != nullptr);
   }
+  loadFactoryPreset(6);
 }
 
 Parameters HarmonicAudioProcessor::currentParameters() const noexcept {

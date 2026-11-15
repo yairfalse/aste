@@ -157,30 +157,54 @@ inline int noteNumber(const juce::String& text, int fallback) {
 // The selected starting point remains visible; edits are explicitly marked.
 class PresetMenu final : public juce::ComboBox, private juce::Timer {
  public:
-  void remember(juce::AudioProcessor& processor) {
-    processor_ = &processor;
-    name_ = getText();
-    values_.clear();
+  template <class Emit>
+  void addSnapshot(juce::AudioProcessor& processor,
+                   juce::AudioProcessorValueTreeState& state, Emit emit) {
+    std::vector<float> values;
     for (const auto* parameter : processor.getParameters())
-      values_.push_back(parameter->getValue());
+      values.push_back(parameter->getDefaultValue());
+    emit([&](const juce::String& id, float plain) {
+      if (auto* parameter = state.getParameter(id))
+        values[static_cast<std::size_t>(parameter->getParameterIndex())] =
+            parameter->convertTo0to1(
+                parameter->getNormalisableRange().snapToLegalValue(plain));
+    });
+    snapshots_.push_back(std::move(values));
+  }
+  void watch(juce::AudioProcessor& processor) {
+    processor_ = &processor;
+    refresh();
     startTimerHz(4);
+  }
+  void remember(juce::AudioProcessor& processor) {
+    name_ = getText();
+    watch(processor);
+  }
+  void refresh() {
+    if (!processor_) return;
+    const auto& parameters = processor_->getParameters();
+    for (std::size_t index = 0; index < snapshots_.size(); ++index) {
+      const auto& values = snapshots_[index];
+      bool match = values.size() == static_cast<std::size_t>(parameters.size());
+      for (int i = 0; match && i < parameters.size(); ++i)
+        match =
+            parameters[i]->getValue() == values[static_cast<std::size_t>(i)];
+      if (match) {
+        name_ = getItemText(static_cast<int>(index));
+        setSelectedId(getItemId(static_cast<int>(index)),
+                      juce::dontSendNotification);
+        return;
+      }
+    }
+    const auto label = name_.isEmpty() ? juce::String{"CUSTOM"} : name_ + " *";
+    if (getText() != label) setText(label, juce::dontSendNotification);
   }
 
  private:
-  void timerCallback() override {
-    if (!processor_) return;
-    const auto& parameters = processor_->getParameters();
-    bool modified =
-        static_cast<std::size_t>(parameters.size()) != values_.size();
-    for (int i = 0; !modified && i < parameters.size(); ++i)
-      modified =
-          parameters[i]->getValue() != values_[static_cast<std::size_t>(i)];
-    const auto label = name_ + (modified ? " *" : "");
-    if (getText() != label) setText(label, juce::dontSendNotification);
-  }
+  void timerCallback() override { refresh(); }
   juce::AudioProcessor* processor_{};
   juce::String name_;
-  std::vector<float> values_;
+  std::vector<std::vector<float>> snapshots_;
 };
 
 }  // namespace aste::ui

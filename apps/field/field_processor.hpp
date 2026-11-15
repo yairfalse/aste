@@ -16,6 +16,7 @@ struct Parameters {
   float blend{0.48F};
   float outputDb{-3.0F};
   bool bypass{};
+  bool legacyBehavior{};
 };
 
 struct MeterSnapshot {

@@ -376,7 +376,29 @@ void testNoProcessAllocation() {
 
 }  // namespace
 
+void testDriveDoesNotUndoItsOwnPush() {
+  std::array<float, 2> reduction{};
+  for (std::size_t setting = 0; setting < 2; ++setting) {
+    aste::density::Parameters p;
+    p.driveDb = setting ? 12 : 0;
+    p.crush = .85F;
+    p.density = .65F;
+    aste::density::Processor processor;
+    processor.prepare(48000, p);
+    std::vector<float> audio(48000);
+    for (std::size_t i = 0; i < audio.size(); ++i)
+      audio[i] = .1F * static_cast<float>(
+                           std::sin(2 * std::acos(-1.) * 110 * i / 48000));
+    processor.process(audio.data(), nullptr, audio.size(), p);
+    reduction[setting] = processor.meters().gainReductionDb;
+  }
+  require(reduction[0] > 6, "Density still grips a normal-level source");
+  require(reduction[0] == reduction[1],
+          "Drive pushes color without the detector cancelling that push");
+}
+
 int main() {
+  testDriveDoesNotUndoItsOwnPush();
   testStrictDecimalParsing();
   testDensityMapping();
   testTrackLevelCompression();

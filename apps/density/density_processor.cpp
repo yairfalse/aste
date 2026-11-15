@@ -344,6 +344,7 @@ void Processor::prepare(double sampleRate, const Parameters& initial) noexcept {
   driveCascade_ = true;
   attackSmoothing_ = true;
   attackCascade_ = false;
+  coefficientAttack_ = true;
   blendCascade_ = true;
   sampleRate_ = std::clamp(finiteOr(static_cast<float>(sampleRate), 48000.0F),
                            8000.0F, 384000.0F);
@@ -352,6 +353,8 @@ void Processor::prepare(double sampleRate, const Parameters& initial) noexcept {
   driveStage2_.prepare(sampleRate_, 0.003, initialDrive);
   const float initialAttack = bounded(initial.attackMs, 0.02F, 30.0F, 1.0F);
   attackLog_.prepare(sampleRate_, 0.005, std::log(initialAttack));
+  attackCoefficient_.prepare(sampleRate_, 0.005,
+                             timeCoefficient(initialAttack, sampleRate_));
   crush_.prepare(sampleRate_, 0.010, bounded(initial.crush, 0.0F, 1.0F, 0.65F));
   density_.prepare(sampleRate_, 0.010,
                    bounded(initial.density, 0.0F, 1.0F, 0.5F));
@@ -394,6 +397,7 @@ void Processor::prepareAttackSmoothingPrototype(
     double sampleRate, double stageSeconds, bool cascade,
     const Parameters& initial) noexcept {
   prepare(sampleRate, initial);
+  coefficientAttack_ = false;
   if (std::isfinite(stageSeconds) && stageSeconds <= 0.0) {
     attackSmoothing_ = false;
     reset();
@@ -428,6 +432,7 @@ void Processor::prepareBlendSmoothingPrototype(
 void Processor::prepareAutomationReferencePrototype(
     double sampleRate, const Parameters& initial) noexcept {
   prepare(sampleRate, initial);
+  coefficientAttack_ = false;
   const float initialDrive = bounded(initial.driveDb, -12.0F, 24.0F, 0.0F);
   drive_.prepare(sampleRate_, 0.005, initialDrive);
   driveCascade_ = false;
@@ -475,6 +480,7 @@ void Processor::process(float* left, float* right, std::size_t frames,
   if (attackSmoothing_) {
     attackLog_.setTarget(std::log(attackMs));
   }
+  attackCoefficient_.setTarget(timeCoefficient(attackMs, sampleRate_));
   const float hpfCoefficient =
       std::exp(-2.0F * kPi * hpfHz / static_cast<float>(sampleRate_));
   meters_ = {};
@@ -490,10 +496,10 @@ void Processor::process(float* left, float* right, std::size_t frames,
     const float driveGain = dbToGain(driveDb);
     const float drivenLeft = dryLeft * driveGain;
     const float drivenRight = dryRight * driveGain;
-    const float detectorLeft =
-        std::abs(detectorHpf_[0].process(drivenLeft, hpfCoefficient));
-    const float detectorRight =
-        std::abs(detectorHpf_[1].process(drivenRight, hpfCoefficient));
+    const float detectorLeft = std::abs(detectorHpf_[0].process(
+        parameters.legacyBehavior ? drivenLeft : dryLeft, hpfCoefficient));
+    const float detectorRight = std::abs(detectorHpf_[1].process(
+        parameters.legacyBehavior ? drivenRight : dryRight, hpfCoefficient));
     const float linkedDetector = std::max(detectorLeft, detectorRight);
     const float stereoLink = stereoLink_.next();
     const std::array<float, 2> detectors{
@@ -514,6 +520,9 @@ void Processor::process(float* left, float* right, std::size_t frames,
       }
       attackCoefficient = timeCoefficient(std::exp(attackLog), sampleRate_);
     }
+    const float directCoefficient = attackCoefficient_.next();
+    if (!parameters.legacyBehavior && coefficientAttack_)
+      attackCoefficient = directCoefficient;
     std::array<float, 2> reductionDb{};
     std::array<float, 2> compressedGain{};
     for (std::size_t channel = 0; channel < envelopes_.size(); ++channel) {
