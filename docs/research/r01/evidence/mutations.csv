@@ -1,0 +1,11 @@
+fault,compile_exit,test_exit,detected
+modal_decay,0,1,1
+coupling,0,1,1
+reset,0,1,1
+projection,0,1,1
+input_finite,0,1,1
+midi_release,0,1,1
+waveguide_decay,0,1,1
+delay_history,0,1,1
+validation,0,1,1
+allocation,0,1,1

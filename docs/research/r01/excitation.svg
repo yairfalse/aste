@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800" role="img" aria-labelledby="title desc">
+  <title id="title">R-01 excitation and harmonic structure wireframe</title>
+  <desc id="desc">Static illustrative study. Noise excitation enters a four-tone C minor add-nine structure with three modal energy bars per tone. Shared memory, decay, damping and coupling remain visible. This is not a functioning editor or measured DSP screenshot.</desc>
+  <style>
+    .bg{fill:#151719}.panel{fill:#1d2023}.ink{fill:#eeeae2}.muted{fill:#b2b7bb}.stroke{stroke:#777f86;fill:none;stroke-width:1.5}.rule{stroke:#555d63;stroke-width:1}.label{font:14px Menlo,Consolas,monospace}.small{font:12px Menlo,Consolas,monospace}.value{font:18px Menlo,Consolas,monospace}.title{font:bold 18px Menlo,Consolas,monospace}.bar{fill:#b2b7bb}.selected{fill:#eeeae2}.dark{fill:#151719}.dash{stroke:#b2b7bb;stroke-width:1;stroke-dasharray:4 4;fill:none}
+  </style>
+  <rect class="bg" width="1280" height="800"/>
+  <g class="ink">
+    <text class="title" x="32" y="43">RESONATOR / HARMONIC MEMORY</text>
+    <text class="small muted" x="907" y="43">R–01 RESEARCH · STATIC STUDY</text>
+  </g>
+  <path class="rule" d="M32 64H1248"/>
+  <rect class="panel" x="32" y="88" width="256" height="640"/>
+  <text class="title ink" x="56" y="120">EXCITATION</text>
+  <text class="small muted" x="56" y="144">Energy in, not a chord voice.</text>
+  <rect class="stroke" x="56" y="168" width="96" height="44"/>
+  <text class="label ink" x="72" y="195">IMPULSE</text>
+  <rect class="selected" x="160" y="168" width="104" height="44"/>
+  <text class="label dark" x="188" y="195">NOISE</text>
+  <rect class="stroke" x="56" y="220" width="96" height="44"/>
+  <text class="label ink" x="80" y="247">BURST</text>
+  <rect class="stroke" x="160" y="220" width="104" height="44"/>
+  <text class="label ink" x="176" y="247">EXTERNAL</text>
+  <text class="small ink" x="56" y="292">WHITE / PINK / SHAPED</text>
+  <path class="rule" d="M56 304H264"/>
+  <text class="small muted" x="56" y="332">EXCITATION AMOUNT</text>
+  <text class="value ink" x="56" y="360">0.35</text>
+  <text class="small muted" x="56" y="392">BURST DURATION</text>
+  <text class="value ink" x="56" y="420">35 ms</text>
+  <text class="small muted" x="56" y="452">NOISE COLOR</text>
+  <text class="value ink" x="56" y="480">SHAPED · 0.40</text>
+  <rect class="selected" x="56" y="512" width="208" height="80"/>
+  <text class="title dark" x="112" y="557">EXCITE</text>
+  <text class="small muted" x="56" y="620">One press → one burst.</text>
+  <text class="small muted" x="56" y="644">Change noise, not tuning.</text>
+  <text class="small muted" x="56" y="684">INPUT</text>
+  <rect class="stroke" x="112" y="673" width="104" height="12"/>
+  <rect class="bar" x="113" y="674" width="40" height="10"/>
+  <text class="small ink" x="224" y="684">−32</text>
+  <text class="small muted" x="56" y="708">dBFS · illustrative</text>
+
+  <text class="title ink" x="320" y="120">HARMONIC STRUCTURE</text>
+  <rect class="stroke" x="1016" y="88" width="232" height="44"/>
+  <text class="label ink" x="1032" y="115">SOURCE: SNAPSHOT</text>
+  <text class="small muted" x="320" y="151">Root C3 · intervals 0 / +3 / +7 / +14 · 4 tones × 3 modes</text>
+  <rect class="panel" x="320" y="176" width="928" height="208"/>
+  <g class="ink">
+    <text class="value" x="344" y="208">C3</text><text class="small muted" x="344" y="232">130.8 Hz · +0</text>
+    <text class="value" x="576" y="208">E♭3</text><text class="small muted" x="576" y="232">155.6 Hz · +3</text>
+    <text class="value" x="808" y="208">G3</text><text class="small muted" x="808" y="232">196.0 Hz · +7</text>
+    <text class="value" x="1040" y="208">D4</text><text class="small muted" x="1040" y="232">293.7 Hz · +14</text>
+  </g>
+  <path class="rule" d="M552 192V368M784 192V368M1016 192V368M344 352H1224"/>
+  <g class="bar">
+    <rect x="368" y="264" width="32" height="88"/><rect x="416" y="304" width="32" height="48"/><rect x="464" y="328" width="32" height="24"/>
+    <rect x="600" y="280" width="32" height="72"/><rect x="648" y="312" width="32" height="40"/><rect x="696" y="336" width="32" height="16"/>
+    <rect x="832" y="272" width="32" height="80"/><rect x="880" y="320" width="32" height="32"/><rect x="928" y="328" width="32" height="24"/>
+    <rect x="1064" y="288" width="32" height="64"/><rect x="1112" y="320" width="32" height="32"/><rect x="1160" y="336" width="32" height="16"/>
+  </g>
+  <rect class="stroke" x="640" y="256" width="48" height="104"/>
+  <g class="small muted"><text x="373" y="374">1</text><text x="421" y="374">2</text><text x="469" y="374">3</text><text x="605" y="374">1</text><text x="653" y="374">2</text><text x="701" y="374">3</text><text x="837" y="374">1</text><text x="885" y="374">2</text><text x="933" y="374">3</text><text x="1069" y="374">1</text><text x="1117" y="374">2</text><text x="1165" y="374">3</text></g>
+  <text class="small muted" x="320" y="408">Height = normalized stored mode energy · not output loudness</text>
+
+  <rect class="panel" x="320" y="432" width="928" height="80"/>
+  <text class="small muted" x="344" y="458">NEXT EXCITATION</text>
+  <text class="value ink" x="344" y="488">SHARED</text>
+  <text class="label ink" x="544" y="458">Retune current state; add new energy to the same system.</text>
+  <text class="small muted" x="544" y="488">Alternatives: RESET · PARTIAL DAMPING · OVERLAP</text>
+
+  <g class="ink">
+    <text class="small muted" x="320" y="544">DECAY</text><text class="value" x="320" y="576">2.4 s</text>
+    <text class="small muted" x="552" y="544">DAMPING</text><text class="value" x="552" y="576">0.35</text>
+    <text class="small muted" x="784" y="544">COUPLING</text><text class="value" x="784" y="576">0.12</text>
+    <text class="small muted" x="1016" y="544">PERSISTENCE</text><text class="value" x="1016" y="576">DECAYING</text>
+  </g>
+  <path class="rule" d="M320 600H1248"/>
+  <text class="small muted" x="320" y="628">SELECTED · TONE 2 / MODE 2</text>
+  <g class="ink"><text class="small muted" x="320" y="660">RATIO</text><text class="value" x="320" y="688">2.000×</text><text class="small muted" x="496" y="660">FINE TUNE</text><text class="value" x="496" y="688">+0.0 ct</text><text class="small muted" x="688" y="660">MODE DAMPING</text><text class="value" x="688" y="688">1.00×</text></g>
+  <rect class="stroke" x="1016" y="640" width="232" height="56"/>
+  <text class="label ink" x="1052" y="674">CLEAR ENERGY</text>
+  <text class="small muted" x="320" y="720">Select a mode for precision. Essential controls stay visible.</text>
+  <path class="rule" d="M32 752H1248"/>
+  <text class="small muted" x="32" y="780">4 TONES ACCEPTED · NO SAFETY INTERVENTION</text>
+  <text class="small ink" x="896" y="780">OUTPUT −12 dB · NOT A DSP CAPTURE</text>
+</svg>

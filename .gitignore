@@ -1,4 +1,5 @@
 /build*/
+/build-r01-*.zip
 /ci-*/
 /dist/
 /.DS_Store
