@@ -208,6 +208,10 @@ class PatternCell final : public juce::Button {
     };
   }
 
+  bool isProgrammed() const noexcept {
+    return value_ && value_->load(std::memory_order_relaxed) > 0;
+  }
+
   void setActive(bool active) {
     const int value = static_cast<int>(value_->load(std::memory_order_relaxed));
     if (active_ != active || displayedValue_ != value) {
@@ -451,6 +455,17 @@ class ImpulseEditor final : public juce::AudioProcessorEditor,
         std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
             processor.state(), "sequence", sequence_);
     sequence_.setTitle("SEQUENCE");
+    objects_.setTitle("OBJECT VISIBILITY");
+    objects_.setWantsKeyboardFocus(true);
+    objects_.setExplicitFocusOrder(8);
+    objects_.setTooltip(
+        "Focus programmed and selected objects. Show all to add another sound. "
+        "MIDI mode and Mutation keep all objects visible.");
+    objects_.onClick = [this] {
+      showAll_ = !showAll_;
+      refreshVisibleObjects();
+    };
+    addAndMakeVisible(objects_);
     sequence_.setColour(juce::ToggleButton::tickColourId,
                         juce::Colour{kAccent});
     for (std::size_t track = 0; track < kTrackCount; ++track) {
@@ -460,6 +475,8 @@ class ImpulseEditor final : public juce::AudioProcessorEditor,
       selectors_[track].setButtonText(track == 4 ? "LOW / SUB"
                                                  : kTrackNames[track]);
       selectors_[track].setTitle(juce::String{kTrackNames[track]} + " TRACK");
+      selectors_[track].setExplicitFocusOrder(200 +
+                                              static_cast<int>(track * 33));
       selectors_[track].setTooltip(
           "Select sound controls silently. Use AUDITION to hear the object.");
       selectors_[track].onClick = [this, track] { selectTrack(track); };
@@ -467,6 +484,8 @@ class ImpulseEditor final : public juce::AudioProcessorEditor,
       for (std::size_t step = 0; step < kPatternSteps; ++step) {
         pattern_[track][step] =
             std::make_unique<PatternCell>(processor.state(), track, step);
+        pattern_[track][step]->setExplicitFocusOrder(
+            201 + static_cast<int>(track * 33 + step));
         addAndMakeVisible(*pattern_[track][step]);
       }
     }
@@ -546,15 +565,20 @@ class ImpulseEditor final : public juce::AudioProcessorEditor,
     output_.setBounds(globals.removeFromLeft(width));
     division_.setBounds(globals.removeFromTop(32).reduced(8, 2));
     sequence_.setBounds(globals.removeFromTop(32).reduced(8, 2));
+    objects_.setBounds(globals.removeFromTop(32).reduced(8, 2));
     area.removeFromTop(12);
-    auto grid = area.removeFromTop(std::min(304, area.getHeight() / 2));
+    const int rows =
+        std::max(1, static_cast<int>(std::count(visibleObjects_.begin(),
+                                                visibleObjects_.end(), true)));
+    auto grid = area.removeFromTop(std::min(rows * 38, area.getHeight() / 2));
     constexpr int labelWidth = 90;
-    const int rowHeight =
-        std::max(1, grid.getHeight() / static_cast<int>(kTrackCount));
+    const int rowHeight = std::max(1, grid.getHeight() / rows);
     const int cellWidth = std::max(
         1, (grid.getWidth() - labelWidth) / static_cast<int>(kPatternSteps));
+    int row = 0;
     for (std::size_t track = 0; track < kTrackCount; ++track) {
-      const int y = grid.getY() + static_cast<int>(track) * rowHeight;
+      if (!visibleObjects_[track]) continue;
+      const int y = grid.getY() + row++ * rowHeight;
       selectors_[track].setBounds(grid.getX(), y, labelWidth - 4,
                                   rowHeight - 3);
       for (std::size_t step = 0; step < kPatternSteps; ++step) {
@@ -580,9 +604,42 @@ class ImpulseEditor final : public juce::AudioProcessorEditor,
                                       ? juce::Colour{kAccent}
                                       : juce::Colour{kPanel});
     }
+    refreshVisibleObjects();
+  }
+
+  void refreshVisibleObjects() {
+    const auto& state = processor_.state();
+    const bool forced = state.getRawParameterValue("mutation")->load() > 0 ||
+                        state.getRawParameterValue("sequence")->load() < 0.5F;
+    std::array<bool, kTrackCount> next{};
+    bool anyProgrammed = false;
+    for (std::size_t track = 0; track < kTrackCount; ++track) {
+      const bool programmed =
+          std::any_of(pattern_[track].begin(), pattern_[track].end(),
+                      [](const auto& cell) { return cell->isProgrammed(); });
+      anyProgrammed |= programmed;
+      next[track] = forced || showAll_ || programmed ||
+                    track == selectedTrack_ ||
+                    selectors_[track].hasKeyboardFocus(true);
+      for (const auto& cell : pattern_[track])
+        next[track] = next[track] || cell->hasKeyboardFocus(true);
+    }
+    if (!anyProgrammed) next.fill(true);
+    objects_.setEnabled(!forced && anyProgrammed);
+    objects_.setButtonText(forced || !anyProgrammed ? "ALL OBJECTS"
+                           : showAll_               ? "FOCUS ACTIVE OBJECTS"
+                                                    : "SHOW ALL OBJECTS");
+    if (next == visibleObjects_) return;
+    visibleObjects_ = next;
+    for (std::size_t track = 0; track < kTrackCount; ++track) {
+      selectors_[track].setVisible(next[track]);
+      for (auto& cell : pattern_[track]) cell->setVisible(next[track]);
+    }
+    resized();
   }
 
   void timerCallback() override {
+    refreshVisibleObjects();
     peak_ = std::max(processor_.outputPeak(), peak_ * 0.84F);
     for (std::size_t track = 0; track < kTrackCount; ++track) {
       const int current = processor_.currentStep(track);
@@ -605,6 +662,9 @@ class ImpulseEditor final : public juce::AudioProcessorEditor,
   aste::ui::ResponseButton response_;
   juce::TooltipWindow tooltips_{this, 400};
   juce::ToggleButton sequence_;
+  juce::TextButton objects_;
+  bool showAll_{};
+  std::array<bool, kTrackCount> visibleObjects_{};
   std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>
       divisionAttachment_;
   std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>

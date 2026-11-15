@@ -278,6 +278,20 @@ void testEditorContract() {
             "Every essential Sequence control is visible and titled");
   }
   editor->setSize(960, 600);
+  auto* step = findTitled(*editor, "Step 01 Program");
+  if (step) {
+    for (const auto& shortcut : std::array{std::pair{'g', "step_01_gate"},
+                                           std::pair{'a', "step_01_accent"},
+                                           std::pair{'s', "step_01_slide"}}) {
+      const float previous = rawValue(processor, shortcut.second);
+      require(step->keyPressed(juce::KeyPress{shortcut.first}) &&
+                  rawValue(processor, shortcut.second) == 1.0F - previous,
+              "Step shortcuts edit the actual host parameter");
+      require(!step->keyPressed(juce::KeyPress{
+                  shortcut.first, juce::ModifierKeys::commandModifier, 0}),
+              "Step shortcuts leave host command combinations alone");
+    }
+  }
   juce::Image image{juce::Image::RGB, editor->getWidth(), editor->getHeight(),
                     true};
   juce::Graphics graphics{image};

@@ -56,7 +56,10 @@ The 1280×760 editor scales from 960×600 to 1600×1000. All sixteen steps remai
 visible and directly expose pitch, gate, accent, and slide. Voice and filter
 controls occupy two rows above the program; Pressure and filter controls lead
 the keyboard order. The only motion is output level and the current host-clocked
-step. No sequencer page, modulation page, keyboard decoration, or circuit-brand
+step. Within a focused step, G/A/S toggles its gate/accent/slide through host
+parameter gestures. Text entry and modified host shortcuts are left alone.
+Each step is a keyboard focus group: note, gate, accent, slide.
+No sequencer page, modulation page, keyboard decoration, or circuit-brand
 switch exists.
 
 ## Loop L-01
@@ -71,7 +74,11 @@ to signal levels and memory travel. All essential controls remain on one panel.
 
 The 1480×900 editor scales from 1120×700 to 1800×1120. Energy leads the global
 row; Variation, Mutation, Seed, Output, Division, Sequence, and Snapshots remain
-visible. Eight 32-step rows remain visible. Track names select silently;
+visible. The initial focused view shows programmed rows and the selected object;
+SHOW ALL OBJECTS exposes all eight 32-step rows for adding another sound.
+Mutation, MIDI-only mode and empty programs show all objects automatically.
+External programming reveals a row; focus changes no parameter or audio state.
+Track names select silently;
 AUDITION plays the selected sound. Five sound controls are visible by default;
 RHYTHM DETAILS reveals the eight cycle controls. LOW / SUB identifies the
 low-frequency object without changing its stable parameter IDs. The two new

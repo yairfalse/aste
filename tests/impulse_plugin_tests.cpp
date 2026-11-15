@@ -313,6 +313,37 @@ void testEditor(const char* directory) {
               editor->isResizable(),
           "Impulse opens at its scalable product size");
   if (!editor) return;
+  auto* focus =
+      dynamic_cast<juce::Button*>(findTitled(*editor, "OBJECT VISIBILITY"));
+  auto* emptyRow = findTitled(*editor, "METAL TRACK");
+  auto* subRow = findTitled(*editor, "LOW TRACK");
+  require(focus && emptyRow && subRow && !emptyRow->isVisible() &&
+              subRow->isVisible(),
+          "Click/sub focus shows programmed objects without eight empty rows");
+  if (focus && emptyRow) {
+    juce::MemoryBlock before, after;
+    processor.getStateInformation(before);
+    focus->onClick();
+    require(emptyRow->isVisible(),
+            "Show all exposes every object for programming");
+    focus->onClick();
+    require(!emptyRow->isVisible(), "Active objects restores the compact view");
+    processor.getStateInformation(after);
+    require(before == after,
+            "Object visibility never changes the musical state");
+    for (const auto& change : std::array{std::pair{"mutation", 10.0F},
+                                         std::pair{"sequence", 0.0F}}) {
+      setValue(processor, change.first, change.second);
+      for (int attempt = 0; !emptyRow->isVisible() && attempt < 50; ++attempt) {
+        juce::Thread::sleep(20);
+        juce::Timer::callPendingTimersSynchronously();
+      }
+      require(emptyRow->isVisible() && !focus->isEnabled(),
+              "Mutation and MIDI-only mode expose every potentially sounding "
+              "object");
+      setValue(processor, change.first, change.second == 0 ? 1.0F : 0.0F);
+    }
+  }
   auto* cell = findTitled(*editor, "KICK STEP 02");
   setValue(processor, "kick_step_02", 2);
   for (int attempt = 0;
@@ -322,6 +353,8 @@ void testEditor(const char* directory) {
   }
   require(cell && cell->getDescription() == "Accent",
           "Stopped pattern cells refresh after an external parameter change");
+  require(cell && cell->isVisible(),
+          "Automation reveals a newly programmed object");
   setValue(processor, "kick_step_02", 0);
   auto* kick = dynamic_cast<juce::Button*>(findTitled(*editor, "KICK TRACK"));
   require(kick != nullptr, "Kick selection target exists");

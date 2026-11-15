@@ -230,6 +230,9 @@ class StepCell final : public juce::Component {
         accentAttachment_{state, stepId(index, "accent"), accent_},
         slideAttachment_{state, stepId(index, "slide"), slide_} {
     setTitle(stepName(index, "Program"));
+    setFocusContainerType(
+        juce::Component::FocusContainerType::keyboardFocusContainer);
+    setExplicitFocusOrder(30 + static_cast<int>(index));
     note_.setSliderStyle(juce::Slider::LinearVertical);
     note_.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 48, 19);
     auto* root = state.getRawParameterValue("root");
@@ -247,7 +250,10 @@ class StepCell final : public juce::Component {
     note_.setTitle(stepName(index, "Note"));
     note_.setDoubleClickReturnValue(true, 0.0);
     note_.setWantsKeyboardFocus(true);
-    note_.setExplicitFocusOrder(30 + static_cast<int>(index));
+    note_.setExplicitFocusOrder(1);
+    gate_.setExplicitFocusOrder(2);
+    accent_.setExplicitFocusOrder(3);
+    slide_.setExplicitFocusOrder(4);
     gate_.setButtonText("GATE");
     gate_.setTitle(stepName(index, "Gate"));
     gate_.setTooltip("Gate: play this step.");
@@ -266,6 +272,34 @@ class StepCell final : public juce::Component {
       addAndMakeVisible(component);
     }
     note_.updateText();
+  }
+
+  bool keyPressed(const juce::KeyPress& key) override {
+    if (key.getModifiers().isAnyModifierKeyDown()) return false;
+    if (auto* focused = juce::Component::getCurrentlyFocusedComponent())
+      if (dynamic_cast<juce::TextEditor*>(focused) ||
+          focused->findParentComponentOfClass<juce::TextEditor>())
+        return false;
+    juce::ToggleButton* target = nullptr;
+    switch (key.getKeyCode()) {
+      case 'g':
+      case 'G':
+        target = &gate_;
+        break;
+      case 'a':
+      case 'A':
+        target = &accent_;
+        break;
+      case 's':
+      case 'S':
+        target = &slide_;
+        break;
+      default:
+        return false;
+    }
+    target->setToggleState(!target->getToggleState(),
+                           juce::sendNotificationSync);
+    return true;
   }
 
   void setActive(bool active) {
@@ -450,8 +484,8 @@ class SequenceEditor final : public juce::AudioProcessorEditor,
                       juce::Justification::centred);
     graphics.setColour(juce::Colour{kInk});
     graphics.drawText(
-        "G = Gate (play)    A = Accent (stronger)    S = Slide (connect). "
-        "Hover any control for help.",
+        "Focus a step: G = Gate / A = Accent / S = Slide. Type note names in "
+        "pitch fields.",
         48, getHeight() - 22, getWidth() - 280, 18,
         juce::Justification::centredLeft);
   }
