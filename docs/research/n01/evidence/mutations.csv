@@ -1,0 +1,8 @@
+fault,compile_exit,test_exit,detected
+early,0,1,1
+suspend,0,1,1
+bank,0,1,1
+void,0,1,1
+validity,0,1,1
+probability,0,1,1
+allocation,0,1,1

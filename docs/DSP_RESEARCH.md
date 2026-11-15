@@ -4,6 +4,10 @@ The six-product musical-control revision, old-engine comparisons and remaining
 listening questions are in [the quality report](research/quality/README.md).
 It changes selected behavior on an isolated branch, not the release policy.
 
+Non-Machine N-01 has an [isolated temporal instrument study](research/n01/README.md):
+offline DSP, captured-fragment time semantics, comparison WAVs and interface
+wireframes. It is not a seventh plugin or a stable parameter contract.
+
 Production algorithms must enter through a falsifiable question, a deterministic
 reference or comparison, machine-readable measurements, and listening where the
 decision is perceptual. A successful build is not evidence of sonic quality.

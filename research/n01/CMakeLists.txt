@@ -1,0 +1,35 @@
+cmake_minimum_required(VERSION 3.25)
+project(n01_experiment LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+option(N01_SANITIZERS "Audit the offline experiment with ASan/UBSan" OFF)
+add_compile_options(-Wall -Wextra -Wpedantic -Werror)
+if(N01_SANITIZERS)
+  add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
+  add_link_options(-fsanitize=address,undefined)
+endif()
+add_library(n01_core core.cpp)
+target_include_directories(n01_core PUBLIC .)
+add_executable(n01_tests tests.cpp)
+target_link_libraries(n01_tests PRIVATE n01_core)
+if(APPLE)
+  add_library(n01_rt_audit SHARED ../../tests/realtime_audit_mac.cpp)
+  target_link_libraries(n01_tests PRIVATE n01_rt_audit)
+  target_compile_definitions(n01_tests PRIVATE N01_MAC_AUDIT=1)
+endif()
+enable_testing()
+add_test(NAME n01_contracts COMMAND n01_tests)
+# Existing products are linked only by this offline comparison executable.
+# The N-01 core never depends on another product or JUCE.
+add_executable(n01_lab lab.cpp ../../apps/impulse/impulse_processor.cpp
+                            ../../apps/loop/loop_processor.cpp)
+target_include_directories(n01_lab PRIVATE ../../apps/impulse ../../apps/loop
+                                          ../../libs/parameters)
+target_link_libraries(n01_lab PRIVATE n01_core)
+execute_process(COMMAND git rev-parse HEAD WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+                OUTPUT_VARIABLE N01_COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE)
+target_compile_definitions(n01_lab PRIVATE N01_COMMIT="${N01_COMMIT}"
+                           N01_COMPILER="${CMAKE_CXX_COMPILER_ID}-${CMAKE_CXX_COMPILER_VERSION}")
+add_test(NAME n01_render_reproducibility COMMAND n01_lab --check)
+add_executable(n01_mutations mutations.cpp)
