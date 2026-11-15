@@ -1,6 +1,11 @@
 # Aste musical-power audit laboratory
 
-This standalone C++20 lab calls all six unchanged production cores. It generates
+This historical C++20 lab calls all six production cores pinned to its original
+baseline `8a603dcbc59b52a58637fe6305676efc5a406f80`. CMake extracts those exact
+sources into the build directory, using the same pinned-source approach as the
+later quality comparison lab. Missing history fails configuration; current DSP
+is never substituted. This keeps the original findings and candidate anchors
+reproducible after integrating the subsequent product repairs. It generates
 two separately named source variants from **single-occurrence checked anchors**:
 Sequence retriggers a note arriving during release; Loop wraps its existing
 motion phase after the three frequencies' common 1000-second period. Harmonic's
@@ -28,7 +33,9 @@ ctest --test-dir build-power-lab --output-on-failure
 
 **The full last command is currently expected to fail**, without `WILL_FAIL`
 or an inverted assertion: `power_existing_host_automation` exposes the unchanged
-Sequence host-gate callback-partition defect. Its separate `--host-check`
+Sequence host-gate callback-partition defect **in the pinned original DSP**.
+The current production repair is tested by the root suite and the later quality
+lab; this historical fixture is intentionally not rewritten. Its separate `--host-check`
 command exits 1. Do not interpret the passing candidate/measurement check as
 a clean existing-product suite. The PPQ-bias branch in `power_partition_probe`
 is a causal diagnostic only, not the proposed fix or the listening renderer.
@@ -46,7 +53,7 @@ cover percussion, bass, oscillator, noise, chords, a generated layered passage
 and sparse events. They are procedural diagnostics, not supplied recordings
 or real project excerpts. Loop settings include an explicit first two-second
 capture; an untouched empty instance is not claimed to generate a loop.
-Impulse reproduces the current adapter's Steady Start defaults, not its
+Impulse reproduces the original audit adapter's Steady Start defaults, not its
 historical core-only defaults. MIDI notes deliberately fall at different
 callback offsets; fixed seeds do not conceal that existing bug.
 

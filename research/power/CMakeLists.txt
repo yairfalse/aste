@@ -9,11 +9,31 @@ if(POWER_SANITIZERS)
   add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
   add_link_options(-fsanitize=address,undefined)
 endif()
-add_library(power_products
-  ../../apps/density/density_processor.cpp ../../apps/harmonic/harmonic_processor.cpp
-  ../../apps/sequence/sequence_processor.cpp ../../apps/loop/loop_processor.cpp
-  ../../apps/impulse/impulse_processor.cpp ../../apps/field/field_processor.cpp)
-target_include_directories(power_products PUBLIC ../..)
+# Preserve the original audit and its rejected candidates, independently of
+# subsequent product repairs. Never silently substitute current production.
+set(POWER_BASELINE 8a603dcbc59b52a58637fe6305676efc5a406f80)
+set(POWER_BASELINE_ROOT "${CMAKE_CURRENT_BINARY_DIR}/baseline")
+set(POWER_PRODUCT_SOURCES)
+foreach(product density harmonic sequence loop impulse field)
+  set(files "${product}_processor.cpp" "${product}_processor.hpp")
+  if(product STREQUAL loop)
+    list(APPEND files tape_snapshots.hpp)
+  endif()
+  set(destination "${POWER_BASELINE_ROOT}/apps/${product}")
+  file(MAKE_DIRECTORY "${destination}")
+  foreach(file IN LISTS files)
+    execute_process(COMMAND git show "${POWER_BASELINE}:apps/${product}/${file}"
+      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../.."
+      OUTPUT_VARIABLE source RESULT_VARIABLE result ERROR_VARIABLE error)
+    if(NOT result EQUAL 0)
+      message(FATAL_ERROR "Cannot read pinned audit source: ${error}")
+    endif()
+    file(WRITE "${destination}/${file}" "${source}")
+  endforeach()
+  list(APPEND POWER_PRODUCT_SOURCES "${destination}/${product}_processor.cpp")
+endforeach()
+add_library(power_products ${POWER_PRODUCT_SOURCES})
+target_include_directories(power_products PUBLIC "${POWER_BASELINE_ROOT}" ../..)
 include(candidates.cmake)
 add_executable(power_lab lab.cpp)
 target_link_libraries(power_lab PRIVATE power_products power_candidates)

@@ -1,7 +1,7 @@
 #pragma once
 #include "audio.hpp"
-#include "../../apps/density/density_processor.hpp"
-#include "../../apps/harmonic/harmonic_processor.hpp"
+#include "apps/density/density_processor.hpp"
+#include "apps/harmonic/harmonic_processor.hpp"
 
 namespace power {
 namespace colour_detail {

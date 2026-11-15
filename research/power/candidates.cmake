@@ -16,7 +16,7 @@ endfunction()
 foreach(product sequence loop)
   file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/candidate/${product}")
   foreach(extension hpp cpp)
-    file(READ "${CMAKE_CURRENT_SOURCE_DIR}/../../apps/${product}/${product}_processor.${extension}" contents)
+    file(READ "${POWER_BASELINE_ROOT}/apps/${product}/${product}_processor.${extension}" contents)
     string(REPLACE "namespace aste::${product}" "namespace aste::${product}_candidate" contents "${contents}")
     if(extension STREQUAL "cpp" AND product STREQUAL "sequence")
       replace_once(contents "envelope_.active(), glideMs);"
@@ -31,7 +31,7 @@ foreach(product sequence loop)
   endforeach()
 endforeach()
 # Loop's header dependency remains source-owned and unmodified.
-file(READ "${CMAKE_CURRENT_SOURCE_DIR}/../../apps/loop/tape_snapshots.hpp" contents)
+file(READ "${POWER_BASELINE_ROOT}/apps/loop/tape_snapshots.hpp" contents)
 string(REPLACE "namespace aste::loop" "namespace aste::loop_candidate" contents "${contents}")
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/candidate/loop/tape_snapshots.hpp" "${contents}")
 add_library(power_candidates

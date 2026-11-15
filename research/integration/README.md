@@ -1,15 +1,18 @@
 # Combined instrument and research verification
 
-This local contract verifies the integrated work from `improve/musical-control`
-(including `research/musical-power-audit`), `research/n01-temporal-lab` and
+This local contract verifies the integrated work from `improve/musical-control`,
+`research/musical-power-audit`, `research/n01-temporal-lab` and
 `research/r01-resonators`. Published main history is preserved. No production DSP
 or plugin target is changed by the integration itself; N-01 and R-01 remain
 independent offline laboratories.
 
 The gate runs the complete native plugin suite, the six production core suites
 under AddressSanitizer/UndefinedBehaviorSanitizer, original legacy-audio
-comparisons, click/sub checks, and both laboratories in Release and sanitized
-Debug builds. The R-01 suite includes long stress. Every tracked integration
+comparisons, click/sub checks, the original audit's measurement/candidate checks,
+and both new-instrument laboratories in Release and sanitized Debug builds.
+The R-01 suite includes long stress. The historical audit uses pinned original
+DSP and retains its intentionally failing host-defect witness; that is not a
+test of current production or an inverted passing assertion. Every tracked integration
 input is declared, including this contract and its lock.
 
 ```sh
