@@ -349,7 +349,7 @@ void testStateRoundTrip() {
 
 void testFactoryPresets() {
   aste::density::plugin::DensityAudioProcessor processor;
-  require(processor.factoryPresetCount() == 6,
+  require(processor.factoryPresetCount() == 7,
           "Density exposes the reviewed factory preset count");
   for (int index = 0; index < processor.factoryPresetCount(); ++index) {
     require(!processor.factoryPresetName(index).isEmpty(),
@@ -665,9 +665,14 @@ void testProcessingBoundary() {
 void testTrackLevelCompression() {
   aste::density::plugin::DensityAudioProcessor processor;
   require(std::abs(processor.state().getRawParameterValue("blend")->load() -
-                   100.0F) < 0.01F,
-          "Grip starts fully processed; old parameter reset defaults remain "
+                   60.0F) < 0.01F &&
+              std::abs(rawValue(processor, "attack") - 12.0F) < 0.011F,
+          "Pulse starts with dry attack retained; old reset defaults remain "
           "unchanged");
+  processor.loadFactoryPreset(5);
+  require(rawValue(processor, "blend") == 100.0F &&
+              std::abs(rawValue(processor, "drive") - 6.0F) < 0.011F,
+          "The previous Grip snapshot is not reinterpreted");
   processor.loadFactoryPreset(0);
   require(processor.usesLegacyBehavior(),
           "Original Default retains its detector law");
@@ -748,7 +753,7 @@ void testEditorContract() {
           "Protection is keyboard and accessibility reachable");
 
   auto* presets = dynamic_cast<juce::ComboBox*>(findTitled(*editor, "PRESETS"));
-  require(presets != nullptr && presets->getNumItems() == 6 &&
+  require(presets != nullptr && presets->getNumItems() == 7 &&
               presets->getWantsKeyboardFocus() && presets->isAccessible(),
           "Factory presets are compact, keyboard reachable, and accessible");
   if (presets != nullptr) {
@@ -838,7 +843,7 @@ int createEditorArtifacts(const char* directoryPath) {
     }
     processor.processBlock(audio, midi);
   }
-  std::this_thread::sleep_for(std::chrono::milliseconds{40});
+  std::this_thread::sleep_for(std::chrono::milliseconds{260});
   juce::Timer::callPendingTimersSynchronously();
   const double activeMs = benchmarkPaint(*editor);
 

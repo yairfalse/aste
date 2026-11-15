@@ -2,8 +2,8 @@
   "schema": "sykli-contract.v1",
   "tasks": [
     {
-      "name": "reviewed-dependency-evidence",
-      "run": "cmake -S . -B build-plugin && ctest --test-dir build-plugin -R '^(dependency_security|documentation_links|density_package.*)$' --output-on-failure",
+      "name": "open-starting-points",
+      "run": "cmake -S . -B build-plugin && cmake --build build-plugin --target density_plugin_tests harmonic_plugin_tests sequence_plugin_tests loop_plugin_tests impulse_plugin_tests field_plugin_tests --parallel 3 && ctest --test-dir build-plugin -R '^(dependency_security|documentation_links|(density|harmonic|sequence|loop|impulse|field)_plugin_tests)$' --output-on-failure && cmake -S research/quality -B build-playability-lab -DCMAKE_BUILD_TYPE=Release && cmake --build build-playability-lab --parallel 3 && build-playability-lab/quality_comparison --check",
       "inputs": [
         ".clang-format",
         ".github/workflows/ci.yml",

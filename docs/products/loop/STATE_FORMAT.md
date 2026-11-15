@@ -45,3 +45,8 @@ if the host rate differs. State loaded before the first host preparation keeps
 its source rate until the host announces the actual rate, avoiding an intermediate
 conversion through the default rate.
 See [ADR 0016](../../adr/0016-playable-defaults-and-tape-recall.md).
+
+New instances select appended First take, identical to the original reset
+controls except Overdub 0% instead of 50%. Original preset values and missing-key
+defaults are unchanged. This writes full input before tape processing; it does
+not promise unity output through the recording, degradation and output stages.

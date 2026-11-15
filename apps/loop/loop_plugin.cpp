@@ -29,7 +29,7 @@ struct Preset {
   std::array<float, kParameterIds.size()> values;
 };
 
-constexpr std::array<Preset, 5> kPresets{{
+constexpr std::array<Preset, 6> kPresets{{
     {"Clean Memory",
      {0, 50, 90, 1, 4, 2, 0, 1, 0, 0, 3, 2, 1, 1, 2, 12, 2, 100, -3, 0}},
     {"Oxide Circle",
@@ -40,6 +40,8 @@ constexpr std::array<Preset, 5> kPresets{{
      {0, 70, 72, 0, 4, 0.35F, 0, 1, 0, 12, 2, 5, 3, 2, 20, 52, 0, 100, -7, 0}},
     {"Half Current", {0,  60, 94, 1,  8,  4,  12, 0.5F, 0,  -12,
                       12, 30, 12, 12, 28, 62, 0,  86,   -8, 0}},
+    {"First take",
+     {0, 0, 85, 1, 4, 2, 0, 1, 0, 0, 3, 8, 3, 2, 8, 25, 1, 100, -3, 0}},
 }};
 
 bool parseFiniteFloat(const juce::var& value, float& result) {
@@ -504,6 +506,7 @@ LoopAudioProcessor::LoopAudioProcessor()
     parameterValues_[index] = state_.getRawParameterValue(kParameterIds[index]);
     jassert(parameterValues_[index] != nullptr);
   }
+  loadFactoryPreset(5);
 }
 
 Parameters LoopAudioProcessor::currentParameters() const noexcept {

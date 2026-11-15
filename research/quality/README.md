@@ -4,6 +4,15 @@ Profiles here describe the six-instrument quality revision, including its
 Impulse Space starting point. For the subsequent Clicks / sub default use
 `research/click-sub`; these historical profiles are not silently rewritten.
 
+The later `--playability-pack NEW_DIRECTORY` mode adds 168 WAVs comparing seven
+sources for Density (Grip / Pulse), Harmonic (Charged / Color / paired pushes)
+and Loop (original defaults / First take / no-input endpoint). It does not
+change historical profiles 0–3 or the 144 legacy comparisons. Use
+`--playability-spectral CSV` for the same Density diagnostic at Pulse controls.
+Profile 4 is the new starting point; 5/6 are the explicit comparison gestures.
+Silence remains unknown loudness. These are listening candidates, not human
+musical acceptance results.
+
 Independent C++20 executable: no JUCE, third-party libraries or audio devices.
 Build from a Git checkout containing original production commit
 `8a603dcbc59b52a58637fe6305676efc5a406f80`. CMake extracts and namespace-renames

@@ -42,9 +42,17 @@ The current 980×540 editor scales between 760×420 and 1520×840. Density is th
 first and largest control; input/output boundaries and gain reduction occupy the
 left meter column; Drive, Crush, Attack, Release, Blend, Stereo, Detector HPF,
 and Output form the secondary grid; Protection remains visible. A compact
-header menu applies six factory starting points without adding a browser or
+header menu applies seven factory starting points without adding a browser or
 hidden page. Keyboard order follows the musical hierarchy and reaches the menu
 after the ten essential controls.
+
+New instances use Pulse / parallel: Blend 60% leaves dry attack present, with
+room to increase pressure or wet participation. Grip and all five historical
+snapshots keep their values. Harmonic similarly starts at Color / open with
+Harmonic 60%, Input +6 / Output −8 dB, leaving room in both macro directions;
+Charged Presence remains available unchanged. Loop starts at First take with
+Overdub 0%, avoiding an unexplained half-input first capture; its reset default
+and original five snapshots retain their meanings.
 
 Headless 1x/2x artifacts and paint timing are regression evidence, not a Retina
 or usability claim. Native DAW, VoiceOver, contrast, and first-time-use review

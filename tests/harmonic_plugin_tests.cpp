@@ -222,8 +222,8 @@ void testStateAndPresets() {
   require(rawValue(restored, "harmonic") == before,
           "Duplicate Harmonic parameter IDs are rejected");
 
-  require(restored.factoryPresetCount() == 7,
-          "Harmonic retains six starting points and adds Charged Presence");
+  require(restored.factoryPresetCount() == 8,
+          "Harmonic appends Color / open without replacing seven snapshots");
   for (int index = 0; index < restored.factoryPresetCount(); ++index) {
     require(!restored.factoryPresetName(index).isEmpty(),
             "Every Harmonic preset has a visible name");
@@ -385,6 +385,20 @@ void testEditorContract(const char* directory) {
       dynamic_cast<juce::Button*>(findTitled(*editor, "PULL OPERATING LEVEL"));
   require(push && pull, "Operating-level gestures are discoverable buttons");
   if (push && pull) {
+    require(std::abs(rawValue(processor, "harmonic") - 60) < .011F &&
+                std::abs(rawValue(processor, "input") - 6) < .011F,
+            "Color / open leaves movement in the color and operating-level "
+            "controls");
+    for (int gesture = 0; gesture < 4; ++gesture) {
+      require(push->isEnabled(),
+              "Fresh Harmonic permits four useful PUSH gestures");
+      push->onClick();
+    }
+    require(!push->isEnabled() &&
+                std::abs(rawValue(processor, "input") - 16) < .011F &&
+                rawValue(processor, "output") == -18,
+            "The final partial push is bounded without changing the paired "
+            "gain sum");
     setValue(processor, "input", 17);
     setValue(processor, "output", -7);
     push->onClick();

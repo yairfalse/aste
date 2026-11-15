@@ -49,6 +49,16 @@ P density(int profile, double t, bool legacy) {
     p.driveDb = static_cast<int>(t * 40) % 2 ? 18 : -6;
     p.density = .9F;
   }
+  if (profile == 4) {
+    p.driveDb = 3;
+    p.crush = .7F;
+    p.attackMs = 12;
+    p.releaseMs = 110;
+    p.density = .55F;
+    p.blend = .6F;
+    p.outputDb = -5;
+    p.detectorHpfHz = 100;
+  }
   behavior(p, legacy);
   return p;
 }
@@ -64,6 +74,11 @@ P harmonic(int profile, double t) {
   if (profile == 2)
     p.foundationGainDb = p.bodyGainDb = p.presenceGainDb = p.airGainDb = 12;
   if (profile == 3) p.presenceGainDb = static_cast<int>(t * 40) % 2 ? 12 : -12;
+  if (profile >= 4) {
+    p.inputDb = profile == 5 ? 9 : profile == 6 ? 3 : 6;
+    p.harmonic = .6F;
+    p.outputDb = profile == 5 ? -11 : profile == 6 ? -5 : -8;
+  }
   return p;
 }
 template <class P>
@@ -186,7 +201,7 @@ Audio render(int product, int profile, bool legacy, const Audio& input,
     LP lp;
     lp.capture = t < 2;
     lp.loopLengthSeconds = 2;
-    if (profile) {
+    if (profile > 0 && profile < 4) {
       lp.wow = 1;
       lp.flutter = lp.drift = 0;
     }
@@ -198,6 +213,8 @@ Audio render(int product, int profile, bool legacy, const Audio& input,
     if (profile == 3) {
       lp.pitchSemitones = static_cast<int>(t * 40) % 2 ? 12 : -12;
     }
+    if (profile == 4) lp.overdub = 0;
+    if (profile == 5) lp.overdub = 1;
     behavior(lp, legacy);
     FP fp;
     fp.forever = t >= 2;
@@ -324,7 +341,7 @@ void number(std::ostream& out, std::optional<double> x) {
   else
     out << "unknown";
 }
-void pack(const std::filesystem::path& root) {
+void pack(const std::filesystem::path& root, bool playability = false) {
   require(!std::filesystem::exists(root),
           "Use a new export directory; do not overwrite listening responses");
   std::filesystem::create_directories(root);
@@ -333,6 +350,7 @@ void pack(const std::filesystem::path& root) {
          "rms,raw_hash\n";
   std::size_t files{};
   for (int product = 0; product < 6; ++product) {
+    if (playability && product != 0 && product != 1 && product != 3) continue;
     const auto folder = root / products[product];
     std::filesystem::create_directories(folder / "audio");
     std::filesystem::create_directory(folder / "raw");
@@ -343,18 +361,37 @@ void pack(const std::filesystem::path& root) {
           count == 1 ? "phrase" : fixtureNames[fixtureIndex];
       std::vector<Record> records;
       if (count > 1) records.push_back({"dry", source, {}});
-      records.push_back(
-          {"before_start", render<true>(product, 0, true, source), {}});
-      records.push_back(
-          {"after_start", render<false>(product, 1, false, source), {}});
-      records.push_back({"same_controls_legacy",
-                         render<false>(product, 1, true, source),
-                         {}});
-      records.push_back(
-          {"current_extreme", render<false>(product, 2, false, source), {}});
-      records.push_back({"current_automation_or_MIDI",
-                         render<false>(product, 3, false, source),
-                         {}});
+      if (playability) {
+        records.push_back(
+            {"previous_start",
+             render<false>(product, product == 3 ? 0 : 1, false, source),
+             {}});
+        records.push_back(
+            {"open_start", render<false>(product, 4, false, source), {}});
+        if (product == 1) {
+          records.push_back(
+              {"open_push_3dB", render<false>(product, 5, false, source), {}});
+          records.push_back(
+              {"open_pull_3dB", render<false>(product, 6, false, source), {}});
+        }
+        if (product == 3)
+          records.push_back({"overdub_100_no_input",
+                             render<false>(product, 5, false, source),
+                             {}});
+      } else {
+        records.push_back(
+            {"before_start", render<true>(product, 0, true, source), {}});
+        records.push_back(
+            {"after_start", render<false>(product, 1, false, source), {}});
+        records.push_back({"same_controls_legacy",
+                           render<false>(product, 1, true, source),
+                           {}});
+        records.push_back(
+            {"current_extreme", render<false>(product, 2, false, source), {}});
+        records.push_back({"current_automation_or_MIDI",
+                           render<false>(product, 3, false, source),
+                           {}});
+      }
       for (auto& record : records) record.metrics = measure(record.audio);
       const auto matched = matchGroup(records, -23);
       for (std::size_t r = 0; r < records.size(); ++r) {
@@ -374,6 +411,26 @@ void pack(const std::filesystem::path& root) {
     }
   }
   auto manifest = output(root / "README.txt");
+  if (playability) {
+    manifest
+        << "Aste playability comparisons, source " << QUALITY_COMMIT << ".\n"
+        << files
+        << " WAVs: stereo float32, 48 kHz, eight seconds; seven synthetic "
+           "sources per effect.\n"
+        << "audio/ is group loudness matched at <=-23 LUFS with shared "
+           "sample-peak headroom <=0.8; raw/ is unattenuated. Not true-peak "
+           "protected.\n"
+        << "Density: Grip versus Pulse / parallel. Harmonic: Charged Presence "
+           "versus Color / open, plus paired +/-3 dB gestures. Loop: previous "
+           "raw defaults versus First take (Overdub 0), plus 100% no-input "
+           "endpoint.\n"
+        << "Loop captures the first two seconds. Its previous-start comparison "
+           "uses default motion, not the historical lab's exaggerated Wow.\n"
+        << "Silent Loop 100% output has unknown loudness; never a zero-LUFS "
+           "measurement. No human listening or Cubase acceptance claimed.\n";
+    std::cout << files << " playability WAVs rendered\n";
+    return;
+  }
   manifest << "Aste control-quality comparison build " << QUALITY_COMMIT
            << " against pinned 8a603dc.\n"
            << files
@@ -393,7 +450,7 @@ void pack(const std::filesystem::path& root) {
               "claimed. Comparison names are visible, not a blinded study.\n";
   std::cout << files << " WAVs rendered\n";
 }
-void spectral(const std::filesystem::path& path) {
+void spectral(const std::filesystem::path& path, int profile = 1) {
   auto csv = output(path);
   csv << "rate,input_peak_dbfs,frequency,legacy,fundamental,H3_dBc,fifth_"
          "frequency,fifth_product_dBc,peak\n";
@@ -405,7 +462,7 @@ void spectral(const std::filesystem::path& path) {
           for (std::size_t n = 0; n < source.left.size(); ++n)
             source.left[n] = source.right[n] = static_cast<float>(
                 gain(db) * std::sin(2 * pi * frequency * n / rate));
-          const auto a = render<false>(0, 1, legacy, source);
+          const auto a = render<false>(0, profile, legacy, source);
           const double fundamental = std::abs(component(a, frequency, .5, .25));
           const auto relative = [&](double hz) {
             return 20 * std::log10(std::max(
@@ -443,10 +500,14 @@ int main(int argc, char** argv) {
       check();
     else if (argc == 3 && std::string(argv[1]) == "--pack")
       pack(argv[2]);
+    else if (argc == 3 && std::string(argv[1]) == "--playability-pack")
+      pack(argv[2], true);
     else if (argc == 3 && std::string(argv[1]) == "--benchmark")
       benchmark(argv[2]);
     else if (argc == 3 && std::string(argv[1]) == "--spectral")
       spectral(argv[2]);
+    else if (argc == 3 && std::string(argv[1]) == "--playability-spectral")
+      spectral(argv[2], 4);
     else
       throw std::runtime_error(
           "Use --check, --pack NEW_DIRECTORY or --benchmark CSV");

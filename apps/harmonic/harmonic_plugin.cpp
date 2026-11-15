@@ -36,7 +36,7 @@ struct FactoryPreset {
   std::array<float, kParameterIds.size()> values;
 };
 
-constexpr std::array<FactoryPreset, 7> kFactoryPresets{{
+constexpr std::array<FactoryPreset, 8> kFactoryPresets{{
     {"Default",
      {0.0F, 0.0F, 80.0F, 0.0F, 400.0F, 0.0F, 2500.0F, 0.0F, 12000.0F, 35.0F,
       0.0F, 0.0F}},
@@ -58,6 +58,9 @@ constexpr std::array<FactoryPreset, 7> kFactoryPresets{{
     {"Charged Presence",
      {12.0F, 0.0F, 80.0F, 0.0F, 400.0F, 6.0F, 2500.0F, 0.0F, 12000.0F, 100.0F,
       -15.0F, 0.0F}},
+    {"Color / open",
+     {6.0F, 0.0F, 80.0F, 0.0F, 400.0F, 6.0F, 2500.0F, 0.0F, 12000.0F, 60.0F,
+      -8.0F, 0.0F}},
 }};
 
 bool parseFiniteFloat(const juce::var& value, float& result) {
@@ -486,7 +489,7 @@ HarmonicAudioProcessor::HarmonicAudioProcessor()
     parameterValues_[index] = state_.getRawParameterValue(kParameterIds[index]);
     jassert(parameterValues_[index] != nullptr);
   }
-  loadFactoryPreset(6);
+  loadFactoryPreset(7);
 }
 
 Parameters HarmonicAudioProcessor::currentParameters() const noexcept {

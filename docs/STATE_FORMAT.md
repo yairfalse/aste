@@ -46,8 +46,8 @@ Attack in coefficient space. Behavior 0 retains log-time Attack smoothing. The c
 behavior survives save/reopen. Invalid/missing schema-2 behavior rejects the
 entire state. All IDs, ranges and parameter reset defaults are unchanged.
 The original five presets retain their values and select legacy behavior;
-new instances select appended `Grip` with behavior 1. `Grip` is a new explicit
-starting point, not a reinterpretation of an old preset. Older binaries reject
+`Grip` and appended `Pulse / parallel` select behavior 1; new instances use
+Pulse / parallel. Neither reinterprets an old preset. Older binaries reject
 schema 2; retain original project copies when changing binary revisions.
 
 Schema 1 contains no quality or oversampling field. The first external Density
@@ -78,6 +78,11 @@ sample-clock choices; schemas 1–4 retain their historical clock. Its determini
 Field stores nine control scalars but deliberately excludes live delay memory;
 its validation and empty-memory recall contract is in
 [docs/products/field/STATE_FORMAT.md](products/field/STATE_FORMAT.md).
+
+Harmonic's appended Color / open and Loop's appended First take are new-instance
+starting points only. Existing preset values, host reset defaults and missing-key
+migration defaults are unchanged. Loading a session supersedes the new-instance
+starting values, including its saved response choice.
 
 The five versioned-response editors offer USE CURRENT RESPONSE as an explicit
 session edit. It changes response metadata only (and Impulse's clock choice),

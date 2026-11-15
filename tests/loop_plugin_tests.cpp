@@ -141,7 +141,14 @@ void testContractAndState() {
       repeated.getData(), static_cast<int>(repeated.getSize()));
   require(legacyXml && legacyXml->getStringAttribute("behavior") == "0",
           "Legacy Loop clock survives reopen and engine preparation");
-  require(restored.factoryPresetCount() == 5, "Loop has five starting points");
+  require(restored.factoryPresetCount() == 6,
+          "Loop appends First take without replacing five snapshots");
+  Loop firstTake;
+  require(value(firstTake, "overdub") == 0,
+          "A fresh Loop records full input on its first take");
+  firstTake.loadFactoryPreset(0);
+  require(value(firstTake, "overdub") == 50,
+          "Clean Memory retains its original overdub setting");
 }
 
 void testProcessingMidiAndRealtime() {

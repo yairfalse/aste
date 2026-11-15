@@ -27,7 +27,7 @@ struct FactoryPreset {
   std::array<float, kParameterIds.size()> values;
 };
 
-constexpr std::array<FactoryPreset, 6> kFactoryPresets{{
+constexpr std::array<FactoryPreset, 7> kFactoryPresets{{
     {"Default",
      {0.0F, 65.0F, 1.0F, 180.0F, 50.0F, 90.0F, -7.0F, 100.0F, 90.0F, 1.0F,
       0.0F}},
@@ -45,6 +45,9 @@ constexpr std::array<FactoryPreset, 6> kFactoryPresets{{
       0.0F}},
     {"Grip",
      {6.0F, 85.0F, 6.0F, 80.0F, 65.0F, 100.0F, -9.0F, 100.0F, 90.0F, 1.0F,
+      0.0F}},
+    {"Pulse / parallel",
+     {3.0F, 70.0F, 12.0F, 110.0F, 55.0F, 60.0F, -5.0F, 100.0F, 100.0F, 1.0F,
       0.0F}},
 }};
 
@@ -419,7 +422,7 @@ DensityAudioProcessor::DensityAudioProcessor()
     parameterValues_[i] = state_.getRawParameterValue(kParameterIds[i]);
     jassert(parameterValues_[i] != nullptr);
   }
-  loadFactoryPreset(5);
+  loadFactoryPreset(6);
 }
 
 Parameters DensityAudioProcessor::currentParameters() const noexcept {

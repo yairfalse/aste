@@ -16,8 +16,9 @@ current state unchanged. Values are clamped to their documented ranges before
 publication. Processor history, meters, UI size, and framework memory layouts
 are never serialized.
 
-New instances select appended `Charged Presence` (Input +12 dB, Presence +6 dB,
-Harmonic 100%, Output −15 dB). All six previous presets and parameter reset
+New instances select appended `Color / open` (Input +6 dB, Presence +6 dB,
+Harmonic 60%, Output −8 dB). Charged Presence and all six earlier presets keep
+their values. Parameter reset
 defaults are unchanged; partial-state defaults remain the original flat EQ.
 PUSH/PULL edits existing Input and Output by equal/opposite increments, bounded
 by both ranges and reported as two host gestures. It changes operating point,
