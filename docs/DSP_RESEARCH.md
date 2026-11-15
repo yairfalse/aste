@@ -27,6 +27,12 @@ resonators and retained energy. Its [laboratory](../research/r01/README.md),
 [evidence](research/r01/EVIDENCE.md) distinguish rendered comparisons from
 the still-unperformed human musical evaluation.
 
+The isolated [six-instrument musical-power audit](../reports/Aste%20musical%20power%20audit.md)
+adds an [executed evidence ledger](research/power/EVIDENCE.md),
+[comparative laboratory](../research/power/README.md) and
+[musical acceptance backlog](research/power/BACKLOG.md). It changes no production
+graph and does not claim human listening acceptance.
+
 Rules:
 
 - Keep research-only algorithms unreachable from released product state until

@@ -1,5 +1,6 @@
 /build*/
 /build-r01-*.zip
+/build-power-*.zip
 /ci-*/
 /dist/
 /.DS_Store

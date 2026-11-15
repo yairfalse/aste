@@ -1,0 +1,16 @@
+File:           build-power-listening-final/density/audio/G2_3.wav
+File type ID:   WAVE
+Num Tracks:     1
+----
+Data format:     2 ch,  48000 Hz, Float32, interleaved
+                no channel layout.
+estimated duration: 8.000000 sec
+audio bytes: 3072000
+audio packets: 384000
+bit rate: 3072000 bits per second
+packet size upper bound: 8
+maximum packet size: 8
+audio data file offset: 56
+optimized
+source bit depth: F32
+----

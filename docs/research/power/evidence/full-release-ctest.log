@@ -1,0 +1,15 @@
+Test project /Users/yair/projects/aste/build-power/worktree/build-power-lab
+    Start 1: power_measurement_contract
+1/2 Test #1: power_measurement_contract .......   Passed    0.63 sec
+    Start 2: power_existing_host_automation
+2/2 Test #2: power_existing_host_automation ...***Failed    0.53 sec
+power_lab: automation partition mismatch: sequence at 48000.000000 Hz; RMS difference 0.035237
+
+
+50% tests passed, 1 tests failed out of 2
+
+Total Test time (real) =   1.17 sec
+
+The following tests FAILED:
+	  2 - power_existing_host_automation (Failed)
+Errors while running CTest

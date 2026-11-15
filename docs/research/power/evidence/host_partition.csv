@@ -1,0 +1,13 @@
+product,rate,block_a,block_b,difference_rms,first_different_sample
+density,44100,127,511,0,none
+harmonic,44100,127,511,0,none
+sequence,44100,127,511,0,none
+loop,44100,127,511,0,none
+impulse,44100,127,511,0,none
+field,44100,127,511,0,none
+density,48000,127,511,0,none
+harmonic,48000,127,511,0,none
+sequence,48000,127,511,0.0352368649689,16680
+loop,48000,127,511,0,none
+impulse,48000,127,511,0,none
+field,48000,127,511,0,none
