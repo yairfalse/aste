@@ -2,8 +2,8 @@
   "schema": "sykli-contract.v1",
   "tasks": [
     {
-      "name": "impulse-clock",
-      "run": "cmake -S . -B build-plugin && cmake --build build-plugin --target impulse_tests impulse_plugin_tests ImpulseI01_VST3 --parallel 3 && ctest --test-dir build-plugin -R '^impulse_(tests|plugin_tests|vst3_host)$' --output-on-failure && cmake --build build-sanitize --target impulse_tests --parallel 3 && ctest --test-dir build-sanitize -R '^impulse_tests$' --output-on-failure",
+      "name": "preset-recall",
+      "run": "cmake -S . -B build-plugin && cmake --build build-plugin --target density_plugin_tests harmonic_plugin_tests sequence_plugin_tests loop_plugin_tests impulse_plugin_tests field_plugin_tests --parallel 3 && ctest --test-dir build-plugin -R '^(documentation_links|(density|harmonic|sequence|loop|impulse|field)_plugin_tests)$' --output-on-failure",
       "inputs": [
         ".clang-format",
         ".github/workflows/ci.yml",
@@ -244,6 +244,8 @@
         "research/click-sub/main.cpp",
         "research/click-sub/sykli.json",
         "research/click-sub/sykli.lock",
+        "research/playability/sykli.json",
+        "research/playability/sykli.lock",
         "research/quality/CMakeLists.txt",
         "research/quality/README.md",
         "research/quality/audio.hpp",
@@ -271,6 +273,7 @@
         "tests/loop_plugin_tests.cpp",
         "tests/loop_tests.cpp",
         "tests/macos_bundle_tests.rs",
+        "tests/preset_recall_checks.hpp",
         "tests/realtime_audit_mac.cpp",
         "tests/sequence_plugin_tests.cpp",
         "tests/sequence_tests.cpp",
@@ -288,9 +291,7 @@
         "tools/install_sequence_macos.sh",
         "tools/macos_cleanup.rs",
         "tools/macos_productbuild.rs",
-        "tools/package_density.py",
-        "research/playability/sykli.json",
-        "research/playability/sykli.lock"
+        "tools/package_density.py"
       ]
     }
   ]

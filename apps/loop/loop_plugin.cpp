@@ -345,6 +345,12 @@ class LoopEditor final : public juce::AudioProcessorEditor,
     preset_.setTextWhenNothingSelected("PRESETS");
     for (int index = 0; index < processor_.factoryPresetCount(); ++index)
       preset_.addItem(processor_.factoryPresetName(index), index + 1);
+    for (const auto& snapshot : kPresets)
+      preset_.addSnapshot(processor_, processor_.state(), [&](auto set) {
+        for (std::size_t i = 0; i < snapshot.values.size(); ++i)
+          set(kParameterIds[i], snapshot.values[i]);
+      });
+    preset_.watch(processor_);
     preset_.onChange = [this] {
       if (preset_.getSelectedId() > 0) {
         processor_.loadFactoryPreset(preset_.getSelectedId() - 1);

@@ -1,4 +1,5 @@
 #include "field_plugin.hpp"
+#include "preset_recall_checks.hpp"
 #include "editor_artifact.hpp"
 #include "behavior_state_checks.hpp"
 
@@ -219,6 +220,8 @@ void testEmptyHoldAndClear() {
 
 int main(int argc, char** argv) {
   juce::ScopedJuceInitialiser_GUI juce;
+  aste::tests::presetRecallChecks<aste::field::plugin::FieldAudioProcessor>(
+      require);
   aste::tests::behaviorStateChecks<Field>(require, 1, 2);
   testContractAndState();
   testProcessingMidiAndRealtime();

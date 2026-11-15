@@ -23,7 +23,10 @@ state cues, not decoration.
 - Meters update at a bounded rate and never drive DSP state.
 - Hover descriptions explain musical effects and inactive dependencies. They
   supplement visible first-action cues rather than replacing them.
-- Preset names stay visible in the open editor; an asterisk marks edits.
+- Editors identify matching factory parameter snapshots on open/reopen without
+  changing state. An unmatched recalled sound says CUSTOM. In the open editor,
+  an asterisk retains the last matched/selected starting point after edits.
+  This reports parameter identity, not a promise about session behavior mode.
 - Input/output bars use a -60 to 0 dBFS scale with numeric readings where space
   permits, rather than linear-amplitude fill.
 

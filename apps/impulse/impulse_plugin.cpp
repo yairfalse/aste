@@ -342,6 +342,93 @@ class SoundPanel final : public juce::Component {
   juce::ToggleButton detail_;
 };
 
+template <class Set>
+void applyFactoryValues(int index, Set set) {
+  if (index == 0) return;
+  if (index >= 6) {
+    const auto p =
+        sparseStartingPoint(index == 6 ? SparseStartingPoint::clicksAndSub
+                                       : SparseStartingPoint::cutsAndPressure);
+    set("energy", p.energy * 100);
+    set("division", static_cast<float>(p.division));
+    set("variation", p.variation * 100);
+    set("mutation", p.mutation * 100);
+    set("seed", static_cast<float>(p.seed));
+    set("output", p.outputDb);
+    set("sequence", p.sequenceEnabled ? 1 : 0);
+    set("bypass", p.bypass ? 1 : 0);
+    for (std::size_t track = 0; track < kTrackCount; ++track) {
+      const auto& t = p.tracks[track];
+      const std::array<float, 13> fields{t.level * 100,
+                                         t.pitchHz,
+                                         t.decayMs,
+                                         t.tone * 100,
+                                         t.drive * 100,
+                                         static_cast<float>(t.length),
+                                         static_cast<float>(t.pulses),
+                                         static_cast<float>(t.rotation),
+                                         t.probability * 100,
+                                         static_cast<float>(t.ratchet),
+                                         t.timing * 100,
+                                         static_cast<float>(t.condition),
+                                         t.accent * 100};
+      for (std::size_t field = 0; field < fields.size(); ++field)
+        set(trackId(track, field), fields[field]);
+      for (std::size_t step = 0; step < kPatternSteps; ++step)
+        set(stepId(track, step), t.pattern[step]);
+    }
+    return;
+  }
+  if (index == 5) {
+    set("energy", 30);
+    set("kick_decay", 320);
+    for (std::size_t track = 0; track < kTrackCount; ++track) {
+      set(trackId(track, 6), track == 0 ? 2 : (track == 5 ? 1 : 0));
+      for (std::size_t step = 0; step < kPatternSteps; ++step)
+        set(stepId(track, step), (track == 0 && (step == 0 || step == 9)) ||
+                                         (track == 5 && step == 6)
+                                     ? 1
+                                     : 0);
+    }
+    return;
+  }
+  set("energy", std::array{45.0F, 72.0F, 38.0F, 58.0F,
+                           50.0F}[static_cast<std::size_t>(index)]);
+  set("variation", std::array{12.0F, 8.0F, 28.0F, 20.0F,
+                              15.0F}[static_cast<std::size_t>(index)]);
+  set("mutation", std::array{0.0F, 0.0F, 18.0F, 10.0F,
+                             0.0F}[static_cast<std::size_t>(index)]);
+  set("sequence", index == 4 ? 0.0F : 1.0F);
+  constexpr std::array<std::array<int, kTrackCount>, 5> lengths{{
+      {{15, 23, 11, 16, 16, 13, 17, 9}},
+      {{16, 19, 13, 16, 15, 11, 21, 7}},
+      {{7, 11, 5, 9, 13, 7, 15, 5}},
+      {{15, 23, 11, 16, 19, 13, 17, 9}},
+      {{16, 16, 16, 16, 16, 16, 16, 16}},
+  }};
+  constexpr std::array<std::array<int, kTrackCount>, 5> pulses{{
+      {{4, 7, 4, 5, 3, 5, 6, 3}},
+      {{4, 5, 3, 4, 4, 3, 5, 2}},
+      {{3, 7, 2, 4, 2, 5, 7, 3}},
+      {{5, 9, 4, 7, 5, 6, 7, 4}},
+      {{0, 0, 0, 0, 0, 0, 0, 0}},
+  }};
+  for (std::size_t track = 0; track < kTrackCount; ++track) {
+    set(trackId(track, 5),
+        static_cast<float>(lengths[static_cast<std::size_t>(index)][track]));
+    set(trackId(track, 6),
+        static_cast<float>(pulses[static_cast<std::size_t>(index)][track]));
+    const int length = lengths[static_cast<std::size_t>(index)][track];
+    const int pulseCount = pulses[static_cast<std::size_t>(index)][track];
+    for (std::size_t step = 0; step < kPatternSteps; ++step) {
+      const bool active =
+          static_cast<int>(step) < length && pulseCount > 0 &&
+          (static_cast<int>(step) * pulseCount) % length < pulseCount;
+      set(stepId(track, step), active ? (step == 0U ? 2.0F : 1.0F) : 0.0F);
+    }
+  }
+}
+
 class ImpulseEditor final : public juce::AudioProcessorEditor,
                             private juce::Timer {
  public:
@@ -388,6 +475,11 @@ class ImpulseEditor final : public juce::AudioProcessorEditor,
     preset_.setTextWhenNothingSelected("SNAPSHOTS");
     for (int index = 0; index < processor.factoryPresetCount(); ++index)
       preset_.addItem(processor.factoryPresetName(index), index + 1);
+    for (int index = 0; index < processor.factoryPresetCount(); ++index)
+      preset_.addSnapshot(processor_, processor_.state(), [index](auto set) {
+        applyFactoryValues(index, set);
+      });
+    preset_.watch(processor_);
     preset_.onChange = [this] {
       if (preset_.getSelectedId() > 0) {
         processor_.loadFactoryPreset(preset_.getSelectedId() - 1);
@@ -764,88 +856,7 @@ void ImpulseAudioProcessor::loadFactoryPreset(int index) {
     if (auto* p = state_.getParameter(id))
       p->setValueNotifyingHost(p->convertTo0to1(plain));
   };
-  if (index >= 6) {
-    const auto p =
-        sparseStartingPoint(index == 6 ? SparseStartingPoint::clicksAndSub
-                                       : SparseStartingPoint::cutsAndPressure);
-    set("energy", p.energy * 100);
-    set("division", static_cast<float>(p.division));
-    set("variation", p.variation * 100);
-    set("mutation", p.mutation * 100);
-    set("seed", static_cast<float>(p.seed));
-    set("output", p.outputDb);
-    set("sequence", p.sequenceEnabled ? 1 : 0);
-    set("bypass", p.bypass ? 1 : 0);
-    for (std::size_t track = 0; track < kTrackCount; ++track) {
-      const auto& t = p.tracks[track];
-      const std::array<float, 13> fields{t.level * 100,
-                                         t.pitchHz,
-                                         t.decayMs,
-                                         t.tone * 100,
-                                         t.drive * 100,
-                                         static_cast<float>(t.length),
-                                         static_cast<float>(t.pulses),
-                                         static_cast<float>(t.rotation),
-                                         t.probability * 100,
-                                         static_cast<float>(t.ratchet),
-                                         t.timing * 100,
-                                         static_cast<float>(t.condition),
-                                         t.accent * 100};
-      for (std::size_t field = 0; field < fields.size(); ++field)
-        set(trackId(track, field), fields[field]);
-      for (std::size_t step = 0; step < kPatternSteps; ++step)
-        set(stepId(track, step), t.pattern[step]);
-    }
-    return;
-  }
-  if (index == 5) {
-    set("energy", 30);
-    set("kick_decay", 320);
-    for (std::size_t track = 0; track < kTrackCount; ++track) {
-      set(trackId(track, 6), track == 0 ? 2 : (track == 5 ? 1 : 0));
-      for (std::size_t step = 0; step < kPatternSteps; ++step)
-        set(stepId(track, step), (track == 0 && (step == 0 || step == 9)) ||
-                                         (track == 5 && step == 6)
-                                     ? 1
-                                     : 0);
-    }
-    return;
-  }
-  set("energy", std::array{45.0F, 72.0F, 38.0F, 58.0F,
-                           50.0F}[static_cast<std::size_t>(index)]);
-  set("variation", std::array{12.0F, 8.0F, 28.0F, 20.0F,
-                              15.0F}[static_cast<std::size_t>(index)]);
-  set("mutation", std::array{0.0F, 0.0F, 18.0F, 10.0F,
-                             0.0F}[static_cast<std::size_t>(index)]);
-  set("sequence", index == 4 ? 0.0F : 1.0F);
-  constexpr std::array<std::array<int, kTrackCount>, 5> lengths{{
-      {{15, 23, 11, 16, 16, 13, 17, 9}},
-      {{16, 19, 13, 16, 15, 11, 21, 7}},
-      {{7, 11, 5, 9, 13, 7, 15, 5}},
-      {{15, 23, 11, 16, 19, 13, 17, 9}},
-      {{16, 16, 16, 16, 16, 16, 16, 16}},
-  }};
-  constexpr std::array<std::array<int, kTrackCount>, 5> pulses{{
-      {{4, 7, 4, 5, 3, 5, 6, 3}},
-      {{4, 5, 3, 4, 4, 3, 5, 2}},
-      {{3, 7, 2, 4, 2, 5, 7, 3}},
-      {{5, 9, 4, 7, 5, 6, 7, 4}},
-      {{0, 0, 0, 0, 0, 0, 0, 0}},
-  }};
-  for (std::size_t track = 0; track < kTrackCount; ++track) {
-    set(trackId(track, 5),
-        static_cast<float>(lengths[static_cast<std::size_t>(index)][track]));
-    set(trackId(track, 6),
-        static_cast<float>(pulses[static_cast<std::size_t>(index)][track]));
-    const int length = lengths[static_cast<std::size_t>(index)][track];
-    const int pulseCount = pulses[static_cast<std::size_t>(index)][track];
-    for (std::size_t step = 0; step < kPatternSteps; ++step) {
-      const bool active =
-          static_cast<int>(step) < length && pulseCount > 0 &&
-          (static_cast<int>(step) * pulseCount) % length < pulseCount;
-      set(stepId(track, step), active ? (step == 0U ? 2.0F : 1.0F) : 0.0F);
-    }
-  }
+  applyFactoryValues(index, set);
 }
 
 void ImpulseAudioProcessor::getStateInformation(

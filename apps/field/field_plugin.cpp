@@ -286,6 +286,12 @@ class FieldEditor final : public juce::AudioProcessorEditor,
     preset_.setColour(juce::ComboBox::outlineColourId, juce::Colour{kMuted});
     for (int index = 0; index < processor_.factoryPresetCount(); ++index)
       preset_.addItem(processor_.factoryPresetName(index), index + 1);
+    for (const auto& snapshot : kPresets)
+      preset_.addSnapshot(processor_, processor_.state(), [&](auto set) {
+        for (std::size_t i = 0; i < snapshot.values.size(); ++i)
+          set(kParameterIds[i], snapshot.values[i]);
+      });
+    preset_.watch(processor_);
     preset_.onChange = [this] {
       if (const int selected = preset_.getSelectedId(); selected > 0) {
         processor_.loadFactoryPreset(selected - 1);

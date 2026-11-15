@@ -1,4 +1,5 @@
 #include "sequence_plugin.hpp"
+#include "preset_recall_checks.hpp"
 #include "editor_artifact.hpp"
 #include "behavior_state_checks.hpp"
 
@@ -314,6 +315,8 @@ int createEditorArtifact(const char* directoryPath) {
 
 int main(int argc, char** argv) {
   juce::ScopedJuceInitialiser_GUI juce;
+  aste::tests::presetRecallChecks<
+      aste::sequence::plugin::SequenceAudioProcessor>(require);
   aste::tests::behaviorStateChecks<Sequence>(require, 2, 3);
   if (argc == 3 && std::string_view{argv[1]} == "--editor-artifacts") {
     return createEditorArtifact(argv[2]);

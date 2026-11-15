@@ -1,4 +1,5 @@
 #include "harmonic_plugin.hpp"
+#include "preset_recall_checks.hpp"
 #include "editor_artifact.hpp"
 
 #include <array>
@@ -426,6 +427,8 @@ void testEditorContract(const char* directory) {
 
 int main(int argc, char** argv) {
   juce::ScopedJuceInitialiser_GUI juce;
+  aste::tests::presetRecallChecks<
+      aste::harmonic::plugin::HarmonicAudioProcessor>(require);
   testParameterContract();
   testStateAndPresets();
   testAudibleBandControls();

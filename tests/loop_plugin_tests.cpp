@@ -1,4 +1,5 @@
 #include "loop_plugin.hpp"
+#include "preset_recall_checks.hpp"
 #include "editor_artifact.hpp"
 #include "behavior_state_checks.hpp"
 
@@ -395,6 +396,8 @@ void testTapeRecallAndMidiRelease() {
 
 int main(int argc, char** argv) {
   juce::ScopedJuceInitialiser_GUI juce;
+  aste::tests::presetRecallChecks<aste::loop::plugin::LoopAudioProcessor>(
+      require);
   aste::tests::behaviorStateChecks<Loop>(require, 3, 4);
   testContractAndState();
   testProcessingMidiAndRealtime();

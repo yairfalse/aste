@@ -362,6 +362,20 @@ class SequenceEditor final : public juce::AudioProcessorEditor,
     for (int index = 0; index < processor_.factoryPresetCount(); ++index) {
       preset_.addItem(processor_.factoryPresetName(index), index + 1);
     }
+    for (const auto& snapshot : kPresets)
+      preset_.addSnapshot(processor_, processor_.state(), [&](auto set) {
+        for (std::size_t i = 0; i < snapshot.main.size(); ++i)
+          set(kMainIds[i], snapshot.main[i]);
+        for (std::size_t step = 0; step < kStepCount; ++step) {
+          set(stepId(step, "note"), static_cast<float>(snapshot.notes[step]));
+          set(stepId(step, "gate"), (snapshot.gates >> step) & 1U ? 1.F : 0.F);
+          set(stepId(step, "accent"),
+              (snapshot.accents >> step) & 1U ? 1.F : 0.F);
+          set(stepId(step, "slide"),
+              (snapshot.slides >> step) & 1U ? 1.F : 0.F);
+        }
+      });
+    preset_.watch(processor_);
     preset_.onChange = [this] {
       if (const int selected = preset_.getSelectedId(); selected > 0) {
         processor_.loadFactoryPreset(selected - 1);
