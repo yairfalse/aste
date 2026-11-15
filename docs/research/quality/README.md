@@ -87,14 +87,14 @@ Opt-in migration of existing recorded tapes remains a workflow limitation.
 These finite tests do not establish equality for every old session, transport
 arrangement, platform or floating-point implementation.
 
-The declared `research/quality/sykli.json` gate runs the 67 functional checks,
+The declared `research/quality/sykli.json` gate passed the 67 functional checks,
 all six core suites with AddressSanitizer/UndefinedBehaviorSanitizer, and the
 144-reference comparison with both sanitizers. Its receipt is deliberately
-functional-only, not a security/release pass. The initial run's functional
-checks passed but its receipt was invalidated when this report changed during
-execution. A final run must be made with inputs frozen and verified against the
-exact committed tree; see `build-evidence/final-receipt.json` and
-`build-evidence/final-verify.json` in the working copy for the final outcome.
+functional-only, not a security/release pass. Frozen-tree verification and its
+exact-commit checks are recorded in `build-evidence/final-receipt.json` and
+`build-evidence/final-verify.json` in the working copy. The dependency-security
+gate was also rerun independently and still failed solely on its expired review;
+its output is `build-evidence/final-security.txt`.
 
 ### Density automation repair, not a relaxed test
 
