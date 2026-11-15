@@ -228,8 +228,11 @@ class MemoryPanel final : public juce::Component, private juce::Timer {
     area.removeFromTop(8);
     g.setColour(juce::Colour{kInk});
     g.setFont(juce::FontOptions{14.0F, juce::Font::bold});
+    const bool noNewInput =
+        processor_.state().getRawParameterValue("overdub")->load() >= 100;
     g.drawText(processor_.isBypassed()    ? "BYPASSED / MEMORY RETAINED"
                : printing_ > 0            ? "PRINTING NEXT TAPE"
+               : noNewInput               ? "OVERDUB 100% / NO NEW INPUT"
                : processor_.isCapturing() ? "RECORDING INPUT"
                : generation_ > 0 ? "PLAYING / GEN " + juce::String{generation_}
                                  : "CAPTURE AUDIO TO BEGIN",
@@ -351,6 +354,11 @@ class LoopEditor final : public juce::AudioProcessorEditor,
           set(kParameterIds[i], snapshot.values[i]);
       });
     preset_.watch(processor_);
+    response_.bind([this] { return !processor_.usesLegacyBehavior(); },
+                   [this] { processor_.useCurrentResponse(); },
+                   "Use continuous tape motion without clearing or reprinting "
+                   "any recorded tape.");
+    addAndMakeVisible(response_);
     preset_.onChange = [this] {
       if (preset_.getSelectedId() > 0) {
         processor_.loadFactoryPreset(preset_.getSelectedId() - 1);
@@ -391,11 +399,12 @@ class LoopEditor final : public juce::AudioProcessorEditor,
     g.drawText(
         "Feed audio > Capture > stop Capture to play > transform > RELOOP to "
         "print. Hover for help.",
-        24, getHeight() - 24, getWidth() - 48, 20,
+        24, getHeight() - 24, getWidth() - 260, 20,
         juce::Justification::centredLeft);
   }
   void resized() override {
     preset_.setBounds(getWidth() - 204, 27, 180, 28);
+    response_.setBounds(getWidth() - 224, getHeight() - 30, 200, 24);
     auto area = getLocalBounds().reduced(24);
     area.removeFromTop(66);
     area.removeFromBottom(24);
@@ -445,6 +454,7 @@ class LoopEditor final : public juce::AudioProcessorEditor,
   std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>
       tapeSpeedAttachment_;
   aste::ui::PresetMenu preset_;
+  aste::ui::ResponseButton response_;
   juce::TooltipWindow tooltips_{this, 400};
 };
 
@@ -563,7 +573,7 @@ void LoopAudioProcessor::prepareToPlay(double sampleRate, int) {
   adoptPending();
   auto tape = engine_.load()->processor.tapeState();
   auto ready = std::make_unique<Engine>();
-  ready->legacyBehavior = engine_.load()->legacyBehavior;
+  ready->legacyBehavior = engine_.load()->legacyBehavior.load();
   hostRate_ = juce::jlimit(8000.0, 384000.0,
                            std::isfinite(sampleRate) ? sampleRate : 48000.0);
   hostPrepared_ = true;
@@ -729,6 +739,21 @@ juce::String LoopAudioProcessor::factoryPresetName(int index) {
   return juce::isPositiveAndBelow(index, factoryPresetCount())
              ? kPresets[static_cast<std::size_t>(index)].name
              : juce::String{};
+}
+bool LoopAudioProcessor::usesLegacyBehavior() const {
+  const std::lock_guard lock{lifecycle_};
+  auto* source = pending_.load();
+  if (!source) source = engine_.load();
+  return source->legacyBehavior.load();
+}
+void LoopAudioProcessor::useCurrentResponse() {
+  {
+    const std::lock_guard lock{lifecycle_};
+    auto* source = pending_.load();
+    if (!source) source = engine_.load();
+    source->legacyBehavior.store(false);
+  }
+  updateHostDisplay(ChangeDetails{}.withNonParameterStateChanged(true));
 }
 void LoopAudioProcessor::loadFactoryPreset(int index) {
   if (!juce::isPositiveAndBelow(index, factoryPresetCount())) return;

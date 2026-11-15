@@ -388,10 +388,14 @@ void testEditorContract(const char* directory) {
     setValue(processor, "input", 17);
     setValue(processor, "output", -7);
     push->onClick();
+    require(!push->isEnabled(),
+            "PUSH visibly disables when either paired limit is reached");
     require(rawValue(processor, "input") == 18 &&
                 rawValue(processor, "output") == -8,
             "Linked push respects both limits without unmatched gain");
     pull->onClick();
+    require(push->isEnabled(),
+            "Moving away from a limit restores PUSH immediately");
     require(
         processor.state().getParameter("input")->getValue() ==
                 processor.state().getParameter("input")->convertTo0to1(15) &&

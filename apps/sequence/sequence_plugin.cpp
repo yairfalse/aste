@@ -254,7 +254,8 @@ class StepCell final : public juce::Component {
     accent_.setButtonText("ACC");
     accent_.setTitle(stepName(index, "Accent"));
     accent_.setTooltip(
-        "Accent: give this step extra strength and filter emphasis.");
+        "Accent: increase this step's output strength. Pressure sets the "
+        "amount.");
     slide_.setButtonText("SLIDE");
     slide_.setTitle(stepName(index, "Slide"));
     slide_.setTooltip(
@@ -376,6 +377,11 @@ class SequenceEditor final : public juce::AudioProcessorEditor,
         }
       });
     preset_.watch(processor_);
+    response_.bind([this] { return !processor_.usesLegacyBehavior(); },
+                   [this] { processor_.useCurrentResponse(); },
+                   "Use retriggered fresh notes and stable host timing without "
+                   "changing the pattern.");
+    addAndMakeVisible(response_);
     preset_.onChange = [this] {
       if (const int selected = preset_.getSelectedId(); selected > 0) {
         processor_.loadFactoryPreset(selected - 1);
@@ -446,12 +452,13 @@ class SequenceEditor final : public juce::AudioProcessorEditor,
     graphics.drawText(
         "G = Gate (play)    A = Accent (stronger)    S = Slide (connect). "
         "Hover any control for help.",
-        48, getHeight() - 22, getWidth() - 72, 18,
+        48, getHeight() - 22, getWidth() - 280, 18,
         juce::Justification::centredLeft);
   }
 
   void resized() override {
     preset_.setBounds(getWidth() - 194, 24, 170, 28);
+    response_.setBounds(getWidth() - 224, getHeight() - 30, 200, 24);
     auto area = getLocalBounds().reduced(48, 24);
     area.removeFromTop(60);
     auto sequenceArea = area.removeFromBottom(
@@ -534,6 +541,7 @@ class SequenceEditor final : public juce::AudioProcessorEditor,
   juce::ComboBox division_;
   juce::ToggleButton sequence_;
   aste::ui::PresetMenu preset_;
+  aste::ui::ResponseButton response_;
   juce::TooltipWindow tooltips_{this, 400};
   std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>
       divisionAttachment_;

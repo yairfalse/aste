@@ -1,4 +1,5 @@
 #include "impulse_plugin.hpp"
+#include "response_upgrade_checks.hpp"
 #include "preset_recall_checks.hpp"
 #include "editor_artifact.hpp"
 #include "behavior_state_checks.hpp"
@@ -408,6 +409,8 @@ void testEditor(const char* directory) {
 }  // namespace
 int main(int argc, char** argv) {
   juce::ScopedJuceInitialiser_GUI juce;
+  aste::tests::responseUpgradeChecks<
+      aste::impulse::plugin::ImpulseAudioProcessor>(require, 4);
   aste::tests::presetRecallChecks<aste::impulse::plugin::ImpulseAudioProcessor>(
       require);
   aste::tests::behaviorStateChecks<Impulse>(require, 3, 5);

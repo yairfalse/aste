@@ -3,6 +3,7 @@
 #include <juce_audio_utils/juce_audio_utils.h>
 
 #include <vector>
+#include <functional>
 #include <cmath>
 
 namespace aste::ui {
@@ -21,7 +22,9 @@ inline juce::String explanation(const juce::String& id) {
            "original.";
   if (id == "crush")
     return "Compression and saturation strength in the processed branch.";
-  if (id == "drive") return "Push the input into compression and saturation.";
+  if (id == "drive")
+    return "Push the audible path into saturation. Legacy Density also drives "
+           "its compression detector.";
   if (id == "blend" || id == "mix")
     return "Original sound at 0%; processed sound at 100%.";
   if (id == "stereo")
@@ -66,7 +69,8 @@ inline juce::String explanation(const juce::String& id) {
            "unchanged.";
   if (id == "glide") return "Time taken to slide between connected notes.";
   if (id == "overdub")
-    return "Balance incoming audio and previous recording while Capture is on.";
+    return "Capture only: 0% writes new input; 100% keeps existing tape and "
+           "writes no new input. Empty tape stays silent at 100%.";
   if (id == "feedback") return "How much previous audio survives each overdub.";
   if (id == "length_beats")
     return "Loop duration in beats when Host Sync is on.";
@@ -154,7 +158,40 @@ inline int noteNumber(const juce::String& text, int fallback) {
   return fallback;
 }
 
-// The selected starting point remains visible; edits are explicitly marked.
+// Explicit, non-automatable opt-in for recalled sound behavior; UI thread only.
+class ResponseButton final : public juce::TextButton, private juce::Timer {
+ public:
+  void bind(std::function<bool()> current, std::function<void()> upgrade,
+            juce::String explanation) {
+    current_ = std::move(current);
+    explanation_ = std::move(explanation);
+    setTitle("RESPONSE MODE");
+    setWantsKeyboardFocus(true);
+    setExplicitFocusOrder(900);
+    onClick = [this, upgrade = std::move(upgrade)] {
+      if (!current_()) upgrade();
+      refresh();
+    };
+    refresh();
+    startTimerHz(10);
+  }
+
+ private:
+  void refresh() {
+    const bool current = current_();
+    setEnabled(!current);
+    setButtonText(current ? "CURRENT RESPONSE" : "USE CURRENT RESPONSE");
+    setTooltip(explanation_);
+    setDescription(
+        (current ? "Current response in use. " : "Saved response retained. ") +
+        explanation_);
+  }
+  void timerCallback() override { refresh(); }
+  std::function<bool()> current_;
+  juce::String explanation_;
+};
+
+// Identify values without loading or auditioning a factory scene.
 class PresetMenu final : public juce::ComboBox, private juce::Timer {
  public:
   template <class Emit>

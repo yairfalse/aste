@@ -54,6 +54,10 @@ class FieldAudioProcessor final : public juce::AudioProcessor {
   [[nodiscard]] static int factoryPresetCount() noexcept;
   [[nodiscard]] static juce::String factoryPresetName(int index);
   void loadFactoryPreset(int index);
+  void useCurrentResponse() {
+    legacyBehavior_.store(false);
+    updateHostDisplay(ChangeDetails{}.withNonParameterStateChanged(true));
+  }
   [[nodiscard]] bool usesLegacyBehavior() const noexcept {
     return legacyBehavior_.load(std::memory_order_relaxed);
   }

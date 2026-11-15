@@ -292,6 +292,11 @@ class FieldEditor final : public juce::AudioProcessorEditor,
           set(kParameterIds[i], snapshot.values[i]);
       });
     preset_.watch(processor_);
+    response_.bind([this] { return !processor_.usesLegacyBehavior(); },
+                   [this] { processor_.useCurrentResponse(); },
+                   "Use independent hold coloration. Grain, Pitch and Motion "
+                   "stay at their controls.");
+    addAndMakeVisible(response_);
     preset_.onChange = [this] {
       if (const int selected = preset_.getSelectedId(); selected > 0) {
         processor_.loadFactoryPreset(selected - 1);
@@ -328,14 +333,15 @@ class FieldEditor final : public juce::AudioProcessorEditor,
     graphics.setColour(juce::Colour{kInk});
     graphics.setFont(juce::FontOptions{11.0F});
     graphics.drawText(
-        "FOREVER extends persistence; Grain, Pitch and Motion shape it. "
-        "Legacy presets keep their coupled hold.",
-        24, getHeight() - 24, getWidth() - 48, 20,
+        "Hold evolves. Sessions recall controls, not held audio; print audio "
+        "to keep it.",
+        24, getHeight() - 24, getWidth() - 260, 20,
         juce::Justification::centredLeft);
   }
 
   void resized() override {
     preset_.setBounds(getWidth() - 204, 28, 180, 28);
+    response_.setBounds(getWidth() - 224, getHeight() - 30, 200, 24);
     auto area = getLocalBounds().reduced(24);
     area.removeFromTop(68);
     area.removeFromBottom(24);
@@ -389,6 +395,7 @@ class FieldEditor final : public juce::AudioProcessorEditor,
   Knob blend_;
   Knob output_;
   aste::ui::PresetMenu preset_;
+  aste::ui::ResponseButton response_;
   juce::TooltipWindow tooltips_{this, 400};
 };
 

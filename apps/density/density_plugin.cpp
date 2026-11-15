@@ -294,6 +294,11 @@ class DensityEditor final : public juce::AudioProcessorEditor {
           set(kParameterIds[i], snapshot.values[i]);
       });
     preset_.watch(processor_);
+    response_.bind([this] { return !processor_.usesLegacyBehavior(); },
+                   [this] { processor_.useCurrentResponse(); },
+                   "Use independent Drive coloration without changing "
+                   "controls. This changes the recalled sound.");
+    addAndMakeVisible(response_);
     preset_.onChange = [this] {
       const int selected = preset_.getSelectedId();
       if (selected > 0) {
@@ -330,14 +335,14 @@ class DensityEditor final : public juce::AudioProcessorEditor {
     graphics.setFont(juce::FontOptions{11.0F});
     graphics.setColour(juce::Colour{kInk});
     graphics.drawText(
-        "Drive: color / Density: grip / Crush: intensity / Blend: parallel. "
-        "Legacy sessions keep their original response.",
-        24, getHeight() - 24, getWidth() - 48, 20,
+        "Drive colors / Blend brings attacks back / Output trims level.", 24,
+        getHeight() - 24, getWidth() - 260, 20,
         juce::Justification::centredLeft);
   }
 
   void resized() override {
     preset_.setBounds(getWidth() - 204, 28, 180, 28);
+    response_.setBounds(getWidth() - 224, getHeight() - 30, 200, 24);
     auto area = getLocalBounds().reduced(24);
     area.removeFromTop(68);
     area.removeFromBottom(24);
@@ -376,6 +381,7 @@ class DensityEditor final : public juce::AudioProcessorEditor {
   Knob output_;
   Switch protection_;
   aste::ui::PresetMenu preset_;
+  aste::ui::ResponseButton response_;
   juce::TooltipWindow tooltips_{this, 400};
 };
 

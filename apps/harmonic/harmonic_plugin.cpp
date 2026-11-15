@@ -402,8 +402,21 @@ class HarmonicEditor final : public juce::AudioProcessorEditor,
     out->setValueNotifyingHost(out->convertTo0to1(output - delta));
     out->endChangeGesture();
     in->endChangeGesture();
+    timerCallback();
   }
   void timerCallback() override {
+    const float input =
+        processor_.state().getRawParameterValue("input")->load();
+    const float output =
+        processor_.state().getRawParameterValue("output")->load();
+    const float up = std::min({3.F, 18.F - input, output + 18.F});
+    const float down = std::min({3.F, input + 18.F, 18.F - output});
+    push_.setEnabled(up > 0);
+    pull_.setEnabled(down > 0);
+    push_.setButtonText(up > 0 ? "PUSH +" + juce::String{up, 1} + " dB"
+                               : "PUSH LIMIT");
+    pull_.setButtonText(down > 0 ? "PULL -" + juce::String{down, 1} + " dB"
+                                 : "PULL LIMIT");
     bool boosted{};
     for (const char* id :
          {"foundation_gain", "body_gain", "presence_gain", "air_gain"})

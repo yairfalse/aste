@@ -2,7 +2,7 @@
   "schema": "sykli-contract.v1",
   "tasks": [
     {
-      "name": "preset-recall",
+      "name": "response-controls",
       "run": "cmake -S . -B build-plugin && cmake --build build-plugin --target density_plugin_tests harmonic_plugin_tests sequence_plugin_tests loop_plugin_tests impulse_plugin_tests field_plugin_tests --parallel 3 && ctest --test-dir build-plugin -R '^(documentation_links|(density|harmonic|sequence|loop|impulse|field)_plugin_tests)$' --output-on-failure",
       "inputs": [
         ".clang-format",
@@ -274,6 +274,7 @@
         "tests/loop_tests.cpp",
         "tests/macos_bundle_tests.rs",
         "tests/preset_recall_checks.hpp",
+        "tests/response_upgrade_checks.hpp",
         "tests/realtime_audit_mac.cpp",
         "tests/sequence_plugin_tests.cpp",
         "tests/sequence_tests.cpp",

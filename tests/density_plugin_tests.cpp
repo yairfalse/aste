@@ -1,4 +1,5 @@
 #include "density_plugin.hpp"
+#include "response_upgrade_checks.hpp"
 #include "preset_recall_checks.hpp"
 #include "editor_artifact.hpp"
 #include "behavior_state_checks.hpp"
@@ -870,6 +871,8 @@ int createEditorArtifacts(const char* directoryPath) {
 
 int main(int argc, char** argv) {
   juce::ScopedJuceInitialiser_GUI juce;
+  aste::tests::responseUpgradeChecks<
+      aste::density::plugin::DensityAudioProcessor>(require, 1);
   aste::tests::presetRecallChecks<aste::density::plugin::DensityAudioProcessor>(
       require);
   aste::tests::behaviorStateChecks<

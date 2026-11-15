@@ -480,6 +480,15 @@ class ImpulseEditor final : public juce::AudioProcessorEditor,
         applyFactoryValues(index, set);
       });
     preset_.watch(processor_);
+    response_.bind(
+        [this] {
+          return !processor_.usesLegacyBehavior() &&
+                 processor_.usesSampleClock();
+        },
+        [this] { processor_.useCurrentResponse(); },
+        "Use stable retrigger timing and responsive Low Tone. Saved controls "
+        "and patterns stay intact.");
+    addAndMakeVisible(response_);
     preset_.onChange = [this] {
       if (preset_.getSelectedId() > 0) {
         processor_.loadFactoryPreset(preset_.getSelectedId() - 1);
@@ -519,11 +528,12 @@ class ImpulseEditor final : public juce::AudioProcessorEditor,
     g.drawText(
         "CLICK / CUT: tiny attacks. LOW: sub weight. Select silently; AUDITION "
         "plays. RHYTHM DETAILS opens cycle controls.",
-        24, getHeight() - 24, getWidth() - 48, 20,
+        24, getHeight() - 24, getWidth() - 260, 20,
         juce::Justification::centredLeft);
   }
   void resized() override {
     preset_.setBounds(getWidth() - 204, 25, 180, 28);
+    response_.setBounds(getWidth() - 224, getHeight() - 30, 200, 24);
     auto area = getLocalBounds().reduced(24);
     area.removeFromBottom(24);
     area.removeFromTop(62);
@@ -592,6 +602,7 @@ class ImpulseEditor final : public juce::AudioProcessorEditor,
   Knob energy_, variation_, mutation_, seed_, output_;
   juce::ComboBox division_;
   aste::ui::PresetMenu preset_;
+  aste::ui::ResponseButton response_;
   juce::TooltipWindow tooltips_{this, 400};
   juce::ToggleButton sequence_;
   std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>

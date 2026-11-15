@@ -78,6 +78,8 @@ class LoopAudioProcessor final : public juce::AudioProcessor {
   [[nodiscard]] static int factoryPresetCount() noexcept;
   [[nodiscard]] static juce::String factoryPresetName(int index);
   void loadFactoryPreset(int index);
+  [[nodiscard]] bool usesLegacyBehavior() const;
+  void useCurrentResponse();
 
  private:
   enum ParameterIndex : std::size_t {
@@ -113,7 +115,7 @@ class LoopAudioProcessor final : public juce::AudioProcessor {
 
   struct Engine {
     Processor processor;
-    bool legacyBehavior{};
+    std::atomic<bool> legacyBehavior{};
     Engine* retiredNext{};
   };
   void adoptPending() noexcept;
@@ -121,7 +123,7 @@ class LoopAudioProcessor final : public juce::AudioProcessor {
   std::atomic<Engine*> engine_{new Engine};
   std::atomic<Engine*> pending_{};
   std::atomic<Engine*> retired_{};
-  std::mutex lifecycle_;  // Only prepare/save/restore; never acquired by audio.
+  mutable std::mutex lifecycle_;  // Off-thread lifecycle/UI only; never audio.
   double hostRate_{48000};
   bool hostPrepared_{};  // Guarded by lifecycle_, like hostRate_.
   juce::AudioProcessorValueTreeState state_;

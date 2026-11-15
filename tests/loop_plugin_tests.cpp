@@ -1,4 +1,5 @@
 #include "loop_plugin.hpp"
+#include "response_upgrade_checks.hpp"
 #include "preset_recall_checks.hpp"
 #include "editor_artifact.hpp"
 #include "behavior_state_checks.hpp"
@@ -287,9 +288,23 @@ void testTapeRecallAndMidiRelease() {
   midi.clear();
   juce::MemoryBlock saved;
   source.getStateInformation(saved);
+  auto legacy = juce::AudioProcessor::getXmlFromBinary(
+      saved.getData(), static_cast<int>(saved.getSize()));
+  legacy->setAttribute("behavior", 0);
+  juce::AudioProcessor::copyXmlToBinary(*legacy, saved);
   Loop restored;
   restored.setStateInformation(saved.getData(),
                                static_cast<int>(saved.getSize()));
+  require(restored.usesLegacyBehavior(),
+          "Recorded tape restores legacy response");
+  restored.useCurrentResponse();
+  juce::MemoryBlock upgradedTape;
+  restored.getStateInformation(upgradedTape);
+  auto upgradedXml = juce::AudioProcessor::getXmlFromBinary(
+      upgradedTape.getData(), static_cast<int>(upgradedTape.getSize()));
+  legacy->setAttribute("behavior", 1);
+  require(upgradedXml && upgradedXml->toString() == legacy->toString(),
+          "Upgrading pending recorded tape preserves every sample and control");
   restored.prepareToPlay(16000, 127);
   audio.clear();
   const auto before = allocations.load();
@@ -396,6 +411,8 @@ void testTapeRecallAndMidiRelease() {
 
 int main(int argc, char** argv) {
   juce::ScopedJuceInitialiser_GUI juce;
+  aste::tests::responseUpgradeChecks<aste::loop::plugin::LoopAudioProcessor>(
+      require, 3);
   aste::tests::presetRecallChecks<aste::loop::plugin::LoopAudioProcessor>(
       require);
   aste::tests::behaviorStateChecks<Loop>(require, 3, 4);

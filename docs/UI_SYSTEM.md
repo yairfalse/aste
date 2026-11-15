@@ -29,6 +29,12 @@ state cues, not decoration.
   This reports parameter identity, not a promise about session behavior mode.
 - Input/output bars use a -60 to 0 dBFS scale with numeric readings where space
   permits, rather than linear-amplitude fill.
+- Density, Sequence, Loop, Impulse and Field expose an explicit USE CURRENT
+  RESPONSE action for recalled historical behavior. It preserves controls,
+  patterns and Loop tapes, marks the session changed, and becomes disabled
+  CURRENT RESPONSE after adoption. Opening an editor never upgrades a session.
+- Harmonic PUSH/PULL shows the actual available paired gain change, including
+  partial steps, and disables an action at its limit.
 
 ## Density D-01
 
@@ -36,7 +42,7 @@ The current 980×540 editor scales between 760×420 and 1520×840. Density is th
 first and largest control; input/output boundaries and gain reduction occupy the
 left meter column; Drive, Crush, Attack, Release, Blend, Stereo, Detector HPF,
 and Output form the secondary grid; Protection remains visible. A compact
-header menu applies five factory starting points without adding a browser or
+header menu applies six factory starting points without adding a browser or
 hidden page. Keyboard order follows the musical hierarchy and reaches the menu
 after the ten essential controls.
 
@@ -84,9 +90,13 @@ the only moving displays. Mass, Grain, Pitch, Motion, Distance, Blend, Output,
 and the compact preset menu remain visible on the single panel with explicit
 keyboard order and editable numeric fields.
 
-FOREVER distinguishes an empty armed hold from held audio. Clear Field empties
-the memory without changing the hold switch. Its additional grain, pitch and
-motion influence is explained on the panel. Sequence groups voice controls by
+FOREVER reports the hold switch, not an authoritative memory-empty detector.
+The footer explains that sessions recall controls, not held audio: print audio
+to preserve a held performance. Clear Field empties memory without changing the
+hold switch. Its additional grain, pitch and motion influence is explained on
+the panel. Sequence groups voice controls by
 oscillators, filter, and envelope, displays note names, and explains its host
 sequence versus MIDI-keyboard modes. Loop distinguishes empty, recording, and
-playing memory and disables the inactive duration control.
+playing memory and disables the inactive duration control. Overdub's capture-only
+help explains both endpoints; the memory panel explicitly warns that 100% writes
+no new input, including into empty tape.

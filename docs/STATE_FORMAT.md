@@ -72,9 +72,15 @@ audio, generation IDs, active deck and source sample rate. Schemas 1 and 2 still
 restore controls with empty tape memory; the payload and migration boundary
 are in [docs/products/loop/STATE_FORMAT.md](products/loop/STATE_FORMAT.md).
 Impulse stores every object, visible step, cycle, probability, mutation, and
-seed value as 368 portable scalars. Schema 3 introduces predictable defaults
-without changing restored schema-1/2 values. Its deterministic pattern contract is in
+seed value as 368 portable scalars. Schema 5 independently records response and
+sample-clock choices; schemas 1–4 retain their historical clock. Its deterministic pattern contract is in
 [docs/products/impulse/STATE_FORMAT.md](products/impulse/STATE_FORMAT.md).
 Field stores nine control scalars but deliberately excludes live delay memory;
 its validation and empty-memory recall contract is in
 [docs/products/field/STATE_FORMAT.md](products/field/STATE_FORMAT.md).
+
+The five versioned-response editors offer USE CURRENT RESPONSE as an explicit
+session edit. It changes response metadata only (and Impulse's clock choice),
+not parameter values, patterns or Loop's recorded tapes. The host is notified
+that non-parameter state changed. Save/reopen preserves the choice; merely
+opening the editor does not change it. Harmonic has no alternate response mode.
