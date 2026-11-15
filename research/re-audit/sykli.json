@@ -1,0 +1,28 @@
+{
+  "schema": "sykli-contract.v1",
+  "tasks": [
+    {
+      "name": "audit-inspector-not-product-acceptance",
+      "run": "mkdir -p build-audit2-evidence && rustfmt --check research/re-audit/inspect.rs && rustc --edition=2021 -D warnings --test research/re-audit/inspect.rs -o build-audit2-evidence/inspect-tests && build-audit2-evidence/inspect-tests && rustc --edition=2021 -D warnings -O research/re-audit/inspect.rs -o build-audit2-evidence/inspect && build-audit2-evidence/inspect clocks > build-audit2-evidence/verified-clock-witness.csv && cmp build-audit2-evidence/verified-clock-witness.csv docs/research/re-audit/evidence/clock-witness.csv",
+      "inputs": [
+        "research/re-audit/inspect.rs",
+        "research/re-audit/README.md",
+        "research/re-audit/sykli.json",
+        "research/re-audit/sykli.lock",
+        "docs/research/re-audit/README.md",
+        "docs/research/re-audit/evidence/full-ctest.log",
+        "docs/research/re-audit/evidence/legacy-check.log",
+        "docs/research/re-audit/evidence/click-sub-check.log",
+        "docs/research/re-audit/evidence/impulse-triplet-debugger.log",
+        "docs/research/re-audit/evidence/clock-witness.csv",
+        "docs/research/re-audit/evidence/density-spectral.csv",
+        "docs/research/re-audit/evidence/six-product-scan.csv",
+        "docs/research/re-audit/evidence/click-sub-scan.csv",
+        "docs/research/re-audit/evidence/shape-comparisons.csv",
+        "docs/research/re-audit/evidence/negative-control.log",
+        "docs/research/re-audit/evidence/empty-scan-negative.log",
+        "docs/research/re-audit/evidence/inspect-tests.log"
+      ]
+    }
+  ]
+}

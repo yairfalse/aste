@@ -1,0 +1,28 @@
+
+running 2 tests
+test tests::float_wave_and_fail_closed ... FAILED
+test tests::gain_is_not_shape_change ... FAILED
+
+failures:
+
+---- tests::float_wave_and_fail_closed stdout ----
+
+thread 'tests::float_wave_and_fail_closed' panicked at build-audit2-evidence/inspect-fault.rs:276:9:
+assertion `left == right` failed
+  left: [0.5]
+ right: [0.25]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- tests::gain_is_not_shape_change stdout ----
+
+thread 'tests::gain_is_not_shape_change' panicked at build-audit2-evidence/inspect-fault.rs:290:9:
+assertion `left == right` failed
+  left: 1.0
+ right: 2.0
+
+
+failures:
+    tests::float_wave_and_fail_closed
+    tests::gain_is_not_shape_change
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

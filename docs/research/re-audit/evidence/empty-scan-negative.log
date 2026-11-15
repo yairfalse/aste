@@ -1,0 +1,2 @@
+file,rate,channels,frames,peak_dbfs,rms_dbfs,max_adjacent_step_dbfs,fraction_within_1pct_peak,samples_over_unity,quiet_10ms_windows,total_10ms_windows,exact_mono
+audit inspection failed: no WAV evidence found; coverage unknown

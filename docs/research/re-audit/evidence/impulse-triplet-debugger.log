@@ -1,0 +1,16 @@
+(lldb) target create "build-sanitize/impulse_tests"
+Current executable set to '/Users/yair/projects/aste/build-quality/worktree/build-sanitize/impulse_tests' (arm64).
+(lldb) breakpoint set --file impulse_tests.cpp --line 42
+Breakpoint 1: where = impulse_tests`(anonymous namespace)::render(unsigned int, std::__1::vector<unsigned long, std::__1::allocator<unsigned long>> const&) + 736 at impulse_tests.cpp:42:15, address = 0x000000010000f120
+(lldb) breakpoint command add 1 -o "expression -- parameters.tracks[1].ratchet = 3"
+(lldb) breakpoint modify --auto-continue true 1
+(lldb) run
+(lldb)  expression -- parameters.tracks[1].ratchet = 3
+(int) $0 = 3
+(lldb)  expression -- parameters.tracks[1].ratchet = 3
+(int) $1 = 3
+(lldb)  expression -- parameters.tracks[1].ratchet = 3
+(int) $2 = 3
+FAIL: Impulse output is independent of block partitioning
+Process 86693 launched: '/Users/yair/projects/aste/build-quality/worktree/build-sanitize/impulse_tests' (arm64)
+Process 86693 exited with status = 1 (0x00000001)
