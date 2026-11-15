@@ -1,5 +1,9 @@
 # Aste musical-control revision
 
+This records the earlier six-instrument revision. The subsequent
+[Impulse click/sub follow-up](../click-sub/README.md) replaces only the
+new-instance starting point; the renders and hashes below remain historical.
+
 2026-11-15. Implementation branch `improve/musical-control`; original production
 reference `8a603dcbc59b52a58637fe6305676efc5a406f80`. No PR, main merge, installation,
 release or product version change. This follows the completed musical-power

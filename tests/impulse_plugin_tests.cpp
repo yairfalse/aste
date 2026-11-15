@@ -80,9 +80,8 @@ juce::Component* findTitled(juce::Component& c, const juce::String& title) {
 }
 void testContractState() {
   Impulse source;
-  require(
-      !source.usesLegacyBehavior() && value(source, "energy") == 30,
-      "New instances use a restrained two-object start and corrected engine");
+  require(!source.usesLegacyBehavior() && value(source, "energy") == 18,
+          "New instances start with restrained click and sub excitation");
   int activeTracks{}, hits{};
   for (const char* track :
        {"kick", "click", "burst", "body", "low", "crack", "metal", "cut"}) {
@@ -95,8 +94,21 @@ void testContractState() {
     activeTracks += trackHits > 0;
     hits += trackHits;
   }
-  require(activeTracks == 2 && hits == 3,
-          "Space leaves structural silence rather than eight competing parts");
+  require(activeTracks == 2 && hits == 5,
+          "Clicks and sub leave eleven of sixteen positions empty");
+  require(value(source, "click_step_04") == 1 &&
+              value(source, "click_step_08") == 1 &&
+              value(source, "click_step_15") == 1 &&
+              value(source, "low_step_01") == 1 &&
+              value(source, "low_step_11") == 1 &&
+              value(source, "kick_step_01") == 0 &&
+              value(source, "crack_step_07") == 0,
+          "The starting vocabulary is Click and Low, not Kick and Crack");
+  require(value(source, "click_decay") <= 8 &&
+              value(source, "low_pitch") >= 35 &&
+              value(source, "low_pitch") <= 45 &&
+              value(source, "low_tone") == 0 && value(source, "low_drive") == 0,
+          "Tiny click envelopes contrast with a low-drive sub");
   require(value(source, "variation") == 0 && value(source, "mutation") == 0,
           "New instances start without random variation or mutation");
   for (const auto* track :
@@ -106,6 +118,12 @@ void testContractState() {
                 value(source, (prefix + "_probability").c_str()) == 100,
             "Starter groove uses a shared length and predictable hits");
   }
+  source.loadFactoryPreset(5);
+  require(value(source, "energy") == 30 && value(source, "kick_decay") == 320 &&
+              value(source, "kick_step_10") == 1 &&
+              value(source, "crack_step_07") == 1 &&
+              value(source, "low_step_01") == 0,
+          "Space remains available without reinterpretation");
   setValue(source, "kick_pitch", 999);
   source.loadFactoryPreset(0);
   require(value(source, "kick_pitch") == 48,
@@ -177,8 +195,22 @@ void testContractState() {
   restored.setStateInformation(bad, sizeof(bad));
   require(value(restored, "seed") == 4242,
           "Malformed Impulse state is rejected");
-  require(restored.factoryPresetCount() == 6,
-          "Impulse retains five snapshots and adds Space");
+  require(
+      restored.factoryPresetCount() == 8,
+      "Impulse appends two click/sub scenes without replacing six snapshots");
+  for (int preset : {6, 7}) {
+    Impulse scene;
+    scene.loadFactoryPreset(preset);
+    juce::MemoryBlock saved;
+    scene.getStateInformation(saved);
+    Impulse reopened;
+    reopened.setStateInformation(saved.getData(),
+                                 static_cast<int>(saved.getSize()));
+    juce::MemoryBlock again;
+    reopened.getStateInformation(again);
+    require(saved == again && !reopened.usesLegacyBehavior(),
+            "Click/sub scenes recall byte-stably through existing schema 4");
+  }
   std::uint32_t random = 0x1a2b3c4dU;
   for (int test = 0; test < 256; ++test) {
     std::array<std::byte, 257> bytes{};
@@ -289,6 +321,27 @@ void testEditor(const char* directory) {
                   "PRESETS"})
     require(findTitled(*editor, title),
             "Impulse essential controls are visible");
+  auto* presets = dynamic_cast<juce::ComboBox*>(findTitled(*editor, "PRESETS"));
+  auto* clickLevel = findTitled(*editor, "CLICK LEVEL");
+  auto* cutLevel = findTitled(*editor, "CUT LEVEL");
+  const auto visible = [&editor](juce::Component* control) {
+    if (!control) return false;
+    for (auto* c = control; c && c != editor.get(); c = c->getParentComponent())
+      if (!c->isVisible()) return false;
+    return true;
+  };
+  require(presets && clickLevel && cutLevel,
+          "Sparse scenes have accessible preset and sound selectors");
+  if (presets && clickLevel && cutLevel) {
+    presets->setSelectedId(8, juce::sendNotificationSync);
+    require(visible(cutLevel) && !visible(clickLevel) &&
+                value(processor, "cut_decay") == 8,
+            "Cuts / pressure opens its active transient controls");
+    presets->setSelectedId(7, juce::sendNotificationSync);
+    require(visible(clickLevel) && !visible(cutLevel) &&
+                value(processor, "click_decay") == 5,
+            "Clicks / sub opens its active transient controls");
+  }
   juce::Image image{juce::Image::RGB, editor->getWidth(), editor->getHeight(),
                     true};
   juce::Graphics g{image};

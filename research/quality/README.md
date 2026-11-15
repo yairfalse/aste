@@ -1,5 +1,9 @@
 # Musical-control comparison laboratory
 
+Profiles here describe the six-instrument quality revision, including its
+Impulse Space starting point. For the subsequent Clicks / sub default use
+`research/click-sub`; these historical profiles are not silently rewritten.
+
 Independent C++20 executable: no JUCE, third-party libraries or audio devices.
 Build from a Git checkout containing original production commit
 `8a603dcbc59b52a58637fe6305676efc5a406f80`. CMake extracts and namespace-renames

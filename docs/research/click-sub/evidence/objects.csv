@@ -1,0 +1,5 @@
+scene,object,peak,t95_ms,settled_peak_hz,settled_20_100_fraction
+0,clicks_sub,0.531712472439,410.958333333,42.48046875,0.990722797714
+0,clicks_edge,0.418401032686,5.9375,not_applicable,not_applicable
+1,cuts_sub,0.513098955154,604.875,36.62109375,0.9894796993
+1,cuts_edge,0.361048132181,9.625,not_applicable,not_applicable

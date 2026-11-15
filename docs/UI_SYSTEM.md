@@ -62,10 +62,14 @@ to signal levels and memory travel. All essential controls remain on one panel.
 
 The 1480×900 editor scales from 1120×700 to 1800×1120. Energy leads the global
 row; Variation, Mutation, Seed, Output, Division, Sequence, and Snapshots remain
-visible. Eight 32-step rows remain visible. Click a track name to audition it
-and select its sound panel: five sound controls above eight rhythm controls.
+visible. Eight 32-step rows remain visible. Track names select silently;
+AUDITION plays the selected sound. Five sound controls are visible by default;
+RHYTHM DETAILS reveals the eight cycle controls. LOW / SUB identifies the
+low-frequency object without changing its stable parameter IDs. The two new
+click/sub snapshots open their active Click or Cut controls when selected.
 Steps outside the track length are dimmed but can be programmed for later.
-The new-instance groove is a shared, predictable 16 steps; the polymetric and
+The new-instance groove uses only Click and Low in a predictable 16 steps;
+eleven positions are empty. The polymetric and
 mutation starting points are explicitly labelled evolving or wild.
 
 ## Field F-01

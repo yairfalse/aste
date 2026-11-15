@@ -1,0 +1,147 @@
+Test project /Users/yair/projects/aste/build-quality/worktree/build-plugin
+      Start  1: documentation_links
+ 1/68 Test  #1: documentation_links ..................   Passed    0.22 sec
+      Start  2: build_metadata
+ 2/68 Test  #2: build_metadata .......................   Passed    0.03 sec
+      Start  3: dependency_security
+ 3/68 Test  #3: dependency_security ..................***Failed    0.09 sec
+security review expired on 2026-11-07
+
+      Start  4: density_tests
+ 4/68 Test  #4: density_tests ........................   Passed    0.10 sec
+      Start  5: harmonic_tests
+ 5/68 Test  #5: harmonic_tests .......................   Passed    2.84 sec
+      Start  6: sequence_tests
+ 6/68 Test  #6: sequence_tests .......................   Passed    0.42 sec
+      Start  7: loop_tests
+ 7/68 Test  #7: loop_tests ...........................   Passed    0.42 sec
+      Start  8: impulse_tests
+ 8/68 Test  #8: impulse_tests ........................   Passed    0.08 sec
+      Start  9: field_tests
+ 9/68 Test  #9: field_tests ..........................   Passed    0.29 sec
+      Start 10: density_installer_syntax
+10/68 Test #10: density_installer_syntax .............   Passed    0.00 sec
+      Start 11: harmonic_installer_syntax
+11/68 Test #11: harmonic_installer_syntax ............   Passed    0.00 sec
+      Start 12: sequence_installer_syntax
+12/68 Test #12: sequence_installer_syntax ............   Passed    0.00 sec
+      Start 13: loop_installer_syntax
+13/68 Test #13: loop_installer_syntax ................   Passed    0.00 sec
+      Start 14: impulse_installer_syntax
+14/68 Test #14: impulse_installer_syntax .............   Passed    0.00 sec
+      Start 15: field_installer_syntax
+15/68 Test #15: field_installer_syntax ...............   Passed    0.00 sec
+      Start 16: build_and_install_syntax
+16/68 Test #16: build_and_install_syntax .............   Passed    0.00 sec
+      Start 17: install_all_bundles_syntax
+17/68 Test #17: install_all_bundles_syntax ...........   Passed    0.00 sec
+      Start 18: harmonic_reference_compare
+18/68 Test #18: harmonic_reference_compare ...........   Passed    0.12 sec
+      Start 19: harmonic_preemphasis_compare
+19/68 Test #19: harmonic_preemphasis_compare .........   Passed    0.06 sec
+      Start 20: harmonic_stateful_compare
+20/68 Test #20: harmonic_stateful_compare ............   Passed    0.28 sec
+      Start 21: harmonic_product_report
+21/68 Test #21: harmonic_product_report ..............   Passed    0.23 sec
+      Start 22: sequence_product_render
+22/68 Test #22: sequence_product_render ..............   Passed    0.02 sec
+      Start 23: loop_product_render
+23/68 Test #23: loop_product_render ..................   Passed    0.02 sec
+      Start 24: impulse_product_render
+24/68 Test #24: impulse_product_render ...............   Passed    0.04 sec
+      Start 25: field_product_render
+25/68 Test #25: field_product_render .................   Passed    0.26 sec
+      Start 26: density_detector_compare
+26/68 Test #26: density_detector_compare .............   Passed    0.41 sec
+      Start 27: density_detector_auditions
+27/68 Test #27: density_detector_auditions ...........   Passed    0.30 sec
+      Start 28: density_detector_blind
+28/68 Test #28: density_detector_blind ...............   Passed    0.32 sec
+      Start 29: density_production_golden
+29/68 Test #29: density_production_golden ............   Passed    0.07 sec
+      Start 30: density_production_consistency
+30/68 Test #30: density_production_consistency .......   Passed    0.20 sec
+      Start 31: density_nonlinear_alias
+31/68 Test #31: density_nonlinear_alias ..............   Passed    0.03 sec
+      Start 32: density_oversampling_reference
+32/68 Test #32: density_oversampling_reference .......   Passed    0.07 sec
+      Start 33: density_oversampling_prototype
+33/68 Test #33: density_oversampling_prototype .......   Passed    2.44 sec
+      Start 34: density_halfband_prototype
+34/68 Test #34: density_halfband_prototype ...........   Passed    1.86 sec
+      Start 35: density_kaiser_prototype
+35/68 Test #35: density_kaiser_prototype .............   Passed    0.27 sec
+      Start 36: density_kaiser_sweep
+36/68 Test #36: density_kaiser_sweep .................   Passed    1.83 sec
+      Start 37: density_kaiser_rate_sweep
+37/68 Test #37: density_kaiser_rate_sweep ............   Passed    7.48 sec
+      Start 38: density_kaiser_linear
+38/68 Test #38: density_kaiser_linear ................   Passed    2.66 sec
+      Start 39: density_kaiser_length
+39/68 Test #39: density_kaiser_length ................   Passed    6.30 sec
+      Start 40: density_kaiser_finalists
+40/68 Test #40: density_kaiser_finalists .............   Passed    8.94 sec
+      Start 41: density_oversampled_chain
+41/68 Test #41: density_oversampled_chain ............   Passed    8.91 sec
+      Start 42: density_oversampling_auditions
+42/68 Test #42: density_oversampling_auditions .......   Passed    0.25 sec
+      Start 43: density_automation
+43/68 Test #43: density_automation ...................   Passed    0.04 sec
+      Start 44: density_output_smoothing
+44/68 Test #44: density_output_smoothing .............   Passed    0.01 sec
+      Start 45: density_drive_smoothing
+45/68 Test #45: density_drive_smoothing ..............   Passed    0.02 sec
+      Start 46: density_attack_smoothing
+46/68 Test #46: density_attack_smoothing .............   Passed    0.02 sec
+      Start 47: density_blend_smoothing
+47/68 Test #47: density_blend_smoothing ..............   Passed    0.02 sec
+      Start 48: density_automation_auditions
+48/68 Test #48: density_automation_auditions .........   Passed    0.13 sec
+      Start 49: density_stereo_stability
+49/68 Test #49: density_stereo_stability .............   Passed    0.24 sec
+      Start 50: density_stereo_stability_auditions
+50/68 Test #50: density_stereo_stability_auditions ...   Passed    0.30 sec
+      Start 51: density_macro_auditions
+51/68 Test #51: density_macro_auditions ..............   Passed    0.31 sec
+      Start 52: density_plugin_tests
+52/68 Test #52: density_plugin_tests .................   Passed    0.47 sec
+      Start 53: density_editor_artifacts
+53/68 Test #53: density_editor_artifacts .............   Passed    0.38 sec
+      Start 54: harmonic_plugin_tests
+54/68 Test #54: harmonic_plugin_tests ................   Passed    0.19 sec
+      Start 55: sequence_plugin_tests
+55/68 Test #55: sequence_plugin_tests ................   Passed    0.15 sec
+      Start 56: sequence_editor_artifacts
+56/68 Test #56: sequence_editor_artifacts ............   Passed    0.21 sec
+      Start 57: loop_plugin_tests
+57/68 Test #57: loop_plugin_tests ....................   Passed    0.27 sec
+      Start 58: loop_editor_artifacts
+58/68 Test #58: loop_editor_artifacts ................   Passed    0.23 sec
+      Start 59: impulse_plugin_tests
+59/68 Test #59: impulse_plugin_tests .................   Passed    1.07 sec
+      Start 60: impulse_editor_artifacts
+60/68 Test #60: impulse_editor_artifacts .............   Passed    0.68 sec
+      Start 61: field_plugin_tests
+61/68 Test #61: field_plugin_tests ...................   Passed    0.13 sec
+      Start 62: field_editor_artifacts
+62/68 Test #62: field_editor_artifacts ...............   Passed    0.14 sec
+      Start 63: density_vst3_host
+63/68 Test #63: density_vst3_host ....................   Passed    0.04 sec
+      Start 64: harmonic_vst3_host
+64/68 Test #64: harmonic_vst3_host ...................   Passed    0.10 sec
+      Start 65: sequence_vst3_host
+65/68 Test #65: sequence_vst3_host ...................   Passed    0.08 sec
+      Start 66: loop_vst3_host
+66/68 Test #66: loop_vst3_host .......................   Passed    0.09 sec
+      Start 67: impulse_vst3_host
+67/68 Test #67: impulse_vst3_host ....................   Passed    0.08 sec
+      Start 68: field_vst3_host
+68/68 Test #68: field_vst3_host ......................   Passed    0.08 sec
+
+99% tests passed, 1 tests failed out of 68
+
+Total Test time (real) =  53.39 sec
+
+The following tests FAILED:
+	  3 - dependency_security (Failed)
+Errors while running CTest

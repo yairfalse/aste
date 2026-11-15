@@ -1,4 +1,5 @@
 #include "impulse_plugin.hpp"
+#include "impulse_starting_points.hpp"
 
 #include "decimal_parse.hpp"
 #include "plugin_ui.hpp"
@@ -369,7 +370,8 @@ class ImpulseEditor final : public juce::AudioProcessorEditor,
       sounds_[track] = std::make_unique<SoundPanel>(
           processor, track, 10 + static_cast<int>(track * 13));
       addChildComponent(*sounds_[track]);
-      selectors_[track].setButtonText(kTrackNames[track]);
+      selectors_[track].setButtonText(track == 4 ? "LOW / SUB"
+                                                 : kTrackNames[track]);
       selectors_[track].setTitle(juce::String{kTrackNames[track]} + " TRACK");
       selectors_[track].setTooltip(
           "Select sound controls silently. Use AUDITION to hear the object.");
@@ -381,7 +383,7 @@ class ImpulseEditor final : public juce::AudioProcessorEditor,
         addAndMakeVisible(*pattern_[track][step]);
       }
     }
-    selectTrack(0);
+    selectTrack(1);
     preset_.setTitle("PRESETS");
     preset_.setTextWhenNothingSelected("SNAPSHOTS");
     for (int index = 0; index < processor.factoryPresetCount(); ++index)
@@ -389,6 +391,8 @@ class ImpulseEditor final : public juce::AudioProcessorEditor,
     preset_.onChange = [this] {
       if (preset_.getSelectedId() > 0) {
         processor_.loadFactoryPreset(preset_.getSelectedId() - 1);
+        if (preset_.getSelectedId() == 7) selectTrack(1);
+        if (preset_.getSelectedId() == 8) selectTrack(7);
         preset_.remember(processor_);
       }
     };
@@ -421,9 +425,8 @@ class ImpulseEditor final : public juce::AudioProcessorEditor,
     g.setFont(juce::FontOptions{11.0F});
     g.setColour(juce::Colour{kInk});
     g.drawText(
-        "Select a sound silently; AUDITION plays it. RHYTHM DETAILS opens "
-        "cycle controls. Steps: "
-        "Off / Hit / Accent.",
+        "CLICK / CUT: tiny attacks. LOW: sub weight. Select silently; AUDITION "
+        "plays. RHYTHM DETAILS opens cycle controls.",
         24, getHeight() - 24, getWidth() - 48, 20,
         juce::Justification::centredLeft);
   }
@@ -584,7 +587,7 @@ ImpulseAudioProcessor::ImpulseAudioProcessor()
   for (std::size_t track = 0; track < kTrackCount; ++track)
     for (std::size_t step = 0; step < kPatternSteps; ++step)
       patterns_[track][step] = state_.getRawParameterValue(stepId(track, step));
-  loadFactoryPreset(5);
+  loadFactoryPreset(6);
   publishMeters({});
 }
 
@@ -733,14 +736,16 @@ juce::AudioProcessorParameter* ImpulseAudioProcessor::getBypassParameter()
   return state_.getParameter("bypass");
 }
 
-int ImpulseAudioProcessor::factoryPresetCount() noexcept { return 6; }
+int ImpulseAudioProcessor::factoryPresetCount() noexcept { return 8; }
 juce::String ImpulseAudioProcessor::factoryPresetName(int index) {
   constexpr std::array names{"Steady Start",
                              "Deep Cycle / evolving",
                              "Microscopic Cuts / wild",
                              "Polymetric Field / wild",
                              "Manual Surface",
-                             "Space / two objects"};
+                             "Space / two objects",
+                             "Clicks / sub",
+                             "Cuts / pressure"};
   return juce::isPositiveAndBelow(index, factoryPresetCount())
              ? names[static_cast<std::size_t>(index)]
              : juce::String{};
@@ -758,6 +763,40 @@ void ImpulseAudioProcessor::loadFactoryPreset(int index) {
     if (auto* p = state_.getParameter(id))
       p->setValueNotifyingHost(p->convertTo0to1(plain));
   };
+  if (index >= 6) {
+    const auto p =
+        sparseStartingPoint(index == 6 ? SparseStartingPoint::clicksAndSub
+                                       : SparseStartingPoint::cutsAndPressure);
+    set("energy", p.energy * 100);
+    set("division", static_cast<float>(p.division));
+    set("variation", p.variation * 100);
+    set("mutation", p.mutation * 100);
+    set("seed", static_cast<float>(p.seed));
+    set("output", p.outputDb);
+    set("sequence", p.sequenceEnabled ? 1 : 0);
+    set("bypass", p.bypass ? 1 : 0);
+    for (std::size_t track = 0; track < kTrackCount; ++track) {
+      const auto& t = p.tracks[track];
+      const std::array<float, 13> fields{t.level * 100,
+                                         t.pitchHz,
+                                         t.decayMs,
+                                         t.tone * 100,
+                                         t.drive * 100,
+                                         static_cast<float>(t.length),
+                                         static_cast<float>(t.pulses),
+                                         static_cast<float>(t.rotation),
+                                         t.probability * 100,
+                                         static_cast<float>(t.ratchet),
+                                         t.timing * 100,
+                                         static_cast<float>(t.condition),
+                                         t.accent * 100};
+      for (std::size_t field = 0; field < fields.size(); ++field)
+        set(trackId(track, field), fields[field]);
+      for (std::size_t step = 0; step < kPatternSteps; ++step)
+        set(stepId(track, step), t.pattern[step]);
+    }
+    return;
+  }
   if (index == 5) {
     set("energy", 30);
     set("kick_decay", 320);

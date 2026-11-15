@@ -27,11 +27,18 @@ repeatable from reset, not independently reseeded on every note. Low Tone
 controls its existing harmonic edge from 0.03 to 0.21; legacy retains 0.12.
 No new voice, host parameter or modulation system is added.
 
-New instances select the appended `Space / two objects` starting point: three
-hits, two tracks, no random variation, reduced Energy and shorter Kick decay.
+New instances select appended `Clicks / sub` (index 6): three Click events and
+two Low events. `Cuts / pressure` (index 7) substitutes a Cut and a deeper Low
+on the same rhythm. Both are complete parameter snapshots with behavior 1.
+There is no new DSP behavior or schema for these scenes: schema 4 is unchanged.
+All six preceding snapshot indices/names/values are retained, including
+`Space / two objects` (index 5): three hits, two tracks, no random variation,
+reduced Energy and shorter Kick decay.
 The five prior preset indices, names and values remain intact and select
 legacy sound behavior. Old partial-state defaults remain those of their
-schema, not the new starting point. The new preset selects corrected behavior.
+schema, not the new starting point. Space and both click/sub scenes select
+corrected behavior. Older schema-4 builds can recall these new scenes because
+state stores parameters, not the preset menu index.
 Track selection is silent; explicit AUDITION plays the selected object.
 RHYTHM DETAILS reveals cycle/generation controls without changing their values.
 Legacy Low Tone is visibly disabled rather than pretending to shape audio.

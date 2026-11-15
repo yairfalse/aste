@@ -1,0 +1,17 @@
+Test project /Users/yair/projects/aste/build-quality/worktree/build-plugin
+    Start 59: impulse_plugin_tests
+1/1 Test #59: impulse_plugin_tests .............***Failed    0.87 sec
+FAIL: New instances start with restrained click and sub excitation
+FAIL: Clicks and sub leave eleven of sixteen positions empty
+FAIL: The starting vocabulary is Click and Low, not Kick and Crack
+FAIL: Tiny click envelopes contrast with a low-drive sub
+FAIL: Impulse appends two click/sub scenes without replacing six snapshots
+
+
+0% tests passed, 1 tests failed out of 1
+
+Total Test time (real) =   0.88 sec
+
+The following tests FAILED:
+	 59 - impulse_plugin_tests (Failed)
+Errors while running CTest

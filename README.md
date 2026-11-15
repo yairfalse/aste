@@ -176,8 +176,11 @@ Stored seeds make probability, variation, and mutation reproducible from host
 PPQ across block partitions and project recall. MIDI pitch classes C through G
 trigger the eight objects directly.
 
-New instances start with a predictable shared 16-step groove, 100% hit
-probability, and variation/mutation off. Click a track name to audition its drum.
+New instances start with `Clicks / sub`: three tiny clicks, two low-frequency
+events and eleven empty positions in a shared 16-step cycle. Probability is
+100%, with variation/mutation off. Track selection is silent; AUDITION plays
+the selected object. RHYTHM DETAILS reveals the cycle controls. The
+[click/sub study](docs/research/click-sub/README.md) includes measured renders.
 Polymetric and mutation-based starting points remain explicitly labelled
 experimental choices. No drum samples, genre kits, named circuit clone, or nondeterministic
 “analog” behavior defines the product. See
