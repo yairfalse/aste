@@ -132,3 +132,15 @@ material from selected-hit locks, with an explicit apply-sound action. Loop's
 RELOOP operation reads PRINT NEW TAKE; previous/next generations read OLDER/NEWER
 TAKE. Sequence labels the host-owned toggle DAW PATTERN. Existing host IDs and
 parameter counts stay intact. Product-specific meaning overrides generic help.
+
+## Click K-01
+
+K-01 follows its explicit three-view product brief: SEQUENCE, SOUND and PERFORM.
+The Sequence view opens on four visible rows and a master fragment ruler. Event
+properties sit directly below the grid; advanced event and sound fields use
+progressive disclosure. The six performance gates remain visible in all views.
+Sound displays actual loaded-sample peak data and editable frame boundaries;
+Perform exposes nested audio capture, time policy, scenes and dirty dynamics.
+Minimum 1100×840, default 1360×900, maximum 1800×1200. Muted gold identifies
+functional state on the shared matte dark surface. No decorative signal display.
+See [the K-01 guide](products/click/README.md) for direct editing and dependencies.

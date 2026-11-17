@@ -35,17 +35,21 @@ void require(bool condition, const char* message) {
 }
 
 std::vector<float> render(bool forever, float mass, float grain, float pitch,
-                          const std::vector<std::size_t>& blocks) {
+                          const std::vector<std::size_t>& blocks,
+                          float texture = 0.F) {
   constexpr std::size_t frames = 48000U * 4U;
   std::vector<float> audio(frames);
   audio[0] = 1.0F;
   auto processor = std::make_unique<aste::field::Processor>();
   processor->prepare(48000.0);
+  require(processor->memoryBytes() < 5U * 1024 * 1024,
+          "Field memory includes preallocated stereo capture banks");
   aste::field::Parameters parameters;
   parameters.forever = forever;
   parameters.mass = mass;
   parameters.grain = grain;
   parameters.pitch = pitch;
+  parameters.texture = texture;
   parameters.motion = 0.55F;
   parameters.distance = 0.5F;
   parameters.blend = 1.0F;
@@ -229,7 +233,34 @@ void testHoldDoesNotAddHiddenColor() {
           "extra color remains reproducible");
 }
 
+void testExposedGrainAndPitch() {
+  const auto old = render(true, .8F, .8F, .8F, {127});
+  const auto textured = render(true, .8F, .8F, .8F, {127}, 1);
+  const auto divided = render(true, .8F, .8F, .8F, {1, 7, 511, 2048}, 1);
+  require(textured == divided,
+          "Exposed grains and pitch are block-independent");
+  double difference = 0;
+  for (std::size_t i = 0; i < textured.size(); ++i) {
+    require(std::isfinite(textured[i]) && std::abs(textured[i]) < 8,
+            "Held granular/pitched field stays finite and bounded");
+    difference += std::abs(textured[i] - old[i]);
+  }
+  require(difference > 1,
+          "Texture materially changes the wet field rather than only gain");
+  const auto plain = render(false, .8F, 0, 0, {127}, 1);
+  const auto grain = render(false, .8F, 1, 0, {127}, 1);
+  const auto pitch = render(false, .8F, 0, 1, {127}, 1);
+  double grainDifference = 0, pitchDifference = 0;
+  for (std::size_t i = 0; i < plain.size(); ++i) {
+    grainDifference += std::abs(grain[i] - plain[i]);
+    pitchDifference += std::abs(pitch[i] - plain[i]);
+  }
+  require(grainDifference > 1 && pitchDifference > 1,
+          "Grain and Pitch independently change the audible wet layer");
+}
+
 int main() {
+  testExposedGrainAndPitch();
   testHoldDoesNotAddHiddenColor();
   testDryAndBypass();
   testForeverAndPitchField();

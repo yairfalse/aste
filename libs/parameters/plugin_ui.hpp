@@ -1,5 +1,8 @@
 #pragma once
 
+#include "precision_slider.hpp"
+#include "workflow_guide.hpp"
+
 #include <juce_audio_utils/juce_audio_utils.h>
 
 #include <vector>
@@ -15,8 +18,158 @@ inline juce::String formattedValue(const juce::Slider& slider, double value) {
       decimals};
 }
 
-inline juce::String explanation(const juce::String& id) {
+inline juce::String explanation(const juce::String& id,
+                                const juce::String& product = {}) {
+  if (product == "Density D-01" && id == "character")
+    return "Give quieter material a denser low body, with asymmetric color and "
+           "breathing recovery. Earlier saved responses retain the previous "
+           "shaper until updated.";
+  if (product == "Harmonic H-01" && id == "harmonic")
+    return "Excite and deform the selected frequency regions. Updated material "
+           "behavior works at flat and cut gain as well as boosts; older saved "
+           "responses color boosts only.";
+  if (product == "Field F-01") {
+    if (id == "pitch")
+      return "Amount of fifth/octave pitch returns in the field. Texture makes "
+             "them direct; Focus and Motion move their tuning.";
+    if (id == "forever")
+      return "Hold the spatial tail. Phrase capture and inner repetition are "
+             "separate actions above.";
+    if (id == "loop_ms")
+      return "Length of the preceding audio to capture. Feed this much audio "
+             "before capturing; shorten live, recapture to expand.";
+    if (id == "inner_ms")
+      return "Length of the repeating fragment inside the captured phrase. "
+             "Release Inner to rejoin the advancing phrase.";
+    if (id == "loop_speed")
+      return "Playback speed of captured audio; changes timing and pitch "
+             "together.";
+    if (id == "loop_mix")
+      return "Blend captured memory against the spatial field while a phrase "
+             "is held. Main Blend still controls dry/wet.";
+    if (id == "texture")
+      return "Expose moving grain heads and stereo pitch layers. Grain and "
+             "Pitch determine which layers you hear.";
+  }
+  if (product == "Resonator R-01") {
+    if (id == "root")
+      return "Root note of the chosen chord structure. Used in Play chord "
+             "roots mode.";
+    if (id == "chord")
+      return "Intervals that tune the resonating structure. Used in Play chord "
+             "roots mode.";
+    if (id == "source")
+      return "Excitation that supplies energy, not the chord itself. Press "
+             "EXCITE or play MIDI to hear it.";
+    if (id == "burst")
+      return "Duration of the excitation burst in milliseconds.";
+    if (id == "excitation")
+      return "Energy injected on each excitation. Master sets the final output "
+             "level.";
+    if (id == "input_mode")
+      return "Play chord roots builds the selected structure; individual tones "
+             "accepts up to four notes across two octaves.";
+    if (id == "memory")
+      return "Choose whether the next excitation resets, shares, partly damps, "
+             "or overlaps the previous resonant energy.";
+    if (id == "retain")
+      return "Energy kept before a new excitation in Partial memory mode. "
+             "Inactive in other memory modes.";
+    if (id == "coupling")
+      return "Rate of energy transfer between resonators; affects evolving "
+             "beating and harmonic motion.";
+    if (id == "stretch")
+      return "Stretch resonant frequency relationships away from harmonic "
+             "spacing.";
+    if (id == "inharmonic")
+      return "Move the mode bank away from harmonic relationships.";
+    if (id == "damping")
+      return "Damp upper resonant energy relative to lower modes.";
+    if (id == "persist")
+      return "Keep supplying resonant energy; Key Release Damping can end it "
+             "when keys are released.";
+    if (id == "mutation")
+      return "Deterministic spectral variation across repeated excitations, in "
+             "cents; does not change a rhythm pattern.";
+    if (id == "gate")
+      return "Damp resonant energy when the played keys are released.";
+  }
+  if (product == "Non-Machine N-01") {
+    if (id.endsWith("_repeat_gain"))
+      return "Amplitude retained by each successive repeat of this selected "
+             "hit.";
+    if (id.endsWith("_pitch_step"))
+      return "Pitch change in semitones for each successive repeat of this "
+             "hit.";
+    if (id == "seed")
+      return "Seed makes variations reproducible. Use NEW RHYTHM to place a "
+             "different pattern; Seed alone is not a pattern generator.";
+    if (id.endsWith("_cycle"))
+      return "Length of this object's independent cycle in quarter notes. "
+             "Event positions scale with the cycle.";
+    if (id.endsWith("_phase"))
+      return "Offset this whole object's cycle against the master phrase.";
+
+    const auto field = id.fromLastOccurrenceOf("_", false, false);
+    if (field == "position")
+      return "Move this selected hit within its object's cycle. Other hits "
+             "keep their positions.";
+    if (field == "pitch")
+      return "Pitch lock for this hit. Use Hit Sound For All Hits to apply it "
+             "to the whole object.";
+    if (field == "gain")
+      return "Level lock for this hit; Master controls the whole instrument.";
+    if (field == "color")
+      return "Timbral lock for this hit; its meaning follows the selected "
+             "material.";
+    if (field == "repeats")
+      return "Number of repeats of this selected hit; Interval and "
+             "Acceleration place them.";
+    if (field == "interval")
+      return "Initial distance between repeats, in quarter notes. This is "
+             "timing, not sound decay.";
+    if (field == "acceleration")
+      return "Multiply each repeat interval: below 1 accelerates, above 1 "
+             "slows down.";
+    if (field == "mutation")
+      return "Timbral variation within this hit's repeats; Seed makes it "
+             "reproducible.";
+    if (field == "every")
+      return "Play this hit only every chosen number of local cycles.";
+    if (field == "nudge")
+      return "Fine timing offset for this hit, in quarter notes.";
+    if (field == "articulation")
+      return "Restart the source, carry its phase, or crossfade from the "
+             "outgoing hit.";
+    if (id == "hold")
+      return "Capture the master audio fragment. Release to hear current "
+             "underlying edits.";
+    if (id == "fragment")
+      return "Length of the master audio fragment in milliseconds. Feed audio "
+             "before holding it.";
+  }
+
   const auto field = id.fromLastOccurrenceOf("_", false, false);
+  if (id.endsWith("_material"))
+    return "Choose the sound object. Original preserves the earlier source; "
+           "the other materials enable Structure, Strike, Pitch Fall and "
+           "Roughness.";
+  if (id.endsWith("_structure"))
+    return "Change modal spacing, modulation depth or fragment density for "
+           "this whole object.";
+  if (id.endsWith("_strike"))
+    return "Change the attack edge and transient excitation for this object.";
+  if (id.endsWith("_bend"))
+    return "Pitch excursion at the start of each hit, in semitones. Negative "
+           "values rise toward the event pitch.";
+  if (id.endsWith("_roughness"))
+    return "Blend noisy, broken edges into the object's material.";
+  if (id == "character")
+    return "Asymmetric bite and level-dependent compressor recovery. Zero "
+           "retains the previous sound.";
+  if (id == "focus")
+    return "Remove low-frequency buildup, open the top end and animate grain "
+           "and pitch returns. Zero retains the previous field.";
   if (id == "density")
     return "Weight and compression character. Use Blend to mix it with the "
            "original.";
@@ -130,7 +283,8 @@ inline juce::String explanation(const juce::String& id) {
   if (field == "decay" || id == "decay")
     return "How long the sound takes to decay.";
   if (id == "output")
-    return "Final output level. Match loudness when comparing settings.";
+    return "Processing output trim. Master Output is the final family level "
+           "control; match loudness when comparing settings.";
   if (id == "input") return "Input level before processing.";
   return "Drag to adjust, type an exact value, or double-click to reset.";
 }
@@ -180,10 +334,12 @@ class ResponseButton final : public juce::TextButton, private juce::Timer {
   void refresh() {
     const bool current = current_();
     setEnabled(!current);
-    setButtonText(current ? "CURRENT RESPONSE" : "USE CURRENT RESPONSE");
+    setButtonText(current ? "UPDATED SOUND" : "USE UPDATED SOUND");
     setTooltip(explanation_);
     setDescription(
-        (current ? "Current response in use. " : "Saved response retained. ") +
+        (current
+             ? "Updated sound in use. "
+             : "Your saved sound is retained until you choose this update. ") +
         explanation_);
   }
   void timerCallback() override { refresh(); }
@@ -194,6 +350,9 @@ class ResponseButton final : public juce::TextButton, private juce::Timer {
 // Identify values without loading or auditioning a factory scene.
 class PresetMenu final : public juce::ComboBox, private juce::Timer {
  public:
+  void setMatchFilter(std::function<bool(std::size_t)> filter) {
+    matchFilter_ = std::move(filter);
+  }
   template <class Emit>
   void addSnapshot(juce::AudioProcessor& processor,
                    juce::AudioProcessorValueTreeState& state, Emit emit) {
@@ -208,6 +367,19 @@ class PresetMenu final : public juce::ComboBox, private juce::Timer {
     });
     snapshots_.push_back(std::move(values));
   }
+  template <class Product>
+  void addSceneSnapshot(Product& processor, int scene) {
+    // Build reference values in an unattached temporary instance; never load a
+    // scene into the live instrument just to name it in the editor.
+    Product reference;
+    reference.scene(scene);
+    addSnapshot(processor, processor.state(), [&](auto emit) {
+      for (auto* base : reference.getParameters())
+        if (auto* parameter = dynamic_cast<juce::RangedAudioParameter*>(base))
+          emit(parameter->paramID,
+               parameter->convertFrom0to1(parameter->getValue()));
+    });
+  }
   void watch(juce::AudioProcessor& processor) {
     processor_ = &processor;
     refresh();
@@ -221,6 +393,7 @@ class PresetMenu final : public juce::ComboBox, private juce::Timer {
     if (!processor_) return;
     const auto& parameters = processor_->getParameters();
     for (std::size_t index = 0; index < snapshots_.size(); ++index) {
+      if (matchFilter_ && !matchFilter_(index)) continue;
       const auto& values = snapshots_[index];
       bool match = values.size() == static_cast<std::size_t>(parameters.size());
       for (int i = 0; match && i < parameters.size(); ++i)
@@ -241,6 +414,7 @@ class PresetMenu final : public juce::ComboBox, private juce::Timer {
   void timerCallback() override { refresh(); }
   juce::AudioProcessor* processor_{};
   juce::String name_;
+  std::function<bool(std::size_t)> matchFilter_;
   std::vector<std::vector<float>> snapshots_;
 };
 

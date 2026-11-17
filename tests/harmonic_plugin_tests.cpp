@@ -1,4 +1,6 @@
+#include "workflow_checks.hpp"
 #include "harmonic_plugin.hpp"
+#include "master_output_checks.hpp"
 #include "preset_recall_checks.hpp"
 #include "editor_artifact.hpp"
 
@@ -144,7 +146,7 @@ void testParameterContract() {
       {"output", "Output", "dB", -1.5F, "-1.50 dB", 0.011F},
   }};
   Harmonic processor;
-  require(processor.getParameters().size() == 12,
+  require(processor.getParameters().size() == 13,
           "Harmonic exposes exactly twelve stable parameters");
   for (const auto& contract : contracts) {
     auto* parameter = processor.state().getParameter(contract.id);
@@ -447,6 +449,10 @@ void testEditorContract(const char* directory) {
 
 int main(int argc, char** argv) {
   juce::ScopedJuceInitialiser_GUI juce;
+  aste::tests::workflowChecks<aste::harmonic::plugin::HarmonicAudioProcessor>(
+      require);
+  aste::tests::masterOutputChecks<
+      aste::harmonic::plugin::HarmonicAudioProcessor>(require);
   aste::tests::presetRecallChecks<
       aste::harmonic::plugin::HarmonicAudioProcessor>(require);
   testParameterContract();

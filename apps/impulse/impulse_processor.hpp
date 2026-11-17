@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../../libs/dsp/material_body.hpp"
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -37,6 +38,7 @@ struct Parameters {
   bool sequenceEnabled{true};
   bool bypass{};
   bool legacyBehavior{};
+  bool materialBehavior{};
   bool sampleClock{true};  // Session-owned; older states retain their clock.
   std::array<TrackParameters, kTrackCount> tracks{{
       {.level = 0.9F,
@@ -191,6 +193,7 @@ class Processor {
 
   double sampleRate_{48000.0};
   std::array<Voice, kTrackCount> voices_{};
+  std::array<aste::dsp::MaterialBody, kTrackCount> bodies_;
   std::array<std::int64_t, kTrackCount> lastTick_{};
   std::array<std::uint32_t, kTrackCount> midiOrdinals_{};
   double expectedPpq_{};

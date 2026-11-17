@@ -1,4 +1,6 @@
+#include "workflow_checks.hpp"
 #include "loop_plugin.hpp"
+#include "master_output_checks.hpp"
 #include "response_upgrade_checks.hpp"
 #include "preset_recall_checks.hpp"
 #include "editor_artifact.hpp"
@@ -89,7 +91,7 @@ juce::Component* findTitled(juce::Component& component,
 
 void testContractAndState() {
   Loop source;
-  require(source.getParameters().size() == 20,
+  require(source.getParameters().size() == 21,
           "Loop exposes 20 stable parameters");
   setValue(source, "feedback", 73.25F);
   setValue(source, "pitch", -7.0F);
@@ -141,7 +143,7 @@ void testContractAndState() {
       repeated.getData(), static_cast<int>(repeated.getSize()));
   require(legacyXml && legacyXml->getStringAttribute("behavior") == "0",
           "Legacy Loop clock survives reopen and engine preparation");
-  require(restored.factoryPresetCount() == 6,
+  require(restored.factoryPresetCount() == 7,
           "Loop appends First take without replacing five snapshots");
   Loop firstTake;
   require(value(firstTake, "overdub") == 0,
@@ -421,6 +423,9 @@ void testTapeRecallAndMidiRelease() {
 
 int main(int argc, char** argv) {
   juce::ScopedJuceInitialiser_GUI juce;
+  aste::tests::workflowChecks<Loop>(require);
+  aste::tests::masterOutputChecks<aste::loop::plugin::LoopAudioProcessor>(
+      require);
   aste::tests::responseUpgradeChecks<aste::loop::plugin::LoopAudioProcessor>(
       require, 3);
   aste::tests::presetRecallChecks<aste::loop::plugin::LoopAudioProcessor>(

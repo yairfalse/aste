@@ -1,5 +1,7 @@
 #pragma once
 
+#include "master_output.hpp"
+
 #include "loop_processor.hpp"
 
 #include <juce_audio_utils/juce_audio_utils.h>
@@ -127,6 +129,7 @@ class LoopAudioProcessor final : public juce::AudioProcessor {
   double hostRate_{48000};
   bool hostPrepared_{};  // Guarded by lifecycle_, like hostRate_.
   juce::AudioProcessorValueTreeState state_;
+  aste::ui::MasterGain masterGain_;
   std::array<std::atomic<float>*, parameterCount> parameterValues_{};
   bool midiCapture_{};
   std::atomic<bool> captureActive_{};

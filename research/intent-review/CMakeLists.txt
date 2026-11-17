@@ -1,0 +1,16 @@
+cmake_minimum_required(VERSION 3.25)
+project(aste_intent_review LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+option(INTENT_SANITIZERS "Audit with address and undefined behavior sanitizers" OFF)
+get_filename_component(ASTE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
+add_executable(intent_audit audit.cpp
+  "${ASTE_ROOT}/apps/non-machine/non_machine_processor.cpp"
+  "${ASTE_ROOT}/apps/resonator/resonator_processor.cpp")
+target_include_directories(intent_audit PRIVATE "${ASTE_ROOT}")
+if(INTENT_SANITIZERS)
+  target_compile_options(intent_audit PRIVATE -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer)
+  target_link_options(intent_audit PRIVATE -fsanitize=address,undefined)
+endif()
+enable_testing()
+add_test(NAME intent_audit COMMAND intent_audit)

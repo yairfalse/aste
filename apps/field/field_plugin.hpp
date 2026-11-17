@@ -1,5 +1,8 @@
 #pragma once
 
+#include "master_output.hpp"
+#include "material_revision.hpp"
+
 #include "field_processor.hpp"
 
 #include <juce_audio_utils/juce_audio_utils.h>
@@ -50,11 +53,22 @@ class FieldAudioProcessor final : public juce::AudioProcessor {
   [[nodiscard]] float outputPeak() const noexcept;
   [[nodiscard]] float fieldEnergy() const noexcept;
   [[nodiscard]] float retention() const noexcept;
+  float loopPosition() const noexcept { return loopPosition_.load(); }
+  unsigned loopStatus() const noexcept { return loopStatus_.load(); }
   void clearField() noexcept { clearRequested_.store(true); }
+  bool usesDiffuseSpace() const noexcept {
+    return engineRevision_.load(std::memory_order_relaxed) == 2;
+  }
+  bool usesMaterialResponse() const noexcept {
+    return materialRevision_.active();
+  }
   [[nodiscard]] static int factoryPresetCount() noexcept;
   [[nodiscard]] static juce::String factoryPresetName(int index);
   void loadFactoryPreset(int index);
   void useCurrentResponse() {
+    materialRevision_.adopt();
+    if (engineRevision_.exchange(2) != 2 || usesLegacyBehavior())
+      clearRequested_.store(true);
     legacyBehavior_.store(false);
     updateHostDisplay(ChangeDetails{}.withNonParameterStateChanged(true));
   }
@@ -73,6 +87,15 @@ class FieldAudioProcessor final : public juce::AudioProcessor {
     blend,
     output,
     bypass,
+    texture,
+    focus,
+    loopHold,
+    loopMs,
+    innerRepeat,
+    innerMs,
+    loopSpeed,
+    loopReverse,
+    loopMix,
     parameterCount
   };
 
@@ -83,10 +106,15 @@ class FieldAudioProcessor final : public juce::AudioProcessor {
                     const Parameters&) noexcept;
   void publishMeters(const MeterSnapshot&) noexcept;
 
+  std::atomic<int> engineRevision_{2};
+  std::atomic<float> loopPosition_{};
+  std::atomic<unsigned> loopStatus_{};
+  aste::parameters::MaterialRevision materialRevision_;
   Processor processor_{};
   std::atomic<bool> legacyBehavior_{};
   std::atomic<bool> clearRequested_{};
   juce::AudioProcessorValueTreeState state_;
+  aste::ui::MasterGain masterGain_;
   std::array<std::atomic<float>*, parameterCount> parameterValues_{};
   std::atomic<float> inputPeak_{};
   std::atomic<float> outputPeak_{};

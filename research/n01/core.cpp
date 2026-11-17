@@ -36,7 +36,10 @@ bool valid(const Pattern& p) noexcept {
           !range(e.acceleration, 0.5, 2) || !range(e.repeatGain, 0, 1) ||
           !range(e.pitchStep, -12, 12) || !range(e.mutation, 0, 1) ||
           !range(e.gain, 0, 1) || !range(e.pitch, 20, 8000) ||
-          !range(e.decay, 0.002, 2) || !range(e.color, 0, 1))
+          !range(e.decay, 0.002, 2) || !range(e.color, 0, 1) ||
+          (e.articulation != Articulation::Restart &&
+           e.articulation != Articulation::Carry &&
+           e.articulation != Articulation::Crossfade))
         return false;
       double duration{}, interval = e.interval;
       for (unsigned r = 1; r < e.repeats; ++r) {
@@ -155,6 +158,8 @@ Engine::Next Engine::next(std::size_t v, double beat) const noexcept {
 
 void Engine::reset(double ppq) noexcept {
   voices_ = {};
+  tails_ = {};
+  fades_.fill(0);
   phrase_ = ppq;
   suspendedBeats_ = 0;
   mode_ = Mode::Continue;
@@ -166,7 +171,21 @@ void Engine::reset(double ppq) noexcept {
 void Engine::trigger(const Hit& hit) noexcept {
   auto& v = voices_[hit.voice];
   const auto& e = pattern_.tracks[hit.voice].events[hit.event];
+  const auto previous = v;
+  fades_[hit.voice] = 0;
+  if (e.articulation == Articulation::Crossfade &&
+      previous.amplitude >= 1e-7F) {
+    tails_[hit.voice] = previous;
+    fades_[hit.voice] =
+        std::max<std::size_t>(1, static_cast<std::size_t>(rate_ * .002));
+  }
   v = {};
+  if (e.articulation == Articulation::Carry) {
+    v.phase = previous.phase;
+    v.second = previous.second;
+    v.noise = previous.noise;
+    v.age = previous.age;
+  }
   v.amplitude = 1;
   v.gain = hit.gain;
   v.pitch = std::min(hit.pitch, static_cast<float>(rate_ * 0.12));
@@ -178,7 +197,16 @@ void Engine::trigger(const Hit& hit) noexcept {
 }
 
 float Engine::sound(std::size_t index) noexcept {
-  auto& v = voices_[index];
+  const float current = renderVoice(voices_[index], index);
+  if (!fades_[index]) return current;
+  const auto length =
+      std::max<std::size_t>(1, static_cast<std::size_t>(rate_ * .002));
+  const float oldWeight = static_cast<float>(fades_[index]--) / length;
+  return oldWeight * renderVoice(tails_[index], index) +
+         (1.F - oldWeight) * current;
+}
+
+float Engine::renderVoice(Voice& v, std::size_t index) noexcept {
   if (v.amplitude < 1e-7F) return 0;
   v.phase += v.pitch / rate_;
   v.phase -= std::floor(v.phase);

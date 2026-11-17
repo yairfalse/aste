@@ -13,17 +13,18 @@ namespace aste::sequence::plugin {
 namespace {
 
 constexpr auto kStateType = "sequence-s01";
-constexpr int kStateSchema = 3;
+constexpr int kStateSchema = 4;
 constexpr auto kSurface = 0xff0d1114U;
 constexpr auto kPanel = 0xff171d21U;
 constexpr auto kInk = 0xffe7ece8U;
 constexpr auto kMuted = 0xff77858bU;
 constexpr auto kAccent = 0xff3f8fa8U;
-constexpr std::array<const char*, 21> kMainIds{
-    "pressure",  "shape",       "osc_mix",     "detune", "sub",      "cutoff",
-    "resonance", "filter_form", "env_amount",  "attack", "decay",    "sustain",
-    "release",   "glide",       "output",      "root",   "division", "sequence",
-    "bypass",    "pulse_width", "filter_drive"};
+constexpr std::array<const char*, 22> kMainIds{
+    "pressure",     "shape",     "osc_mix",     "detune",     "sub",
+    "cutoff",       "resonance", "filter_form", "env_amount", "attack",
+    "decay",        "sustain",   "release",     "glide",      "output",
+    "root",         "division",  "sequence",    "bypass",     "pulse_width",
+    "filter_drive", "voice_mode"};
 
 juce::String stepId(std::size_t step, const char* field) {
   return "step_" + juce::String{static_cast<int>(step + 1)}.paddedLeft('0', 2) +
@@ -50,7 +51,8 @@ juce::ValueTree migrateState(juce::ValueTree state) {
       state.getProperty("product").toString() != kStateType ||
       (state.getProperty("schema").toString() != "1" &&
        state.getProperty("schema").toString() != "2" &&
-       state.getProperty("schema").toString() != "3")) {
+       state.getProperty("schema").toString() != "3" &&
+       state.getProperty("schema").toString() != "4")) {
     return {};
   }
   return state;
@@ -81,35 +83,49 @@ struct FactoryPreset {
   unsigned slides;
 };
 
-constexpr std::array<FactoryPreset, 4> kPresets{{
-    {"Default",
-     {35, 25,  45, 0.08F, 25, 900, 35, 45, 55, 3, 180,
-      55, 120, 70, -6,    36, 1,   1,  0,  50, 25},
+constexpr std::array<FactoryPreset, 6> kPresets{{
+    {"Warm Brass",
+     {18, 8,   50, .14F, 8,  1600, 18, 15, 35, 18, 650,
+      78, 550, 70, -8,   36, 1,    0,  0,  50, 25, 1},
      {0, 0, 7, 0, 12, 7, 3, 0, 0, -5, 0, 7, 3, 0, -2, 0},
-     0xdb77U,
+     0x7bf7U,
      0x1111U,
      0x2222U},
-    {"Low Current",
-     {48, 10,  38,  -0.05F, 55, 420, 52, 72, 72, 2, 260,
-      48, 180, 110, -8,     31, 1,   1,  0,  42, 58},
-     {0, 0, 3, 0, 7, 3, -2, 0, 0, -5, -2, 3, 0, -2, -5, 0},
-     0xfff7U,
-     0x1041U,
-     0x4a22U},
-    {"Open Form",
-     {24, 62,  54, 0.12F, 12, 2400, 28, 18, 38, 8, 340,
-      64, 260, 45, -7,    43, 1,    1,  0,  58, 18},
+    {"Wide Strings",
+     {10, 5,    50, .23F, 0,  2600, 10, 8, 18, 160, 1200,
+      86, 1400, 0,  -10,  36, 1,    0,  0, 48, 12,  1},
      {0, 4, 7, 11, 12, 7, 4, 0, 7, 11, 14, 11, 7, 4, 2, 0},
      0xffffU,
      0x1111U,
      0x8888U},
-    {"Pressure Study",
-     {82, 42, 62,  0.18F, 38, 680, 66, 86, 82, 1, 120,
-      42, 90, 140, -10,   36, 2,   1,  0,  36, 76},
+    {"Slow Glass",
+     {8,  67,   52, .09F, 12, 1400, 24, 24, 40, 480, 1800,
+      72, 2100, 0,  -9,   43, 1,    0,  0,  38, 10,  1},
+     {0, 4, 7, 11, 12, 7, 4, 0, 7, 11, 14, 11, 7, 4, 2, 0},
+     0xffffU,
+     0x1111U,
+     0x8888U},
+    {"Pulse Bass",
+     {35, 42,  44, .06F, 38, 620, 30, 65, 64, 2,  230,
+      32, 110, 95, -7,   36, 1,   1,  0,  42, 30, 2},
+     {0, 0, 7, 0, 12, 7, 3, 0, 0, -5, 0, 7, 3, 0, -2, 0},
+     0xdb77U,
+     0x1111U,
+     0x2222U},
+    {"Acid Current",
+     {72, 4,  25,  .02F, 12, 380, 78, 82, 78, 1,  165,
+      18, 75, 110, -9,   36, 1,   1,  0,  50, 55, 2},
      {0, 0, 12, 7, 3, 0, -5, 0, 12, 7, 3, 0, -2, -5, 7, 0},
      0xf7ffU,
      0x4921U,
      0x2522U},
+    {"Original Mono",
+     {35, 25,  45, .08F, 25, 900, 35, 45, 55, 3,  180,
+      55, 120, 70, -6,   36, 1,   1,  0,  50, 25, 0},
+     {0, 0, 7, 0, 12, 7, 3, 0, 0, -5, 0, 7, 3, 0, -2, 0},
+     0xdb77U,
+     0x1111U,
+     0x2222U},
 }};
 
 class SequenceLookAndFeel final : public juce::LookAndFeel_V4 {
@@ -177,14 +193,28 @@ class SequenceLookAndFeel final : public juce::LookAndFeel_V4 {
 class Knob final : public juce::Component {
  public:
   Knob(juce::AudioProcessorValueTreeState& state, const char* id,
-       const char* name, const char* suffix, double initial, int order)
+       const char* name, const char* suffix, double initial, int order,
+       bool compact = false)
       : attachment_{state, id, slider_} {
     slider_.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
     slider_.textFromValueFunction = [this](double value) {
       return aste::ui::formattedValue(slider_, value);
     };
     slider_.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 80, 20);
+    if (compact) {
+      slider_.setSliderStyle(juce::Slider::LinearHorizontal);
+      slider_.setTextBoxStyle(juce::Slider::TextBoxRight, false, 80, 22);
+    }
     slider_.setTextValueSuffix(suffix);
+    if (juce::String{id} == "detune") {
+      slider_.setTextValueSuffix(" ct");
+      slider_.textFromValueFunction = [](double value) {
+        return juce::String{value * 100., 0};
+      };
+      slider_.valueFromTextFunction = [](const juce::String& text) {
+        return text.getDoubleValue() * .01;
+      };
+    }
     if (juce::String{id} == "root") {
       slider_.setTextValueSuffix({});
       slider_.textFromValueFunction = [](double value) {
@@ -195,10 +225,15 @@ class Knob final : public juce::Component {
             aste::ui::noteNumber(text, text.getIntValue()));
       };
     }
+    if (const auto* parameter = state.getParameter(id))
+      initial = parameter->convertFrom0to1(parameter->getDefaultValue());
     slider_.setDoubleClickReturnValue(true, initial);
     slider_.setTitle(name);
-    slider_.setDescription(aste::ui::explanation(id));
-    slider_.setTooltip(aste::ui::explanation(id));
+    slider_.setDescription(
+        aste::ui::explanation(id, state.processor.getName()));
+    slider_.setTooltip(
+        aste::ui::explanation(id, state.processor.getName()) +
+        " Shift-drag for fine adjustment; type an exact value below.");
     slider_.setWantsKeyboardFocus(true);
     slider_.setExplicitFocusOrder(order);
     label_.setText(name, juce::dontSendNotification);
@@ -216,7 +251,7 @@ class Knob final : public juce::Component {
   }
 
  private:
-  juce::Slider slider_;
+  aste::ui::PrecisionSlider slider_;
   juce::Label label_;
   juce::AudioProcessorValueTreeState::SliderAttachment attachment_;
 };
@@ -352,6 +387,28 @@ class SequenceEditor final : public juce::AudioProcessorEditor,
   explicit SequenceEditor(SequenceAudioProcessor& processor)
       : AudioProcessorEditor{processor},
         processor_{processor},
+        master_{processor.state()},
+        filterAttack_{processor.state(),
+                      "filter_attack",
+                      "FILTER ATTACK (0 = AMP)",
+                      " ms",
+                      0,
+                      22,
+                      true},
+        filterDecay_{processor.state(),
+                     "filter_decay",
+                     "FILTER DECAY (0 = AMP)",
+                     " ms",
+                     0,
+                     23,
+                     true},
+        filterSustain_{processor.state(),
+                       "filter_sustain",
+                       "FILTER SUSTAIN",
+                       " %",
+                       12,
+                       24,
+                       true},
         pressure_{processor.state(), "pressure", "PRESSURE", " %", 35, 1},
         cutoff_{processor.state(), "cutoff", "CUTOFF", " Hz", 900, 2},
         resonance_{processor.state(), "resonance", "RESONANCE", " %", 35, 3},
@@ -376,14 +433,35 @@ class SequenceEditor final : public juce::AudioProcessorEditor,
         root_{processor.state(), "root", "ROOT", " MIDI", 36, 18},
         sequenceAttachment_{processor.state(), "sequence", sequence_} {
     setLookAndFeel(&lookAndFeel_);
+    addAndMakeVisible(master_);
+    workflow_.bind(
+        *this, "MIDI / DAW PATTERN > VOICE > FILTER > ENVELOPE > MASTER",
+        "MIDI: wheel adds Pressure; aftertouch adds touch; CC74 moves "
+        "brightness. "
+        "DAW Pattern follows Cubase. Select steps to edit articulation.");
+    addAndMakeVisible(workflow_);
+    addAndMakeVisible(filterAttack_);
+    addAndMakeVisible(filterDecay_);
+    addAndMakeVisible(filterSustain_);
     division_.addItemList({"1/8", "1/16", "1/32"}, 1);
     divisionAttachment_ = std::make_unique<
         juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
         processor.state(), "division", division_);
+    voiceMode_.addItemList({"Original mono", "Poly / 8 voices", "Mono / glide"},
+                           1);
+    voiceMode_.setTitle("VOICE MODE");
+    voiceMode_.setTooltip(
+        "Poly plays eight-voice chords. Mono plays legato leads. "
+        "The host sequence always uses one voice. Original preserves the "
+        "earlier sound.");
+    voiceModeAttachment_ = std::make_unique<
+        juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+        processor.state(), "voice_mode", voiceMode_);
+    addAndMakeVisible(voiceMode_);
     division_.setTitle("DIVISION");
     division_.setWantsKeyboardFocus(true);
     division_.setExplicitFocusOrder(19);
-    sequence_.setButtonText("SEQUENCE");
+    sequence_.setButtonText("DAW PATTERN");
     sequence_.setTitle("SEQUENCE");
     sequence_.setWantsKeyboardFocus(true);
     sequence_.setExplicitFocusOrder(20);
@@ -411,10 +489,14 @@ class SequenceEditor final : public juce::AudioProcessorEditor,
         }
       });
     preset_.watch(processor_);
-    response_.bind([this] { return !processor_.usesLegacyBehavior(); },
-                   [this] { processor_.useCurrentResponse(); },
-                   "Use retriggered fresh notes and stable host timing without "
-                   "changing the pattern.");
+    response_.bind(
+        [this] {
+          return !processor_.usesLegacyBehavior() &&
+                 processor_.usesMaterialResponse();
+        },
+        [this] { processor_.useCurrentResponse(); },
+        "Use retriggered fresh notes and stable host timing without "
+        "changing the pattern.");
     addAndMakeVisible(response_);
     preset_.onChange = [this] {
       if (const int selected = preset_.getSelectedId(); selected > 0) {
@@ -446,8 +528,8 @@ class SequenceEditor final : public juce::AudioProcessorEditor,
       addAndMakeVisible(component);
     }
     setResizable(true, true);
-    setResizeLimits(960, 600, 1600, 1000);
-    setSize(1280, 760);
+    setResizeLimits(960, 700, 1600, 1100);
+    setSize(1280, 860);
     timerCallback();
     startTimerHz(30);
   }
@@ -463,9 +545,9 @@ class SequenceEditor final : public juce::AudioProcessorEditor,
                       juce::Justification::centredLeft);
     graphics.setColour(juce::Colour{kAccent});
     graphics.setFont(juce::FontOptions{12.0F, juce::Font::bold});
-    header.removeFromRight(205);
-    graphics.drawText("S-01 / PROGRAMMED CURRENT", header,
-                      juce::Justification::centredRight);
+    header = juce::Rectangle<int>{24, 53, 310, 16};
+    graphics.drawText("S-01 / POLYPHONIC CURRENT", header,
+                      juce::Justification::centredLeft);
     graphics.setColour(juce::Colour{kMuted}.withAlpha(0.35F));
     graphics.fillRect(24, 72, getWidth() - 48, 1);
 
@@ -491,13 +573,23 @@ class SequenceEditor final : public juce::AudioProcessorEditor,
   }
 
   void resized() override {
-    preset_.setBounds(getWidth() - 194, 24, 170, 28);
+    workflow_.setBounds(24, getHeight() - 80, getWidth() - 48, 48);
+    preset_.setBounds(getWidth() - 414, 28, 170, 28);
+    master_.setBounds(getWidth() - 214, 18, 190, 46);
+    voiceMode_.setBounds(getWidth() - 610, 24, 180, 28);
     response_.setBounds(getWidth() - 224, getHeight() - 30, 200, 24);
     auto area = getLocalBounds().reduced(48, 24);
     area.removeFromTop(60);
+    area.removeFromBottom(60);
     auto sequenceArea = area.removeFromBottom(
         std::max(205, static_cast<int>(area.getHeight() * 0.42F)));
-    area.removeFromBottom(14);
+    area.removeFromBottom(8);
+    auto contour = area.removeFromBottom(50);
+    const int contourWidth = contour.getWidth() / 3;
+    filterAttack_.setBounds(contour.removeFromLeft(contourWidth).reduced(8, 0));
+    filterDecay_.setBounds(contour.removeFromLeft(contourWidth).reduced(8, 0));
+    filterSustain_.setBounds(contour.reduced(8, 0));
+    area.removeFromBottom(8);
     const int groupWidth = area.getWidth() / 3;
     auto groupHeader = area.removeFromTop(22);
     for (auto& label : groups_)
@@ -537,10 +629,12 @@ class SequenceEditor final : public juce::AudioProcessorEditor,
     const bool running = processor_.currentStep() >= 0;
     mode_.setText(
         juce::String{processor_.usesLegacyBehavior() ? "LEGACY / " : ""} +
-            (enabled
-                 ? (running ? "HOST SEQUENCE / MIDI transposes (C4 = root)"
-                            : "Play MIDI, or start the host for the pattern")
-                 : "KEYBOARD / Play MIDI notes"),
+            (enabled ? (running ? "HOST SEQUENCE / MIDI transposes (C4 = root)"
+                                : "DAW STOPPED / play MIDI now, or start "
+                                  "Cubase for the pattern")
+                     : (voiceMode_.getSelectedId() == 2
+                            ? "POLY / Play chords with MIDI"
+                            : "MONO / Play MIDI notes")),
         juce::dontSendNotification);
     displayedPeak_ = std::max(processor_.outputPeak(), displayedPeak_ * 0.84F);
     const int active = processor_.currentStep();
@@ -554,6 +648,9 @@ class SequenceEditor final : public juce::AudioProcessorEditor,
   std::array<juce::Label, 3> groups_;
   juce::Label mode_;
   SequenceAudioProcessor& processor_;
+  aste::ui::MasterOutput master_;
+  aste::ui::WorkflowGuide workflow_;
+  Knob filterAttack_, filterDecay_, filterSustain_;
   Knob pressure_;
   Knob cutoff_;
   Knob resonance_;
@@ -573,6 +670,9 @@ class SequenceEditor final : public juce::AudioProcessorEditor,
   Knob output_;
   Knob root_;
   juce::ComboBox division_;
+  juce::ComboBox voiceMode_;
+  std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>
+      voiceModeAttachment_;
   juce::ToggleButton sequence_;
   aste::ui::PresetMenu preset_;
   aste::ui::ResponseButton response_;
@@ -589,36 +689,36 @@ class SequenceEditor final : public juce::AudioProcessorEditor,
 juce::AudioProcessorValueTreeState::ParameterLayout
 SequenceAudioProcessor::createParameterLayout() {
   juce::AudioProcessorValueTreeState::ParameterLayout layout;
-  addFloat(layout, "pressure", "Pressure", {0.0F, 100.0F, 0.01F}, 35.0F, "%");
-  addFloat(layout, "shape", "Shape", {0.0F, 100.0F, 0.01F}, 25.0F, "%");
-  addFloat(layout, "osc_mix", "Oscillator Mix", {0.0F, 100.0F, 0.01F}, 45.0F,
+  addFloat(layout, "pressure", "Pressure", {0.0F, 100.0F, 0.01F}, 18.0F, "%");
+  addFloat(layout, "shape", "Shape", {0.0F, 100.0F, 0.01F}, 8.0F, "%");
+  addFloat(layout, "osc_mix", "Oscillator Mix", {0.0F, 100.0F, 0.01F}, 50.0F,
            "%");
-  addFloat(layout, "detune", "Detune", {-12.0F, 12.0F, 0.01F}, 0.08F, "st");
-  addFloat(layout, "sub", "Sub", {0.0F, 100.0F, 0.01F}, 25.0F, "%");
+  addFloat(layout, "detune", "Detune", {-12.0F, 12.0F, 0.01F}, 0.14F, "st");
+  addFloat(layout, "sub", "Sub", {0.0F, 100.0F, 0.01F}, 8.0F, "%");
   addFloat(layout, "cutoff", "Cutoff", skewed(30.0F, 18000.0F, 900.0F, 0.1F),
-           900.0F, "Hz");
-  addFloat(layout, "resonance", "Resonance", {0.0F, 100.0F, 0.01F}, 35.0F, "%");
-  addFloat(layout, "filter_form", "Filter Form", {0.0F, 100.0F, 0.01F}, 45.0F,
+           1600.0F, "Hz");
+  addFloat(layout, "resonance", "Resonance", {0.0F, 100.0F, 0.01F}, 18.0F, "%");
+  addFloat(layout, "filter_form", "Filter Form", {0.0F, 100.0F, 0.01F}, 15.0F,
            "%");
   addFloat(layout, "env_amount", "Envelope Amount", {0.0F, 100.0F, 0.01F},
-           55.0F, "%");
-  addFloat(layout, "attack", "Attack", skewed(0.2F, 2000.0F, 20.0F, 0.1F), 3.0F,
-           "ms");
+           35.0F, "%");
+  addFloat(layout, "attack", "Attack", skewed(0.2F, 2000.0F, 20.0F, 0.1F),
+           18.0F, "ms");
   addFloat(layout, "decay", "Decay", skewed(5.0F, 4000.0F, 250.0F, 0.1F),
-           180.0F, "ms");
-  addFloat(layout, "sustain", "Sustain", {0.0F, 100.0F, 0.01F}, 55.0F, "%");
+           650.0F, "ms");
+  addFloat(layout, "sustain", "Sustain", {0.0F, 100.0F, 0.01F}, 78.0F, "%");
   addFloat(layout, "release", "Release", skewed(5.0F, 5000.0F, 300.0F, 0.1F),
-           120.0F, "ms");
+           550.0F, "ms");
   addFloat(layout, "glide", "Glide", skewed(0.0F, 1000.0F, 80.0F, 0.1F), 70.0F,
            "ms");
-  addFloat(layout, "output", "Output", {-24.0F, 6.0F, 0.01F}, -6.0F, "dB");
+  addFloat(layout, "output", "Output", {-24.0F, 6.0F, 0.01F}, -8.0F, "dB");
   layout.add(std::make_unique<juce::AudioParameterInt>(
       juce::ParameterID{"root", 1}, "Root", 24, 60, 36));
   layout.add(std::make_unique<juce::AudioParameterChoice>(
       juce::ParameterID{"division", 1}, "Division",
       juce::StringArray{"1/8", "1/16", "1/32"}, 1));
   layout.add(std::make_unique<juce::AudioParameterBool>(
-      juce::ParameterID{"sequence", 1}, "Sequence", true));
+      juce::ParameterID{"sequence", 1}, "Sequence", false));
   layout.add(std::make_unique<juce::AudioParameterBool>(
       juce::ParameterID{"bypass", 1}, "Bypass", false));
   addFloat(layout, "pulse_width", "Pulse Width", {10.0F, 90.0F, 0.01F}, 50.0F,
@@ -640,6 +740,18 @@ SequenceAudioProcessor::createParameterLayout() {
         juce::ParameterID{stepId(step, "slide"), 1}, stepName(step, "Slide"),
         defaults.steps[step].slide));
   }
+  // Append after all 85 existing parameters: host automation indices stay
+  // stable.
+  layout.add(std::make_unique<juce::AudioParameterChoice>(
+      juce::ParameterID{"voice_mode", 1}, "Voice Mode",
+      juce::StringArray{"Original mono", "Poly", "Mono"}, 1));
+  aste::ui::MasterGain::addParameter(layout, 3.F);
+  addFloat(layout, "filter_attack", "Filter Attack",
+           skewed(0.F, 2000.F, 20.F, .1F), 0.F, "ms");
+  addFloat(layout, "filter_decay", "Filter Decay",
+           skewed(0.F, 4000.F, 250.F, .1F), 0.F, "ms");
+  addFloat(layout, "filter_sustain", "Filter Sustain", {0.F, 100.F, .01F}, 12.F,
+           "%");
   return layout;
 }
 
@@ -647,6 +759,10 @@ SequenceAudioProcessor::SequenceAudioProcessor()
     : AudioProcessor{BusesProperties{}.withOutput(
           "Output", juce::AudioChannelSet::stereo(), true)},
       state_{*this, nullptr, kStateType, createParameterLayout()} {
+  masterGain_.bind(state_);
+  for (std::size_t i = 0; i < 3; ++i)
+    filterValues_[i] = state_.getRawParameterValue(
+        std::array{"filter_attack", "filter_decay", "filter_sustain"}[i]);
   for (std::size_t index = 0; index < kMainIds.size(); ++index) {
     mainValues_[index] = state_.getRawParameterValue(kMainIds[index]);
     jassert(mainValues_[index] != nullptr);
@@ -662,6 +778,12 @@ SequenceAudioProcessor::SequenceAudioProcessor()
 Parameters SequenceAudioProcessor::currentParameters() const noexcept {
   Parameters parameters;
   parameters.legacyBehavior = usesLegacyBehavior();
+  parameters.materialBehavior = usesMaterialResponse() && !usesLegacyBehavior();
+  parameters.filterAttackMs = filterValues_[0]->load();
+  parameters.filterDecayMs = filterValues_[1]->load();
+  parameters.filterSustain = filterValues_[2]->load() * .01F;
+  parameters.voiceMode =
+      static_cast<int>(mainValues_[voiceMode]->load(std::memory_order_relaxed));
   parameters.pressure =
       mainValues_[pressure]->load(std::memory_order_relaxed) * 0.01F;
   parameters.shape =
@@ -737,14 +859,27 @@ std::span<const MidiEvent> SequenceAudioProcessor::readMidi(
     MidiEvent event;
     event.sampleOffset = static_cast<std::size_t>(
         juce::jlimit(0, std::max(0, frames - 1), metadata.samplePosition));
-    event.note = message.getNoteNumber();
+    event.note = message.isNoteOnOrOff() ? message.getNoteNumber() : 0;
     if (message.isNoteOn()) {
       event.type = MidiEventType::noteOn;
       event.velocity = message.getFloatVelocity();
     } else if (message.isNoteOff()) {
       event.type = MidiEventType::noteOff;
+    } else if (message.isController() && message.getControllerNumber() == 64) {
+      event.type = MidiEventType::sustain;
+      event.velocity = message.getControllerValue() >= 64 ? 1.F : 0.F;
     } else if (message.isAllNotesOff() || message.isAllSoundOff()) {
       event.type = MidiEventType::allNotesOff;
+    } else if (message.isController() &&
+               (message.getControllerNumber() == 1 ||
+                message.getControllerNumber() == 74)) {
+      event.type = MidiEventType::expression;
+      event.note = message.getControllerNumber();
+      event.velocity = message.getControllerValue() / 127.F;
+    } else if (message.isChannelPressure()) {
+      event.type = MidiEventType::expression;
+      event.note = 128;
+      event.velocity = message.getChannelPressureValue() / 127.F;
     } else {
       continue;
     }
@@ -754,6 +889,7 @@ std::span<const MidiEvent> SequenceAudioProcessor::readMidi(
 }
 
 void SequenceAudioProcessor::prepareToPlay(double sampleRate, int) {
+  masterGain_.prepare(sampleRate);
   processor_.prepare(sampleRate, currentParameters());
   setLatencySamples(static_cast<int>(processor_.latencySamples()));
   publishMeters({});
@@ -786,6 +922,7 @@ void SequenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     buffer.clear(channel, 0, frames);
   }
   publishMeters(processor_.meters());
+  outputPeak_.store(masterGain_.process(buffer), std::memory_order_relaxed);
 }
 
 void SequenceAudioProcessor::processBlockBypassed(
@@ -830,6 +967,12 @@ void SequenceAudioProcessor::loadFactoryPreset(int index) {
     return;
   }
   const auto& preset = kPresets[static_cast<std::size_t>(index)];
+  for (const auto& entry : std::array{std::pair{"filter_attack", 0.F},
+                                      std::pair{"filter_decay", 0.F},
+                                      std::pair{"filter_sustain", 12.F}}) {
+    auto* parameter = state_.getParameter(entry.first);
+    parameter->setValueNotifyingHost(parameter->convertTo0to1(entry.second));
+  }
   for (std::size_t parameter = 0; parameter < preset.main.size(); ++parameter) {
     if (auto* destination = state_.getParameter(kMainIds[parameter])) {
       destination->setValueNotifyingHost(
@@ -862,6 +1005,8 @@ void SequenceAudioProcessor::getStateInformation(juce::MemoryBlock& output) {
   state.setProperty("schema", kStateSchema, nullptr);
   state.setProperty("product", kStateType, nullptr);
   state.setProperty("behavior", usesLegacyBehavior() ? 0 : 1, nullptr);
+  state.removeProperty("material", nullptr);
+  materialRevision_.write(state);
   if (const auto xml = state.createXml()) {
     copyXmlToBinary(*xml, output);
   }
@@ -876,10 +1021,13 @@ void SequenceAudioProcessor::setStateInformation(const void* data, int size) {
   if (!restored.isValid()) {
     return;
   }
-  const bool oldSchema = restored.getProperty("schema").toString() != "3";
+  const auto schema = restored.getProperty("schema").toString();
+  const bool oldSchema = schema == "1" || schema == "2";
   const auto behavior = restored.getProperty("behavior").toString();
   if (!oldSchema && behavior != "0" && behavior != "1") return;
   const bool legacy = oldSchema || behavior == "0";
+  bool material = false;
+  if (!aste::parameters::MaterialRevision::parse(restored, material)) return;
   auto validated = state_.copyState();
   for (int index = 0; index < validated.getNumChildren(); ++index) {
     auto child = validated.getChild(index);
@@ -912,12 +1060,23 @@ void SequenceAudioProcessor::setStateInformation(const void* data, int size) {
       return;
     }
     destination.setProperty(
-        "value", juce::jlimit(range.start, range.end, value), nullptr);
+        "value",
+        (id == "voice_mode"
+             ? std::round(juce::jlimit(range.start, range.end, value))
+             : juce::jlimit(range.start, range.end, value)),
+        nullptr);
   }
+  if (schema != "4")
+    validated.getChildWithProperty("id", "voice_mode")
+        .setProperty("value", 0.F, nullptr);
+  if (!seen.contains("master"))
+    validated.getChildWithProperty("id", "master")
+        .setProperty("value", 0.F, nullptr);
   validated.setProperty("schema", kStateSchema, nullptr);
   validated.setProperty("product", kStateType, nullptr);
   validated.setProperty("behavior", legacy ? 0 : 1, nullptr);
   legacyBehavior_.store(legacy, std::memory_order_relaxed);
+  materialRevision_.set(material);
   state_.replaceState(validated);
 }
 

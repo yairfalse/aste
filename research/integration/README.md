@@ -30,3 +30,13 @@ Passing establishes the enumerated checks, not a Cubase session, human listening
 preference, native accessibility approval or a release. Historical WAV packs,
 reports and receipts keep their original provenance; regenerate into new
 directories rather than overwriting them.
+
+## Isolated research evidence without Sykli
+
+`reproduce_labs.py` builds the two offline labs only, in Release and ASan/UBSan,
+renders/compares two complete packs, validates WAVs and checksums, optionally
+runs compiled fault injection, then benchmarks sequentially. It records the
+actual source hashes (including uncommitted product comparison processors),
+provides matching source, and refuses existing output. See the
+[cycle-2 report](../../reports/N01-R01%20research%20cycle%202.md). This separate
+runner does not certify the six-plugin build, packaging or live DAW behavior.

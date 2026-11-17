@@ -192,14 +192,18 @@ void Processor::Band::setTarget(double sampleRate, float frequency,
   boost_.setTarget(std::max(gainDb, 0.0F) / 12.0F);
 }
 
-float Processor::Band::process(float input, float harmonic,
-                               float& activity) noexcept {
+float Processor::Band::process(float input, float harmonic, float& activity,
+                               bool material) noexcept {
   const float linear = contour_.process(input);
   const float reference = reference_.process(input, 0.0F);
-  const float coloured = nonlinear_.process(input, harmonic);
+  const float excitation = material ? 1.F + 12.F * harmonic : 1.F;
+  const float coloured =
+      nonlinear_.process(input * excitation, harmonic) / std::sqrt(excitation);
   const float boostParticipation = std::sqrt(boost_.next());
   const float contribution =
-      1.1F * harmonic * boostParticipation * (coloured - reference);
+      (material ? 1.8F : 1.1F) * harmonic *
+      (material ? .35F + .65F * boostParticipation : boostParticipation) *
+      (coloured - reference);
   activity = std::max(activity, std::abs(contribution));
   return flush(linear + contribution);
 }
@@ -300,7 +304,8 @@ void Processor::process(float* left, float* right, std::size_t frames,
       float processed = input * inputGain;
       float activity = 0.0F;
       for (auto& band : bands_[channel]) {
-        processed = band.process(processed, harmonic, activity);
+        processed = band.process(processed, harmonic, activity,
+                                 parameters.materialBehavior);
       }
       processed = cleanSample(processed * outputGain);
       channels[channel][sample] = processed;

@@ -95,6 +95,8 @@ class ImpulseLookAndFeel final : public juce::LookAndFeel_V4 {
     setColour(juce::Slider::textBoxOutlineColourId,
               juce::Colours::transparentBlack);
     setColour(juce::Label::textColourId, juce::Colour{kInk});
+    setColour(juce::Slider::trackColourId, juce::Colour{kAccent});
+    setColour(juce::Slider::thumbColourId, juce::Colour{kAccent});
   }
   void drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height,
                         float position, float startAngle, float endAngle,
@@ -123,18 +125,25 @@ class Knob final : public juce::Component {
  public:
   Knob(juce::AudioProcessorValueTreeState& state, const juce::String& id,
        const juce::String& name, const juce::String& suffix, double initial,
-       int order)
+       int order, bool compact = false)
       : attachment_{state, id, slider_} {
-    slider_.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+    slider_.setSliderStyle(compact
+                               ? juce::Slider::LinearHorizontal
+                               : juce::Slider::RotaryHorizontalVerticalDrag);
     slider_.textFromValueFunction = [this](double value) {
       return aste::ui::formattedValue(slider_, value);
     };
-    slider_.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 68, 18);
+    slider_.setTextBoxStyle(
+        compact ? juce::Slider::TextBoxRight : juce::Slider::TextBoxBelow,
+        false, 68, 18);
     slider_.setTextValueSuffix(suffix);
     slider_.setDoubleClickReturnValue(true, initial);
     slider_.setTitle(name);
-    slider_.setDescription(aste::ui::explanation(id));
-    slider_.setTooltip(aste::ui::explanation(id));
+    slider_.setDescription(
+        aste::ui::explanation(id, state.processor.getName()));
+    slider_.setTooltip(
+        aste::ui::explanation(id, state.processor.getName()) +
+        " Shift-drag for fine adjustment; type an exact value below.");
     slider_.setWantsKeyboardFocus(true);
     slider_.setExplicitFocusOrder(order);
     label_.setText(name, juce::dontSendNotification);
@@ -150,7 +159,7 @@ class Knob final : public juce::Component {
   }
 
  private:
-  juce::Slider slider_;
+  aste::ui::PrecisionSlider slider_;
   juce::Label label_;
   juce::AudioProcessorValueTreeState::SliderAttachment attachment_;
 };
@@ -288,21 +297,17 @@ class SoundPanel final : public juce::Component {
       knobs_[field] = std::make_unique<Knob>(
           processor.state(), trackId(track, field),
           juce::String{kTrackNames[track]} + " " + kFieldNames[field],
-          suffix[field], values[field], order + static_cast<int>(field));
+          suffix[field], values[field], order + static_cast<int>(field), true);
       addAndMakeVisible(*knobs_[field]);
     }
     generate_.setButtonText("GENERATE FROM PULSES");
     generate_.setTitle(juce::String{kTrackNames[track]} + " GENERATE");
     generate_.onClick = [this] { generatePattern(processor_.state(), track_); };
-    addChildComponent(generate_);
+    addAndMakeVisible(generate_);
     audition_.setButtonText("AUDITION");
     audition_.setTitle(juce::String{kTrackNames[track]} + " AUDITION");
     audition_.onClick = [this] { processor_.audition(track_); };
     addAndMakeVisible(audition_);
-    detail_.setButtonText("RHYTHM DETAILS");
-    detail_.setTitle(juce::String{kTrackNames[track]} + " RHYTHM DETAILS");
-    detail_.onClick = [this] { resized(); };
-    addAndMakeVisible(detail_);
   }
   void paint(juce::Graphics& g) override {
     g.fillAll(juce::Colour{kPanel});
@@ -322,14 +327,11 @@ class SoundPanel final : public juce::Component {
     auto area = getLocalBounds().reduced(8);
     auto header = area.removeFromTop(30);
     audition_.setBounds(header.removeFromRight(100).reduced(2));
-    detail_.setBounds(header.removeFromRight(160).reduced(2));
     generate_.setBounds(header.removeFromRight(220).reduced(2));
-    const bool expanded = detail_.getToggleState();
-    generate_.setVisible(expanded);
-    const int height = area.getHeight() / (expanded ? 2 : 1);
+    const int height = area.getHeight() / 2;
     for (std::size_t index = 0; index < knobs_.size(); ++index) {
       const bool sound = index < 5;
-      knobs_[index]->setVisible(sound || expanded);
+      knobs_[index]->setVisible(true);
       const int width = area.getWidth() / (sound ? 5 : 8);
       knobs_[index]->setBounds(
           area.getX() + static_cast<int>(sound ? index : index - 5) * width,
@@ -343,7 +345,6 @@ class SoundPanel final : public juce::Component {
   std::array<std::unique_ptr<Knob>, 13> knobs_{};
   juce::TextButton generate_;
   juce::TextButton audition_;
-  juce::ToggleButton detail_;
 };
 
 template <class Set>
@@ -439,6 +440,7 @@ class ImpulseEditor final : public juce::AudioProcessorEditor,
   explicit ImpulseEditor(ImpulseAudioProcessor& processor)
       : AudioProcessorEditor{processor},
         processor_{processor},
+        master_{processor.state()},
         energy_{processor.state(), "energy", "ENERGY", " %", 45, 1},
         variation_{processor.state(), "variation", "VARIATION", " %", 0, 2},
         mutation_{processor.state(), "mutation", "MUTATION", " %", 0, 3},
@@ -446,6 +448,12 @@ class ImpulseEditor final : public juce::AudioProcessorEditor,
         output_{processor.state(), "output", "OUTPUT", " dB", -6, 5},
         sequence_{"SEQUENCE"} {
     setLookAndFeel(&lookAndFeel_);
+    addAndMakeVisible(master_);
+    workflow_.bind(
+        *this, "SELECT OBJECT > AUDITION + SHAPE > PLACE HITS > CYCLE > MASTER",
+        "Select an object silently; AUDITION hears it. Click steps to place "
+        "hits. All sound and cycle controls are visible below the grid.");
+    addAndMakeVisible(workflow_);
     division_.setTitle("DIVISION");
     division_.addItemList({"1/8", "1/16", "1/32"}, 1);
     divisionAttachment_ = std::make_unique<
@@ -502,7 +510,8 @@ class ImpulseEditor final : public juce::AudioProcessorEditor,
     response_.bind(
         [this] {
           return !processor_.usesLegacyBehavior() &&
-                 processor_.usesSampleClock();
+                 processor_.usesSampleClock() &&
+                 processor_.usesMaterialResponse();
         },
         [this] { processor_.useCurrentResponse(); },
         "Use stable retrigger timing and responsive Low Tone. Saved controls "
@@ -521,7 +530,7 @@ class ImpulseEditor final : public juce::AudioProcessorEditor,
              &sequence_, &preset_})
       addAndMakeVisible(component);
     setResizable(true, true);
-    setResizeLimits(1120, 700, 1800, 1120);
+    setResizeLimits(1120, 780, 1800, 1120);
     setSize(1480, 900);
     timerCallback();
     startTimerHz(30);
@@ -536,25 +545,22 @@ class ImpulseEditor final : public juce::AudioProcessorEditor,
                juce::Justification::centredLeft);
     g.setColour(juce::Colour{kAccent});
     g.setFont(juce::FontOptions{12.0F, juce::Font::bold});
-    header.removeFromRight(220);
+    header = juce::Rectangle<int>{24, 53, 310, 16};
     g.drawText("I-01 / RHYTHMIC OBJECTS", header,
-               juce::Justification::centredRight);
+               juce::Justification::centredLeft);
     g.setColour(juce::Colour{kMuted});
     g.drawText("OUT " + aste::ui::levelText(peak_), getWidth() - 210, 70, 180,
                20, juce::Justification::centredRight);
     g.setFont(juce::FontOptions{11.0F});
     g.setColour(juce::Colour{kInk});
-    g.drawText(
-        "CLICK / CUT: tiny attacks. LOW: sub weight. Select silently; AUDITION "
-        "plays. RHYTHM DETAILS opens cycle controls.",
-        24, getHeight() - 24, getWidth() - 260, 20,
-        juce::Justification::centredLeft);
   }
   void resized() override {
-    preset_.setBounds(getWidth() - 204, 25, 180, 28);
+    workflow_.setBounds(24, getHeight() - 80, getWidth() - 48, 48);
+    preset_.setBounds(getWidth() - 414, 28, 180, 28);
+    master_.setBounds(getWidth() - 214, 18, 190, 46);
     response_.setBounds(getWidth() - 224, getHeight() - 30, 200, 24);
     auto area = getLocalBounds().reduced(24);
-    area.removeFromBottom(24);
+    area.removeFromBottom(60);
     area.removeFromTop(62);
     auto globals = area.removeFromTop(125);
     const int width = globals.getWidth() / 8;
@@ -570,7 +576,8 @@ class ImpulseEditor final : public juce::AudioProcessorEditor,
     const int rows =
         std::max(1, static_cast<int>(std::count(visibleObjects_.begin(),
                                                 visibleObjects_.end(), true)));
-    auto grid = area.removeFromTop(std::min(rows * 38, area.getHeight() / 2));
+    auto grid = area.removeFromTop(
+        std::min(rows * 34, std::max(rows * 24, area.getHeight() - 180)));
     constexpr int labelWidth = 90;
     const int rowHeight = std::max(1, grid.getHeight() / rows);
     const int cellWidth = std::max(
@@ -656,6 +663,8 @@ class ImpulseEditor final : public juce::AudioProcessorEditor,
   }
   ImpulseLookAndFeel lookAndFeel_;
   ImpulseAudioProcessor& processor_;
+  aste::ui::MasterOutput master_;
+  aste::ui::WorkflowGuide workflow_;
   Knob energy_, variation_, mutation_, seed_, output_;
   juce::ComboBox division_;
   aste::ui::PresetMenu preset_;
@@ -663,7 +672,7 @@ class ImpulseEditor final : public juce::AudioProcessorEditor,
   juce::TooltipWindow tooltips_{this, 400};
   juce::ToggleButton sequence_;
   juce::TextButton objects_;
-  bool showAll_{};
+  bool showAll_{true};
   std::array<bool, kTrackCount> visibleObjects_{};
   std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>
       divisionAttachment_;
@@ -734,6 +743,7 @@ ImpulseAudioProcessor::createParameterLayout() {
           0, 2, defaults.tracks[track].pattern[step]));
     }
   }
+  aste::ui::MasterGain::addParameter(layout, 6.F);
   return layout;
 }
 
@@ -741,6 +751,7 @@ ImpulseAudioProcessor::ImpulseAudioProcessor()
     : AudioProcessor{BusesProperties{}.withOutput(
           "Output", juce::AudioChannelSet::stereo(), true)},
       state_{*this, nullptr, kStateType, createParameterLayout()} {
+  masterGain_.bind(state_);
   for (std::size_t index = 0; index < kGlobalIds.size(); ++index)
     globals_[index] = state_.getRawParameterValue(kGlobalIds[index]);
   for (std::size_t track = 0; track < kTrackCount; ++track)
@@ -761,6 +772,7 @@ Parameters ImpulseAudioProcessor::currentParameters() const noexcept {
   Parameters result;
   result.energy = global(0) * 0.01F;
   result.legacyBehavior = usesLegacyBehavior();
+  result.materialBehavior = usesMaterialResponse() && !usesLegacyBehavior();
   result.sampleClock = usesSampleClock();
   result.division = static_cast<int>(global(1));
   result.variation = global(2) * 0.01F;
@@ -828,6 +840,7 @@ std::span<const MidiEvent> ImpulseAudioProcessor::readMidi(
 }
 
 void ImpulseAudioProcessor::prepareToPlay(double sampleRate, int) {
+  masterGain_.prepare(sampleRate);
   auditionRequests_.store(0);
   processor_.prepare(sampleRate, currentParameters());
   setLatencySamples(0);
@@ -872,6 +885,7 @@ void ImpulseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
       static_cast<std::size_t>(buffer.getNumSamples()), currentParameters(),
       currentTransport(), {midiScratch_.data(), midiCount_});
   publishMeters(processor_.meters());
+  outputPeak_.store(masterGain_.process(buffer), std::memory_order_relaxed);
 }
 void ImpulseAudioProcessor::processBlockBypassed(
     juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) {
@@ -937,6 +951,8 @@ void ImpulseAudioProcessor::getStateInformation(
   state.setProperty("product", kStateType, nullptr);
   state.setProperty("behavior", usesLegacyBehavior() ? 0 : 1, nullptr);
   state.setProperty("clock", usesSampleClock() ? 1 : 0, nullptr);
+  state.removeProperty("material", nullptr);
+  materialRevision_.write(state);
   if (const auto xml = state.createXml()) copyXmlToBinary(*xml, destination);
 }
 void ImpulseAudioProcessor::setStateInformation(const void* data, int size) {
@@ -959,6 +975,8 @@ void ImpulseAudioProcessor::setStateInformation(const void* data, int size) {
   if (restoredSchema == 5 && clock != "0" && clock != "1") return;
   const bool sampleClock = restoredSchema == 5 && clock == "1";
   const bool legacyBehavior = restoredSchema < 4 || behavior == "0";
+  bool material = false;
+  if (!aste::parameters::MaterialRevision::parse(restored, material)) return;
   auto validated = state_.copyState();
   for (int index = 0; index < validated.getNumChildren(); ++index) {
     auto child = validated.getChild(index);
@@ -1021,12 +1039,16 @@ void ImpulseAudioProcessor::setStateInformation(const void* data, int size) {
       }
     }
   }
+  if (!seen.contains("master"))
+    validated.getChildWithProperty("id", "master")
+        .setProperty("value", 0.F, nullptr);
   validated.setProperty("schema", kStateSchema, nullptr);
   validated.setProperty("product", kStateType, nullptr);
   validated.setProperty("behavior", legacyBehavior ? 0 : 1, nullptr);
   validated.setProperty("clock", sampleClock ? 1 : 0, nullptr);
   legacyBehavior_.store(legacyBehavior, std::memory_order_relaxed);
   sampleClock_.store(sampleClock, std::memory_order_relaxed);
+  materialRevision_.set(material);
   state_.replaceState(validated);
 }
 juce::AudioProcessorEditor* ImpulseAudioProcessor::createEditor() {

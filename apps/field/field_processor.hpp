@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nested_memory.hpp"
+#include "diffuse_space.hpp"
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -17,6 +19,12 @@ struct Parameters {
   float outputDb{-3.0F};
   bool bypass{};
   bool legacyBehavior{};
+  bool loopHold{}, innerRepeat{}, loopReverse{};
+  float loopMs{1500}, innerMs{90}, loopSpeed{1}, loopMix{};
+  float focus{};
+  bool materialBehavior{};
+  bool diffuseBehavior{};
+  float texture{};  // Zero preserves the original field.
 };
 
 struct MeterSnapshot {
@@ -24,6 +32,8 @@ struct MeterSnapshot {
   float outputPeak{};
   float fieldEnergy{};
   float retention{};
+  float loopPosition{};
+  bool loopActive{}, innerActive{}, loopWaiting{};
 };
 
 class Processor {
@@ -36,6 +46,9 @@ class Processor {
 
   [[nodiscard]] constexpr std::size_t latencySamples() const noexcept {
     return 0U;
+  }
+  [[nodiscard]] std::size_t memoryBytes() const noexcept {
+    return sizeof(*this) + memory_.bytes() + diffuse_.memoryBytes();
   }
   [[nodiscard]] MeterSnapshot meters() const noexcept { return meters_; }
 
@@ -66,6 +79,15 @@ class Processor {
   [[nodiscard]] float renderExciter() noexcept;
   [[nodiscard]] static std::uint32_t randomStep(std::uint32_t state) noexcept;
 
+  void processDiffuse(float*, float*, std::size_t, const Parameters&) noexcept;
+  DiffuseSpace diffuse_;
+  std::array<float, 2> diffuseTone_{}, diffuseBass_{}, lastDiffuse_{},
+      clearFrom_{};
+  int clearFade_{};
+  NestedMemory memory_;
+  float smoothedLoopMix_{};
+  float materialStrain_{};
+  std::array<float, kLineCount> materialLow_{};
   double sampleRate_{48000.0};
   std::array<DelayLine, kLineCount> delays_{};
   std::array<float, kLineCount> baseDelaySamples_{};
@@ -73,17 +95,23 @@ class Processor {
   std::array<float, kLineCount> grainTarget_{};
   std::array<float, kLineCount> grainState_{};
   std::array<float, kLineCount> lineOutput_{};
+  std::array<float, kLineCount> undisturbed_{};
   std::array<float, kLineCount> feedback_{};
   std::array<PitchVoice, 2> pitchVoices_{};
   std::uint32_t randomState_{0x46a31d2bU};
   std::size_t grainCountdown_{};
   double motionPhase_{};
+  double movingGrainPhase_{};
+  std::array<float, kLineCount> lowFeedback_{};
+  float lowInput_{};
+  float smoothedFocus_{};
   double exciterPhase_{};
   double exciterIncrement_{};
   float exciterEnvelope_{};
   float exciterDecay_{0.99F};
   float inputFilter_{};
   float smoothedForever_{};
+  float smoothedTexture_{};
   float smoothedMass_{0.62F};
   float smoothedGrain_{0.34F};
   float smoothedPitch_{0.28F};

@@ -1,4 +1,6 @@
+#include "workflow_checks.hpp"
 #include "impulse_plugin.hpp"
+#include "master_output_checks.hpp"
 #include "response_upgrade_checks.hpp"
 #include "preset_recall_checks.hpp"
 #include "editor_artifact.hpp"
@@ -174,7 +176,7 @@ void testContractState() {
   source.loadFactoryPreset(0);
   require(value(source, "kick_pitch") == 48,
           "Starting points reset sound settings, not just patterns");
-  require(source.getParameters().size() == 368,
+  require(source.getParameters().size() == 369,
           "Impulse exposes eight sounds and eight visible 32-step patterns");
   setValue(source, "seed", 4242);
   setValue(source, "kick_length", 15);
@@ -273,6 +275,67 @@ void testContractState() {
             "Fuzzed Impulse state leaves bounded configuration");
   }
 }
+void testDawTransportClock() {
+  struct Clock final : juce::AudioPlayHead {
+    double bpm{87}, ppq{};
+    bool playing{true};
+    juce::Optional<PositionInfo> getPosition() const override {
+      PositionInfo position;
+      position.setBpm(bpm);
+      position.setPpqPosition(ppq);
+      position.setIsPlaying(playing);
+      return position;
+    }
+  } clock;
+  Impulse processor;
+  processor.setPlayHead(&clock);
+  setValue(processor, "sequence", 1);
+  setValue(processor, "division", 1);  // Sixteenths.
+  setValue(processor, "kick_length", 16);
+  setValue(processor, "kick_timing", 0);
+  processor.prepareToPlay(48000, 127);
+  juce::AudioBuffer<float> audio{2, 127};
+  juce::MidiBuffer noMidi;
+  const auto runQuarterSecond = [&](double bpm) {
+    processor.releaseResources();
+    processor.prepareToPlay(48000, 127);
+    clock.bpm = bpm;
+    float peak = 0;
+    for (int at = 0; at < 12000;) {
+      const int count = std::min(127, 12000 - at);
+      audio.setSize(2, count, false, false, true);
+      clock.ppq = at * bpm / (60. * 48000.);
+      processor.processBlock(audio, noMidi);
+      peak = std::max(peak, processor.outputPeak());
+      at += count;
+    }
+    require(peak > .001F,
+            "DAW transport alone runs the pattern without MIDI clock or notes");
+    return processor.currentStep(0);
+  };
+  require(runQuarterSecond(87) == 1,
+          "JUCE playhead BPM/PPQ drive the sixteenth-note position at 87 BPM");
+  require(runQuarterSecond(174) == 2,
+          "Doubling DAW tempo doubles pattern progression through the adapter");
+  clock.playing = false;
+  processor.processBlock(audio, noMidi);
+  require(processor.currentStep(0) == -1,
+          "DAW Stop halts the internal sequence");
+  clock.playing = true;
+  clock.ppq = 7.75;
+  processor.processBlock(audio, noMidi);
+  require(processor.currentStep(0) == 15,
+          "Restart/seek follows DAW song position");
+  clock.ppq = 1.25;
+  processor.processBlock(audio, noMidi);
+  require(processor.currentStep(0) == 5,
+          "Backward loop/seek reanchors to the DAW");
+  setValue(processor, "sequence", 0);
+  processor.processBlock(audio, noMidi);
+  require(processor.currentStep(0) == -1,
+          "Sequence switch explicitly disables host-driven pattern playback");
+}
+
 void testProcessing() {
   Impulse processor;
   processor.prepareToPlay(48000, 127);
@@ -317,17 +380,19 @@ void testEditor(const char* directory) {
       dynamic_cast<juce::Button*>(findTitled(*editor, "OBJECT VISIBILITY"));
   auto* emptyRow = findTitled(*editor, "METAL TRACK");
   auto* subRow = findTitled(*editor, "LOW TRACK");
-  require(focus && emptyRow && subRow && !emptyRow->isVisible() &&
+  require(focus && emptyRow && subRow && emptyRow->isVisible() &&
               subRow->isVisible(),
-          "Click/sub focus shows programmed objects without eight empty rows");
+          "All objects are visible on open for immediate sound selection and "
+          "programming");
   if (focus && emptyRow) {
     juce::MemoryBlock before, after;
     processor.getStateInformation(before);
     focus->onClick();
-    require(emptyRow->isVisible(),
-            "Show all exposes every object for programming");
+    require(!emptyRow->isVisible(),
+            "Focus Active is an explicit optional compact view");
     focus->onClick();
-    require(!emptyRow->isVisible(), "Active objects restores the compact view");
+    require(emptyRow->isVisible(), "Show All restores access to all objects");
+    focus->onClick();
     processor.getStateInformation(after);
     require(before == after,
             "Object visibility never changes the musical state");
@@ -344,6 +409,10 @@ void testEditor(const char* directory) {
       setValue(processor, change.first, change.second == 0 ? 1.0F : 0.0F);
     }
   }
+  require(
+      findTitled(*editor, "CLICK RATCHET") &&
+          findTitled(*editor, "CLICK RATCHET")->isVisible(),
+      "Selected sound repeat controls are visible without a details switch");
   auto* cell = findTitled(*editor, "KICK STEP 02");
   setValue(processor, "kick_step_02", 2);
   for (int attempt = 0;
@@ -421,6 +490,8 @@ void testEditor(const char* directory) {
                 value(processor, "click_decay") == 5,
             "Clicks / sub opens its active transient controls");
   }
+  editor.reset(processor.createEditor());  // Render the normal all-objects view
+                                           // after interaction tests.
   juce::Image image{juce::Image::RGB, editor->getWidth(), editor->getHeight(),
                     true};
   juce::Graphics g{image};
@@ -442,12 +513,16 @@ void testEditor(const char* directory) {
 }  // namespace
 int main(int argc, char** argv) {
   juce::ScopedJuceInitialiser_GUI juce;
+  aste::tests::workflowChecks<Impulse>(require);
+  aste::tests::masterOutputChecks<aste::impulse::plugin::ImpulseAudioProcessor>(
+      require);
   aste::tests::responseUpgradeChecks<
       aste::impulse::plugin::ImpulseAudioProcessor>(require, 4);
   aste::tests::presetRecallChecks<aste::impulse::plugin::ImpulseAudioProcessor>(
       require);
   aste::tests::behaviorStateChecks<Impulse>(require, 3, 5);
   testClockState();
+  testDawTransportClock();
   testContractState();
   testProcessing();
   testEditor(argc == 3 && std::string{argv[1]} == "--editor-artifacts"

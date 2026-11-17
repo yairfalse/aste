@@ -11,6 +11,7 @@ namespace aste::n01 {
 constexpr std::size_t kVoices = 3;
 constexpr std::size_t kEvents = 8;
 constexpr unsigned kRepeats = 8;
+enum class Articulation { Restart, Carry, Crossfade };
 
 struct Event {
   bool enabled{};
@@ -28,6 +29,7 @@ struct Event {
   float pitch{100};
   float decay{0.1F};
   float color{0.5F};
+  Articulation articulation{Articulation::Restart};
 };
 struct Track {
   double length{4};
@@ -130,6 +132,7 @@ class Engine {
   [[nodiscard]] Next next(std::size_t voice, double beat) const noexcept;
   void trigger(const Hit&) noexcept;
   [[nodiscard]] float sound(std::size_t voice) noexcept;
+  [[nodiscard]] float renderVoice(Voice&, std::size_t voice) noexcept;
   Pattern pattern_{};
   double rate_{48000}, phrase_{}, anchorPpq_{}, bpm_{120}, expectedPpq_{};
   std::int64_t anchorSample_{}, expectedSample_{};
@@ -139,6 +142,8 @@ class Engine {
   std::size_t resets_{}, rejected_{};
   std::array<Next, kVoices> next_{};
   std::array<Voice, kVoices> voices_{};
+  std::array<Voice, kVoices> tails_{};
+  std::array<std::size_t, kVoices> fades_{};
   std::array<Fragment, kVoices> local_{};
   std::array<Fragment, 2> master_{};
 };

@@ -1,5 +1,8 @@
 #pragma once
 
+#include "master_output.hpp"
+#include "material_revision.hpp"
+
 #include "sequence_processor.hpp"
 
 #include <juce_audio_utils/juce_audio_utils.h>
@@ -28,7 +31,7 @@ class SequenceAudioProcessor final : public juce::AudioProcessor {
   [[nodiscard]] bool acceptsMidi() const override { return true; }
   [[nodiscard]] bool producesMidi() const override { return false; }
   [[nodiscard]] bool isMidiEffect() const override { return false; }
-  [[nodiscard]] double getTailLengthSeconds() const override { return 5.0; }
+  [[nodiscard]] double getTailLengthSeconds() const override { return 15.0; }
   [[nodiscard]] juce::AudioProcessorParameter* getBypassParameter()
       const override;
 
@@ -49,10 +52,14 @@ class SequenceAudioProcessor final : public juce::AudioProcessor {
   [[nodiscard]] float outputPeak() const noexcept;
   [[nodiscard]] float envelopeLevel() const noexcept;
   [[nodiscard]] int currentStep() const noexcept;
+  bool usesMaterialResponse() const noexcept {
+    return materialRevision_.active();
+  }
   [[nodiscard]] static int factoryPresetCount() noexcept;
   [[nodiscard]] static juce::String factoryPresetName(int index);
   void loadFactoryPreset(int index);
   void useCurrentResponse() {
+    materialRevision_.adopt();
     legacyBehavior_.store(false);
     updateHostDisplay(ChangeDetails{}.withNonParameterStateChanged(true));
   }
@@ -83,6 +90,7 @@ class SequenceAudioProcessor final : public juce::AudioProcessor {
     bypass,
     pulseWidth,
     filterDrive,
+    voiceMode,
     mainParameterCount
   };
 
@@ -94,9 +102,12 @@ class SequenceAudioProcessor final : public juce::AudioProcessor {
                                                     int frames) noexcept;
   void publishMeters(const MeterSnapshot&) noexcept;
 
+  std::array<std::atomic<float>*, 3> filterValues_{};
+  aste::parameters::MaterialRevision materialRevision_;
   Processor processor_{};
   std::atomic<bool> legacyBehavior_{};
   juce::AudioProcessorValueTreeState state_;
+  aste::ui::MasterGain masterGain_;
   std::array<std::atomic<float>*, mainParameterCount> mainValues_{};
   std::array<std::atomic<float>*, kStepCount> noteValues_{};
   std::array<std::atomic<float>*, kStepCount> gateValues_{};

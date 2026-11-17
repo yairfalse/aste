@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.25)
 if(CMAKE_HOST_APPLE AND NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET)
   set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum macOS deployment target")
 endif()
-project(aste_signal_instruments VERSION 0.3.0 LANGUAGES C CXX)
+project(aste_signal_instruments VERSION 0.12.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -205,6 +205,11 @@ add_executable(field_tests tests/field_tests.cpp)
 target_link_libraries(field_tests PRIVATE field_dsp)
 target_compile_options(field_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 add_test(NAME field_tests COMMAND field_tests)
+add_executable(character_lab research/character/lab.cpp)
+target_include_directories(character_lab PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(character_lab PRIVATE density_dsp field_dsp)
+add_test(NAME character_lab COMMAND character_lab)
+
 if(APPLE)
   add_test(NAME density_installer_syntax
     COMMAND /bin/sh -n
@@ -450,7 +455,7 @@ if(ASTE_BUILD_VST3)
     PLUGIN_CODE Imp1
     AU_SANDBOX_SAFE TRUE
     FORMATS ${ASTE_PLUGIN_FORMATS}
-    VST3_CATEGORIES Instrument Synth
+    VST3_CATEGORIES Instrument Drum
     PRODUCT_NAME "Impulse I-01"
   )
   target_sources(ImpulseI01 PRIVATE apps/impulse/impulse_plugin.cpp)
@@ -723,22 +728,22 @@ if(ASTE_BUILD_VST3)
   endif()
   add_test(NAME density_vst3_host
     COMMAND vst3_smoke_host "$<TARGET_BUNDLE_DIR:DensityD01_VST3>"
-            "Density D-01" "Drive" 11)
+            "Density D-01" "Drive" 13)
   add_test(NAME harmonic_vst3_host
     COMMAND vst3_smoke_host "$<TARGET_BUNDLE_DIR:HarmonicH01_VST3>"
-            "Harmonic H-01" "Harmonic" 12)
+            "Harmonic H-01" "Harmonic" 13)
   add_test(NAME sequence_vst3_host
     COMMAND vst3_smoke_host "$<TARGET_BUNDLE_DIR:SequenceS01_VST3>"
-            "Sequence S-01" "Pressure" 85)
+            "Sequence S-01" "Pressure" 90)
   add_test(NAME loop_vst3_host
     COMMAND vst3_smoke_host "$<TARGET_BUNDLE_DIR:LoopL01_VST3>"
-            "Loop L-01" "Capture" 20)
+            "Loop L-01" "Capture" 21)
   add_test(NAME impulse_vst3_host
     COMMAND vst3_smoke_host "$<TARGET_BUNDLE_DIR:ImpulseI01_VST3>"
-            "Impulse I-01" "Energy" 368)
+            "Impulse I-01" "Energy" 369)
   add_test(NAME field_vst3_host
     COMMAND vst3_smoke_host "$<TARGET_BUNDLE_DIR:FieldF01_VST3>"
-            "Field F-01" "Forever" 9)
+            "Field F-01" "Forever" 19)
 
   if(Python3_Interpreter_FOUND AND APPLE)
     set(ASTE_DENSITY_PACKAGE
@@ -760,4 +765,186 @@ if(ASTE_BUILD_VST3)
       COMMENT "Creating deterministic internal Density development package"
       VERBATIM)
   endif()
+endif()
+
+# Playable development adapters fork the accepted lab engines; research remains independent.
+option(ASTE_BUILD_EXPERIMENTAL_INSTRUMENTS "Build Non-Machine and Resonator VST3 development instruments" ON)
+if(ASTE_BUILD_VST3 AND ASTE_BUILD_EXPERIMENTAL_INSTRUMENTS)
+  add_library(non_machine_dsp apps/non-machine/non_machine_processor.cpp)
+  target_include_directories(non_machine_dsp PUBLIC apps/non-machine libs/parameters)
+  add_library(resonator_dsp apps/resonator/resonator_processor.cpp)
+  target_include_directories(resonator_dsp PUBLIC apps/resonator libs/parameters)
+  add_executable(playable_engine_tests tests/playable_engine_tests.cpp)
+  target_link_libraries(playable_engine_tests PRIVATE non_machine_dsp resonator_dsp)
+  target_compile_options(playable_engine_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  add_test(NAME playable_engine_tests COMMAND playable_engine_tests)
+  add_executable(object_memory_lab research/object-memory/lab.cpp)
+  target_include_directories(object_memory_lab PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+  target_link_libraries(object_memory_lab PRIVATE non_machine_dsp)
+  add_test(NAME object_memory_lab COMMAND object_memory_lab)
+
+  foreach(core non_machine_dsp resonator_dsp)
+    target_compile_options(${core} PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  endforeach()
+  foreach(model IN ITEMS NonMachineN01 ResonatorR01)
+    if(model STREQUAL "NonMachineN01")
+      set(_name "Non-Machine N-01")
+      set(_id "non-machine-n01")
+      set(_code Non1)
+      set(_category Drum)
+      set(_folder non-machine)
+      set(_source non_machine)
+      set(_core non_machine_dsp)
+      set(_nonmachine 1)
+      set(_count 445)
+    else()
+      set(_name "Resonator R-01")
+      set(_id "resonator-r01")
+      set(_code Res1)
+      set(_category Synth)
+      set(_folder resonator)
+      set(_source resonator)
+      set(_core resonator_dsp)
+      set(_nonmachine 0)
+      set(_count 19)
+    endif()
+    juce_add_plugin(${model}
+      VERSION ${PROJECT_VERSION} COMPANY_NAME "Aste Internal"
+      BUNDLE_ID "invalid.aste.${_id}" IS_SYNTH TRUE NEEDS_MIDI_INPUT TRUE
+      NEEDS_MIDI_OUTPUT FALSE IS_MIDI_EFFECT FALSE EDITOR_WANTS_KEYBOARD_FOCUS TRUE
+      COPY_PLUGIN_AFTER_BUILD FALSE PLUGIN_MANUFACTURER_CODE Aste PLUGIN_CODE ${_code}
+      FORMATS VST3 VST3_CATEGORIES Instrument ${_category} PRODUCT_NAME "${_name}")
+    target_sources(${model} PRIVATE apps/${_folder}/${_source}_plugin.cpp)
+    target_include_directories(${model} PUBLIC apps/${_folder} libs/parameters)
+    target_link_libraries(${model} PRIVATE ${_core} juce::juce_audio_utils)
+    target_compile_definitions(${model} PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0
+      JUCE_VST3_CAN_REPLACE_VST2=0 JUCE_VST3_EMULATE_MIDI_CC_WITH_PARAMETERS=0)
+    target_compile_options(${model} PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    if(APPLE)
+      add_custom_command(TARGET ${model}_VST3 POST_BUILD
+        COMMAND codesign --force --deep --sign - "$<TARGET_BUNDLE_DIR:${model}_VST3>")
+    endif()
+    add_executable(${_source}_plugin_tests tests/experimental_instrument_tests.cpp)
+    target_include_directories(${_source}_plugin_tests PRIVATE "${juce_SOURCE_DIR}/modules" tests)
+    target_compile_definitions(${_source}_plugin_tests PRIVATE ASTE_NONMACHINE=${_nonmachine}
+      JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1)
+    target_link_libraries(${_source}_plugin_tests PRIVATE ${model})
+    if(APPLE)
+      target_link_libraries(${_source}_plugin_tests PRIVATE realtime_audit)
+      target_compile_definitions(${_source}_plugin_tests PRIVATE ASTE_MAC_AUDIT=1)
+    endif()
+    target_compile_options(${_source}_plugin_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    add_test(NAME ${_source}_plugin_tests COMMAND ${_source}_plugin_tests "${CMAKE_CURRENT_BINARY_DIR}/${_source}_editor_artifacts")
+    add_test(NAME ${_source}_vst3_host COMMAND vst3_smoke_host
+      "$<TARGET_BUNDLE_DIR:${model}_VST3>" "${_name}" "Master Output" ${_count})
+  endforeach()
+endif()
+
+if(ASTE_BUILD_VST3)
+  add_library(grain_dsp apps/grain/grain_processor.cpp)
+  target_include_directories(grain_dsp PUBLIC apps/grain)
+  target_compile_options(grain_dsp PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  juce_add_plugin(GrainG01 VERSION ${PROJECT_VERSION} COMPANY_NAME "Aste Internal"
+    BUNDLE_ID "invalid.aste.grain-g01" IS_SYNTH FALSE NEEDS_MIDI_INPUT FALSE
+    NEEDS_MIDI_OUTPUT FALSE IS_MIDI_EFFECT FALSE EDITOR_WANTS_KEYBOARD_FOCUS TRUE
+    COPY_PLUGIN_AFTER_BUILD FALSE PLUGIN_MANUFACTURER_CODE Aste PLUGIN_CODE Grn1
+    FORMATS VST3 VST3_CATEGORIES Fx Delay PRODUCT_NAME "Grain G-01")
+  target_sources(GrainG01 PRIVATE apps/grain/grain_plugin.cpp)
+  target_include_directories(GrainG01 PUBLIC apps/grain libs/parameters)
+  target_link_libraries(GrainG01 PRIVATE grain_dsp juce::juce_audio_utils)
+  target_compile_definitions(GrainG01 PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0
+    JUCE_VST3_CAN_REPLACE_VST2=0 JUCE_VST3_EMULATE_MIDI_CC_WITH_PARAMETERS=0)
+  target_compile_options(GrainG01 PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  if(APPLE)
+    add_custom_command(TARGET GrainG01_VST3 POST_BUILD COMMAND codesign --force --deep --sign - "$<TARGET_BUNDLE_DIR:GrainG01_VST3>")
+  endif()
+  add_executable(grain_plugin_tests tests/grain_plugin_tests.cpp)
+  target_include_directories(grain_plugin_tests PRIVATE "${juce_SOURCE_DIR}/modules" tests)
+  target_compile_definitions(grain_plugin_tests PRIVATE JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1)
+  target_link_libraries(grain_plugin_tests PRIVATE GrainG01)
+  if(APPLE)
+    target_link_libraries(grain_plugin_tests PRIVATE realtime_audit)
+    target_compile_definitions(grain_plugin_tests PRIVATE GRAIN_MAC_AUDIT=1)
+  endif()
+  target_compile_options(grain_plugin_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  add_executable(grain_engine_tests tests/grain_engine_tests.cpp)
+  target_link_libraries(grain_engine_tests PRIVATE grain_dsp)
+  target_compile_options(grain_engine_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  add_test(NAME grain_engine_tests COMMAND grain_engine_tests)
+  add_test(NAME grain_plugin_tests COMMAND grain_plugin_tests "${CMAKE_CURRENT_BINARY_DIR}/grain_editor_artifacts")
+  add_test(NAME grain_vst3_host COMMAND vst3_smoke_host "$<TARGET_BUNDLE_DIR:GrainG01_VST3>" "Grain G-01" "Master Output" 94)
+endif()
+
+if(ASTE_BUILD_VST3)
+  add_library(contamination_dsp research/c01/core.cpp apps/contamination/revised_circuit.cpp)
+  target_include_directories(contamination_dsp PUBLIC research/c01)
+  target_compile_options(contamination_dsp PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  juce_add_plugin(ContaminationC01 VERSION ${PROJECT_VERSION} COMPANY_NAME "Aste Internal"
+    BUNDLE_ID "invalid.aste.contamination-c01" IS_SYNTH TRUE NEEDS_MIDI_INPUT TRUE
+    NEEDS_MIDI_OUTPUT FALSE IS_MIDI_EFFECT FALSE EDITOR_WANTS_KEYBOARD_FOCUS TRUE
+    COPY_PLUGIN_AFTER_BUILD FALSE PLUGIN_MANUFACTURER_CODE Aste PLUGIN_CODE Cnt1
+    FORMATS VST3 VST3_CATEGORIES Instrument Synth PRODUCT_NAME "Contamination C-01")
+  target_sources(ContaminationC01 PRIVATE apps/contamination/contamination_plugin.cpp)
+  target_include_directories(ContaminationC01 PUBLIC apps/contamination libs/parameters research/c01)
+  target_link_libraries(ContaminationC01 PRIVATE contamination_dsp juce::juce_audio_utils)
+  target_compile_definitions(ContaminationC01 PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0
+    JUCE_VST3_CAN_REPLACE_VST2=0 JUCE_VST3_EMULATE_MIDI_CC_WITH_PARAMETERS=0)
+  target_compile_options(ContaminationC01 PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  if(APPLE)
+    add_custom_command(TARGET ContaminationC01_VST3 POST_BUILD COMMAND codesign --force --deep --sign - "$<TARGET_BUNDLE_DIR:ContaminationC01_VST3>")
+  endif()
+  add_executable(contamination_engine_tests research/c01/tests.cpp)
+  target_link_libraries(contamination_engine_tests PRIVATE contamination_dsp)
+  add_executable(contamination_plugin_tests research/c01/plugin_tests.cpp)
+  target_include_directories(contamination_plugin_tests PRIVATE "${juce_SOURCE_DIR}/modules")
+  target_compile_definitions(contamination_plugin_tests PRIVATE JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1)
+  target_link_libraries(contamination_plugin_tests PRIVATE ContaminationC01)
+  foreach(test contamination_engine_tests contamination_plugin_tests)
+    target_compile_options(${test} PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    if(APPLE)
+      target_link_libraries(${test} PRIVATE realtime_audit)
+      target_compile_definitions(${test} PRIVATE C01_MAC_AUDIT=1)
+    endif()
+  endforeach()
+  file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/contamination_editor_artifacts")
+  add_test(NAME contamination_engine_tests COMMAND contamination_engine_tests)
+  add_test(NAME contamination_plugin_tests COMMAND contamination_plugin_tests)
+  set_tests_properties(contamination_plugin_tests PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/contamination_editor_artifacts")
+  add_test(NAME contamination_vst3_host COMMAND vst3_smoke_host "$<TARGET_BUNDLE_DIR:ContaminationC01_VST3>" "Contamination C-01" "Master Output" 12)
+endif()
+
+# Click K-01: shipping instrument core, independent of JUCE at the DSP boundary.
+add_library(click_dsp apps/click/click_processor.cpp)
+target_include_directories(click_dsp PUBLIC apps/click)
+target_compile_options(click_dsp PRIVATE -Wall -Wextra -Wpedantic -Werror)
+add_executable(click_engine_tests tests/click_engine_tests.cpp)
+target_link_libraries(click_engine_tests PRIVATE click_dsp)
+target_compile_options(click_engine_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+add_test(NAME click_engine_tests COMMAND click_engine_tests)
+if(ASTE_BUILD_VST3)
+  juce_add_plugin(ClickK01 VERSION ${PROJECT_VERSION} COMPANY_NAME "Aste Internal"
+    BUNDLE_ID "invalid.aste.click-k01" IS_SYNTH TRUE NEEDS_MIDI_INPUT TRUE
+    NEEDS_MIDI_OUTPUT FALSE IS_MIDI_EFFECT FALSE EDITOR_WANTS_KEYBOARD_FOCUS TRUE
+    COPY_PLUGIN_AFTER_BUILD FALSE PLUGIN_MANUFACTURER_CODE Aste PLUGIN_CODE Clk1
+    FORMATS VST3 VST3_CATEGORIES Instrument Drum Sampler PRODUCT_NAME "Click K-01")
+  target_sources(ClickK01 PRIVATE apps/click/click_plugin.cpp apps/click/click_editor.cpp)
+  target_include_directories(ClickK01 PUBLIC apps/click libs/parameters)
+  target_link_libraries(ClickK01 PRIVATE click_dsp juce::juce_audio_utils)
+  target_compile_definitions(ClickK01 PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0
+    JUCE_VST3_CAN_REPLACE_VST2=0 JUCE_VST3_EMULATE_MIDI_CC_WITH_PARAMETERS=0)
+  target_compile_options(ClickK01 PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  if(APPLE)
+    add_custom_command(TARGET ClickK01_VST3 POST_BUILD COMMAND codesign --force --deep --sign - "$<TARGET_BUNDLE_DIR:ClickK01_VST3>")
+  endif()
+  add_executable(click_plugin_tests tests/click_plugin_tests.cpp)
+  target_include_directories(click_plugin_tests PRIVATE "${juce_SOURCE_DIR}/modules" tests)
+  target_compile_definitions(click_plugin_tests PRIVATE JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1)
+  target_link_libraries(click_plugin_tests PRIVATE ClickK01)
+  if(APPLE)
+    target_link_libraries(click_plugin_tests PRIVATE realtime_audit)
+    target_compile_definitions(click_plugin_tests PRIVATE ASTE_MAC_AUDIT=1)
+  endif()
+  target_compile_options(click_plugin_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  add_test(NAME click_plugin_tests COMMAND click_plugin_tests "${CMAKE_CURRENT_BINARY_DIR}/click_editor_artifacts")
+  add_test(NAME click_vst3_host COMMAND vst3_smoke_host "$<TARGET_BUNDLE_DIR:ClickK01_VST3>" "Click K-01" "Master Output" 2592)
 endif()

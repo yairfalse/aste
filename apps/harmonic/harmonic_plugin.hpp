@@ -1,5 +1,8 @@
 #pragma once
 
+#include "master_output.hpp"
+#include "material_revision.hpp"
+
 #include "harmonic_processor.hpp"
 
 #include <juce_audio_utils/juce_audio_utils.h>
@@ -49,9 +52,16 @@ class HarmonicAudioProcessor final : public juce::AudioProcessor {
   [[nodiscard]] float inputPeak() const noexcept;
   [[nodiscard]] float outputPeak() const noexcept;
   [[nodiscard]] float harmonicActivity() const noexcept;
+  bool usesMaterialResponse() const noexcept {
+    return materialRevision_.active();
+  }
   [[nodiscard]] static int factoryPresetCount() noexcept;
   [[nodiscard]] static juce::String factoryPresetName(int index);
   void loadFactoryPreset(int index);
+  void useCurrentResponse() {
+    materialRevision_.adopt();
+    updateHostDisplay(ChangeDetails{}.withNonParameterStateChanged(true));
+  }
 
  private:
   enum ParameterIndex : std::size_t {
@@ -75,8 +85,10 @@ class HarmonicAudioProcessor final : public juce::AudioProcessor {
   [[nodiscard]] Parameters currentParameters() const noexcept;
   void publishMeters(const MeterSnapshot&) noexcept;
 
+  aste::parameters::MaterialRevision materialRevision_;
   Processor processor_{};
   juce::AudioProcessorValueTreeState state_;
+  aste::ui::MasterGain masterGain_;
   std::array<std::atomic<float>*, parameterCount> parameterValues_{};
   std::atomic<float> inputPeak_{};
   std::atomic<float> outputPeak_{};

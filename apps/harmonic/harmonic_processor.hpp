@@ -17,6 +17,7 @@ struct Parameters {
   float airFrequencyHz{12000.0F};
   float harmonic{0.35F};
   float outputDb{};
+  bool materialBehavior{};
 };
 
 struct MeterSnapshot {
@@ -94,8 +95,8 @@ class Processor {
                  Shape shape) noexcept;
     void setTarget(double sampleRate, float frequency, float gainDb,
                    Shape shape) noexcept;
-    [[nodiscard]] float process(float input, float harmonic,
-                                float& activity) noexcept;
+    [[nodiscard]] float process(float input, float harmonic, float& activity,
+                                bool material) noexcept;
     void reset() noexcept;
 
     ContourFilter contour_{};

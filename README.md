@@ -2,108 +2,101 @@
 
 [![CI](https://github.com/yairfalse/aste/actions/workflows/ci.yml/badge.svg)](https://github.com/yairfalse/aste/actions/workflows/ci.yml)
 
-Aste is a family of open-source electronic instruments and audio effects built
-around sound as physical material: mass, harmonic matter, electricity, memory,
-impact and space. These are original instruments, informed by electronic-music
-history rather than intended as hardware emulations.
+Aste is a family of original electronic instruments and audio effects built
+around sound as physical material: pressure, harmonic matter, electricity,
+impact, repetition, memory and space.
+
+An imaginary Finnish engineering company, founded in Helsinki in 1974, whose
+unfinished instruments became possible through contemporary software. The
+interfaces are precise, restrained and modern; the instruments explore an
+alternative technological history rather than imitate particular hardware.
 
 Read [The Musical Intent](docs/MUSICAL_INTENT.md) for the artistic context.
-Engineering, interfaces and measurement serve that musical purpose; passing a
-test does not establish that an instrument sounds good.
-
-## Current status
-
-The latest validated local development build is **0.12.0** (Field). The build
-version is defined in [CMakeLists.txt](CMakeLists.txt). The local VST3 build
-includes **ten products**. This documentation describes local development work;
-the accompanying code changes and binaries are not published by this
-documentation-only update.
-Some CMake targets retain the name “experimental”; these are playable plugins,
-with their original offline laboratories preserved separately.
-
-The latest production change is **Field F-01's diffused reverb foundation**.
-Its universal Release VST3 was installed and verified locally at 0.12.0. This
-was a Field-only update; it does not mean every installed Aste plugin was
-rebuilt or replaced. See the [Field installation and validation report](docs/products/field/RELEASE_012.md)
-and [changelog](CHANGELOG.md).
-
-These are development builds, not supported 1.0 releases. Local macOS bundles
-are ad-hoc signed, without Developer ID signing or notarization. Published
-downloads may lag the working tree; use each download's own version and notes.
-Aste remains a provisional project name, with existing plugin identifiers kept
-for session compatibility.
+Engineering and measurement serve the music. Passing tests does not establish
+that an instrument sounds good.
 
 ## The family
 
-| Product | Type | Musical purpose | Documentation |
+The main VST3 build contains **eleven products**: six MIDI instruments and five
+audio effects. Each owns its sound engine, parameter identities, state and UI.
+DSP is framework-independent C++20, with JUCE at the plugin boundary.
+
+| Product | Load as | Musical purpose | Guide |
 |---|---|---|---|
-| **Density D-01** | Audio effect | Pressure, weight and breathing nonlinear dynamics | [Parameter model](docs/PARAMETER_MODEL.md) |
-| **Harmonic H-01** | Audio effect | Spectral shaping and nonlinear harmonic matter | [Parameters](docs/products/harmonic/PARAMETERS.md) |
-| **Sequence S-01** | MIDI instrument | Polyphonic chords, electrical articulation and optional patterns | [Specification](docs/products/sequence/SPECIFICATION.md) |
-| **Loop L-01** | Audio effect / memory instrument | Captured sound transformed through repeated generations | [Specification](docs/products/loop/SPECIFICATION.md) |
-| **Impulse I-01** | MIDI percussion instrument | Eight synthetic impact objects and editable track cycles | [Parameters](docs/products/impulse/PARAMETERS.md) |
-| **Field F-01** | Audio effect with MIDI excitation | Diffused reverberation and evolving stored spatial energy | [Release guide](docs/products/field/RELEASE_012.md) |
-| **Non-Machine N-01** | MIDI percussion instrument | Three sound objects, explicit event patterns and nested rhythmic time | [Guide](docs/products/non-machine/README.md) |
-| **Resonator R-01** | MIDI instrument | Excited harmonic structures and retained resonant energy | [Guide](docs/products/resonator/README.md) |
-| **Grain G-01** | Audio effect | Three independently timed granular memories and recursive routing | [Guide](docs/products/grain/README.md) |
-| **Contamination C-01** | MIDI instrument | Dense chord excitation, nonlinear resonance and interacting dirty feedback | [Guide](docs/products/contamination/README.md) |
+| **Density D-01** | Audio effect | Physical pressure, nonlinear dynamics and rhythmic recovery | [Parameters](docs/PARAMETER_MODEL.md) |
+| **Harmonic H-01** | Audio effect | Broad spectral shaping intertwined with nonlinear harmonic colour | [Specification](docs/products/harmonic/SPECIFICATION.md) |
+| **Loop L-01** | Audio effect | Captured tapes, repeated generations, varispeed and transformed memory | [Specification](docs/products/loop/SPECIFICATION.md) |
+| **Field F-01** | Audio effect with MIDI excitation | Diffused reverberation, held spatial energy and evolving fragments | [Guide](docs/products/field/RELEASE_012.md) |
+| **Grain G-01** | Audio effect | Three granular memories with independent time and recursive routing | [Guide](docs/products/grain/README.md) |
+| **Sequence S-01** | MIDI instrument | Electrical articulation, polyphonic harmony and optional programmed patterns | [Specification](docs/products/sequence/SPECIFICATION.md) |
+| **Impulse I-01** | MIDI percussion instrument | Eight synthetic impact objects with editable independent cycles | [Parameters](docs/products/impulse/PARAMETERS.md) |
+| **Non-Machine N-01** | MIDI percussion instrument | Three sound objects, conditional events and nested rhythmic time | [Guide](docs/products/non-machine/README.md) |
+| **Resonator R-01** | MIDI instrument | Noise-excited harmonic structures and retained resonant energy | [Guide](docs/products/resonator/README.md) |
+| **Contamination C-01** | MIDI instrument | Polyphonic chord excitation, nonlinear resonance and degrading feedback | [Guide](docs/products/contamination/README.md) |
+| **Click K-01** | MIDI percussion instrument / sampler | Four click/sample objects, locked events, expressive rolls and nested audio repeats | [Guide](docs/products/click/README.md) |
 
-DSP is framework-independent C++20. JUCE is used at the plugin boundary.
-Products own their sound engines, parameters, state and interfaces; they do not
-link to one another's processors. Shared utilities cover genuinely common needs.
+## Start playing
 
-## Using Field 0.12.0
+In Cubase, add MIDI instruments to **Instrument Tracks** and audio effects to
+**inserts or sends**. The same instrument/effect distinction applies in other
+VST3 hosts. Audio effects need an incoming signal; a silent input is not a
+substitute for feeding or capturing material.
 
-Load **Field F-01** as an effect in Cubase. New instances start on **Clean room**.
-The six new starting points are:
+| Product | First action | Explore next |
+|---|---|---|
+| Density | Insert on a track or group and feed audio. | Density, Drive and Crush; shape breathing with Attack/Release. |
+| Harmonic | Insert on a track and shape the four broad frequency regions. | Harmonic adds nonlinear spectral interaction; Master sets final level. |
+| Loop | Feed audio and hold Capture to record a tape. | RELOOP, tape speed, reverse and generation changes. |
+| Field | Feed audio into Clean room; on a send set Blend to 100%. | Mass/Distance, Transform and FOREVER after sound has entered the field. |
+| Grain | Feed audio into A for at least half a second. | Select A/B/C, change grain timing/pitch, freeze material and connect routes. |
+| Sequence | Play MIDI; choose a polyphonic voice mode for chords. | Enable its programmed sequence for host-synced electrical patterns. |
+| Impulse | Start host transport with its sequencer enabled. | Edit the eight objects' patterns, cycle lengths and impact character. |
+| Non-Machine | Enable DAW SEQUENCE and start transport, or press HIT. | Edit event positions/locks, independent cycles and local/master holds. |
+| Resonator | Play a MIDI root or press EXCITE. | Choose individual-tone MIDI mode for direct harmony, then explore energy retention and retuning. |
+| Contamination | Play notes or chords; start with Submerged Chord or Corroded Stab. | Pressure, Contamination, Instability, Memory and Motion; clear accumulated state intentionally. |
+| Click | Start transport in Host sequence, or select MIDI only and play notes 36/38/42/46. | Drag event edges into rolls, load samples in Sound, and perform master/inner repeats. |
 
-- **Clean room** — short conventional space.
-- **Deep hall** — a larger diffused tail.
-- **Dark dub** — darker absorption and transformed material.
-- **Enormous space** — long spatial decay.
-- **Evolving field** — moving fragments and pitched wet sound.
-- **FOREVER** — hold existing spatial energy; feed sound before engaging hold.
+Product guides explain exact MIDI mappings, capture boundaries, modulation,
+source dependencies and limits. Preset menus provide starting material rather
+than requiring a patch to be built from scratch. Editors expose precise values,
+fine adjustment, automation feedback and an independent final Master Output.
 
-MASS sets decay; DISTANCE darkens the space. TRANSFORM enables the fragment and
-pitch readouts without the previous feedback-decay loss. Set TRANSFORM to zero
-for the conventional foundation. On a send, set BLEND to 100%. MASTER OUTPUT
-adjusts final level independently of the sound controls.
+## Development status and compatibility
 
-**Existing projects retain the original engine.** Choose **USE UPDATED SOUND**
-to adopt the new engine with current control values, or select a new factory
-preset. The nine older snapshots remain available with their original engine.
-Live reverb and phrase audio are not serialized into the session.
+The current source build version is **0.12.0**, defined in
+[CMakeLists.txt](CMakeLists.txt). Individual product guides also retain the
+versions at which their features or state contracts were introduced. A common
+build version does not imply every locally installed bundle was replaced.
 
-The installed build passed DSP regression, real-time audits, sanitizers, state
-and preset recall, native/Intel VST3 loading, parameter automation, sample-rate
-changes and simulated transport tests in a separate host. Cubase 14 was launched,
-but macOS blocked Accessibility control: actual plugin insertion and playback
-were **not verified in Cubase**. See the [complete validation limits](docs/products/field/RELEASE_012.md).
+These are playable local development instruments, not supported 1.0 releases.
+Some target names retain “experimental” because of their origins; the current
+plugins are built from the main product infrastructure. Offline laboratories
+remain separate historical evidence. Local macOS builds are ad-hoc signed,
+without Developer ID signing or notarization. Aste remains a provisional project
+name; plugin identifiers are kept for session compatibility.
 
-## Compatibility and workflow
+Parameter IDs and saved-state meaning are compatibility contracts. Updated
+responses use explicit revision metadata where needed; opening an old project
+must not silently adopt a new sound. Consult each product's guide before using
+**USE UPDATED SOUND**. Controls and patterns can recall while live resonant,
+spatial or captured audio starts empty: each instrument documents its policy.
+K-01 sample files are referenced by path and must remain available or be relinked.
 
-Parameter IDs and plugin identities are compatibility contracts. Updated sound
-engines use explicit revision metadata so older projects can keep their sound.
-An absent revision is not permission to reinterpret an existing session.
-
-Editors expose exact values, fine adjustment, automation feedback and final
-Master Output. In Cubase, MIDI instruments appear in the instrument list; audio
-effects appear in insert/send lists. Consult each product's guide for MIDI,
-clock, captured-audio recall and transport behavior.
-
-Contamination's 0.10.1 host-restart fix is retained: it reports a fixed **16 samples
-of latency** without repeatedly requesting host reconfiguration. Its revised
-0.11.0 circuit preserves older sessions through explicit adoption. Details and
-listening comparisons are in the [C-01 redesign report](research/c01-redesign/README.md).
+Validation is product-specific. See [Field's report](docs/products/field/RELEASE_012.md),
+[Grain's evidence](docs/products/grain/EVIDENCE.md),
+[Contamination's redesign](research/c01-redesign/README.md) and
+[Click's validation](docs/products/click/VALIDATION.md).
+Separate-host tests, native editor checks and pluginval are not claims of a
+completed musical or Cubase acceptance test for every product.
 
 ## Build and test
 
 Requirements: CMake 3.25+, a C++20 compiler, Python 3 for repository checks, and
 Xcode Command Line Tools on macOS. Optional VST3 builds fetch pinned JUCE 8.0.13
-unless a local source path is supplied. The framework-independent core build
-does not require JUCE or network access.
+unless a local source checkout is supplied. Core DSP builds do not require JUCE
+or network access.
 
-Build the core DSP, laboratories and tests:
+Build the framework-independent processors and tests:
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -111,7 +104,7 @@ cmake --build build --parallel 4
 ctest --test-dir build --output-on-failure
 ```
 
-Build universal macOS VST3 plugins and their adapter/host checks:
+Build all eleven universal macOS VST3s and their adapter/host checks:
 
 ```sh
 cmake -S . -B build-plugin-universal \
@@ -123,76 +116,86 @@ cmake --build build-plugin-universal --parallel 4
 ctest --test-dir build-plugin-universal --output-on-failure
 ```
 
-Bundles are under `<target>_artefacts/Release/VST3/`, for example
-`build-plugin-universal/FieldF01_artefacts/Release/VST3/Field F-01.vst3`.
-Building does not install or publish plugins. To enable AddressSanitizer and
-UndefinedBehaviorSanitizer for a separate test build, configure with
-`-DASTE_SANITIZERS=ON -DCMAKE_BUILD_TYPE=Debug`.
+For a targeted build, choose a product target from this table:
 
-The additional production-Field compatibility and FOREVER tests can be run with:
+| Product | Target / bundle folder | Installer ID |
+|---|---|---|
+| Density | `DensityD01` | `density-d01` |
+| Harmonic | `HarmonicH01` | `harmonic-h01` |
+| Loop | `LoopL01` | `loop-l01` |
+| Field | `FieldF01` | `field-f01` |
+| Grain | `GrainG01` | `grain-g01` |
+| Sequence | `SequenceS01` | `sequence-s01` |
+| Impulse | `ImpulseI01` | `impulse-i01` |
+| Non-Machine | `NonMachineN01` | `non-machine-n01` |
+| Resonator | `ResonatorR01` | `resonator-r01` |
+| Contamination | `ContaminationC01` | `contamination-c01` |
+| Click | `ClickK01` | `click-k01` |
+
+Append `_VST3` to a target to build its plugin, for example:
 
 ```sh
-cmake -S tests/field_shipping -B build-field-shipping -DCMAKE_BUILD_TYPE=Release
-cmake --build build-field-shipping --parallel 4
-ctest --test-dir build-field-shipping --output-on-failure
+cmake --build build-plugin-universal --target ClickK01_VST3 --parallel 4
 ```
+
+Bundles appear under `<target>_artefacts/Release/VST3/`, for example
+`build-plugin-universal/ClickK01_artefacts/Release/VST3/Click K-01.vst3`.
+Building does not install or publish plugins. For ASan/UBSan checks, configure
+a separate build with `-DASTE_SANITIZERS=ON -DCMAKE_BUILD_TYPE=Debug`.
+Additional Field production-compatibility checks live in `tests/field_shipping`.
 
 ## Local macOS installation
 
-Quit Cubase before replacing plugins. Verify the selected build without writing:
+Quit Cubase first. Verify a built selection without changing installed plugins:
 
 ```sh
 python3 tools/install_development_vst3.py \
-  --build-root build-plugin-universal --only field-f01 --check-only
+  --build-root build-plugin-universal --only click-k01 --check-only
 ```
 
-To install that verified selection, run the same command without `--check-only`
-with macOS administrator privileges. It installs to `/Library/Audio/Plug-Ins/VST3`,
-stages and verifies replacements, backs up prior bundles outside DAW scan paths,
-rolls back on failure and writes a receipt. It does not edit projects or Cubase
-preferences. `--only` accepts the product identifiers listed by `--help`.
+Remove `--check-only` to install that selection, with write access to
+`/Library/Audio/Plug-Ins/VST3`. Multiple IDs can follow `--only`. The installer
+verifies identity, version, architecture and signature, stages replacements,
+backs up prior bundles outside DAW scan paths, rolls back on failure and writes
+a receipt. Projects and Cubase preferences are not edited.
 
-Omitting `--only` selects all ten products, which must all be built at the current
-source version. A selective build does not refresh the other bundles; the
-installer rejects version mismatches. Avoid duplicate per-user and system copies.
+Omitting `--only` selects **all eleven products**, which must all be built at the
+current source version. A selective build does not refresh the other bundles;
+the installer rejects version mismatches. Avoid duplicate per-user/system copies.
+Reopen Cubase after installation and rescan plugins if necessary.
 
+The native AU/VST3 package workflow covers the original six products; the
+eleven-product local VST3 installer is separate. See
+[macOS installation](docs/MACOS_INSTALL.txt) and [versioning](docs/VERSIONING.md).
 [Published downloads](https://github.com/yairfalse/aste/releases), when available,
-include their own source, checksums and validation notes. The existing native
-AU/VST3 package workflow covers the original six products; the ten-product local
-VST3 installer is separate. See [macOS installation](docs/MACOS_INSTALL.txt)
-and [versioning](docs/VERSIONING.md).
+have their own source, checksums and validation notes and may lag this branch.
 
-## Engineering and evidence
+## Engineering and documentation
 
 Audio callbacks must not allocate, lock, wait, log or access files. Processing
 uses bounded storage and deterministic scheduling/randomness where specified.
 Tests cover state validation, numerical behavior, buffer partitions and host
-boundaries; measurement and musical listening remain separate evidence.
+boundaries; measurements and human listening remain separate evidence.
 
-Offline laboratories and listening-pack generators live under `research/` and
-`apps/dsp-lab/`. Historical reports describe their measured source revisions,
-not necessarily today's plugin. Generated local artifacts live under
-`build-evidence/`; they are not all committed or part of a published download.
-
-| Documentation | Purpose |
+| Topic | Documentation |
 |---|---|
-| [Architecture](docs/ARCHITECTURE.md) | Product boundaries and ownership |
-| [Parameter model](docs/PARAMETER_MODEL.md) | Stable IDs, ranges and smoothing |
-| [State format](docs/STATE_FORMAT.md) | Validation and compatibility |
-| [Real-time safety](docs/REALTIME_SAFETY.md) | Callback rules and runtime audits |
-| [Testing](docs/TESTING.md) | Test layers and measurement protocols |
-| [Host compatibility](docs/HOST_COMPATIBILITY.md) | Host evidence and its limits |
-| [UI system](docs/UI_SYSTEM.md) | Family design and interaction conventions |
-| [DSP research](docs/DSP_RESEARCH.md) | Experimental methods and claims |
-| [Release checklist](docs/RELEASE_CHECKLIST.md) | Distribution gates |
-| [Changelog](CHANGELOG.md) | Versioned changes |
+| Artistic direction | [Musical intent](docs/MUSICAL_INTENT.md) |
+| Parameters and sessions | [Parameter model](docs/PARAMETER_MODEL.md), product guides and state formats |
+| Interfaces and interaction | [UI system](docs/UI_SYSTEM.md) |
+| Hosts and validation | [Host compatibility](docs/HOST_COMPATIBILITY.md), [release checklist](docs/RELEASE_CHECKLIST.md) |
+| DSP and experiments | [DSP research](docs/DSP_RESEARCH.md), `research/`, `apps/dsp-lab/` |
+| Changes and compatibility | [Changelog](CHANGELOG.md), [versioning](docs/VERSIONING.md) |
+
+Historical laboratories/reports describe their recorded source revisions, not
+necessarily today's plugin. Build outputs, listening renders and caches stay
+outside the source history; reproducible generators and retained text evidence
+remain in the repository.
 
 ## Contributing and licensing
 
-Read [CONTRIBUTING.md](docs/CONTRIBUTING.md) before changing DSP, interfaces or
-state contracts, and [SECURITY.md](docs/SECURITY.md) for security reporting.
-Preserve unrelated work and existing sessions; document what was actually built,
-measured and tested.
+Read [CONTRIBUTING.md](docs/CONTRIBUTING.md) and [SECURITY.md](docs/SECURITY.md).
+Preserve existing sessions, explain the musical or engineering problem, and
+report what was actually built, measured and tested.
 
 Aste's original code is **AGPL-3.0-only**; see [LICENSE](LICENSE). This open-source
 JUCE build uses its AGPLv3 option. Third-party components retain their licenses;

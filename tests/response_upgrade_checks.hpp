@@ -29,9 +29,11 @@ void responseUpgradeChecks(Check require, int oldSchema) {
           "Recalled response offers an explicit upgrade action");
   if (!button) return;
   button->onClick();
-  require(!button->isEnabled() && button->getButtonText() == "CURRENT RESPONSE",
+  require(!button->isEnabled() && button->getButtonText() == "UPDATED SOUND",
           "Upgrade immediately reports its resulting state");
   expected->setAttribute("behavior", 1);
+  if (expected->hasAttribute("engine")) expected->setAttribute("engine", 2);
+  if (expected->hasAttribute("material")) expected->setAttribute("material", 1);
   if (expected->hasAttribute("clock")) expected->setAttribute("clock", 1);
   processor.getStateInformation(bytes);
   auto upgraded = juce::AudioProcessor::getXmlFromBinary(

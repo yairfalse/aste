@@ -33,11 +33,14 @@ void Processor::prepare(double sampleRate, const Parameters&) noexcept {
                            8000.0, 384000.0);
   outputSmoothing_ =
       static_cast<float>(1.0 - std::exp(-1.0 / (0.005 * sampleRate_)));
+  for (std::size_t i = 0; i < kTrackCount; ++i)
+    bodies_[i].prepare(sampleRate_, static_cast<unsigned>(i));
   reset();
 }
 
 void Processor::reset() noexcept {
   voices_ = {};
+  for (auto& body : bodies_) body.reset();
   lastTick_.fill(-1);
   midiOrdinals_.fill(0);
   expectedPpq_ = 0.0;
@@ -153,6 +156,8 @@ void Processor::process(float* left, float* right, std::size_t frames,
     meters_ = {};
     return;
   }
+  if (!parameters.materialBehavior)
+    for (auto& body : bodies_) body.reset();
   MeterSnapshot measured{};
   const double bpm = std::clamp(
       std::isfinite(transport.bpm) ? transport.bpm : 120.0, 20.0, 400.0);
@@ -251,7 +256,14 @@ void Processor::process(float* left, float* right, std::size_t frames,
     float mono{};
     float side{};
     for (std::size_t track = 0; track < kTrackCount; ++track) {
-      const float signal = renderVoice(track, parameters.legacyBehavior);
+      float signal = renderVoice(track, parameters.legacyBehavior);
+      if (parameters.materialBehavior) {
+        const auto& object = parameters.tracks[track];
+        const float body = bodies_[track].process(
+            signal, voices_[track].pitch, object.decayMs * .0025F, object.tone,
+            parameters.energy);
+        signal = .48F * signal + (.8F + .5F * parameters.energy) * body;
+      }
       mono += signal;
       side += signal * voices_[track].pan;
     }

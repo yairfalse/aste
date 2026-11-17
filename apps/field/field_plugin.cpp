@@ -18,29 +18,44 @@ constexpr auto kPanel = 0xff181e22U;
 constexpr auto kInk = 0xffe7e9e4U;
 constexpr auto kMuted = 0xff77858dU;
 constexpr auto kAccent = 0xff6d91a8U;
-constexpr std::array<const char*, 9> kParameterIds{
-    "forever",  "mass",  "grain",  "pitch", "motion",
-    "distance", "blend", "output", "bypass"};
+constexpr std::array<const char*, 18> kParameterIds{
+    "forever",    "mass",         "grain",   "pitch",        "motion",
+    "distance",   "blend",        "output",  "bypass",       "texture",
+    "focus",      "loop_hold",    "loop_ms", "inner_repeat", "inner_ms",
+    "loop_speed", "loop_reverse", "loop_mix"};
 
 struct FactoryPreset {
   const char* name;
   std::array<float, kParameterIds.size()> values;
 };
 
-constexpr std::array<FactoryPreset, 6> kPresets{{
-    {"Open Field",
-     {0.0F, 62.0F, 34.0F, 28.0F, 24.0F, 45.0F, 48.0F, -3.0F, 0.0F}},
-    {"Broadcast Hall",
-     {0.0F, 48.0F, 12.0F, 0.0F, 16.0F, 68.0F, 38.0F, -2.0F, 0.0F}},
-    {"Silver Memory",
-     {1.0F, 78.0F, 46.0F, 58.0F, 32.0F, 56.0F, 64.0F, -6.0F, 0.0F}},
-    {"Granite Cloud",
-     {0.0F, 88.0F, 72.0F, 36.0F, 66.0F, 74.0F, 72.0F, -7.0F, 0.0F}},
-    {"White Horizon",
-     {1.0F, 94.0F, 58.0F, 82.0F, 45.0F, 38.0F, 76.0F, -9.0F, 0.0F}},
-    {"Still Field",
-     {0.0F, 82.0F, 12.0F, 0.0F, 8.0F, 45.0F, 55.0F, -6.0F, 0.0F}},
+constexpr std::array<FactoryPreset, 15> kPresets{{
+    {"Open Field", {0, 75, 65, 55, 55, 20, 65, 0, 0, 70}},
+    {"Broadcast Hall", {0, 48, 12, 0, 16, 68, 38, -2, 0, 0}},
+    {"Silver Memory", {1, 78, 46, 70, 48, 24, 70, -2, 0, 80}},
+    {"Granite Cloud", {0, 88, 88, 46, 78, 32, 78, -3, 0, 95}},
+    {"White Horizon", {1, 94, 58, 90, 60, 18, 80, -3, 0, 85}},
+    {"Still Field", {0, 82, 12, 0, 8, 45, 55, -6, 0, 0}},
+    {"Moving glass", {0, 70, 65, 60, 72, 18, 65, -3, 0, 85, 75}},
+    {"Memory inside memory",
+     {0, 65, 40, 20, 45, 20, 90, -1, 0, 65, 70, 0, 1500, 0, 90, 1, 0, 90}},
+    {"Living field",
+     {0, 88, 60, 40, 55, 20, 65, -3, 0, 85, 45, 0, 1500, 0, 90, 1, 0, 0}},
+    {"Clean room", {0, 24, 0, 0, 4, 20, 28, 0, 0, 0, 12}},
+    {"Deep hall", {0, 65, 0, 0, 18, 35, 40, 0, 0, 0, 10}},
+    {"Dark dub", {0, 72, 32, 20, 38, 82, 42, 0, 0, 28, 45}},
+    {"Enormous space", {0, 97, 0, 0, 28, 38, 48, -2, 0, 0, 15}},
+    {"Evolving field", {0, 86, 64, 48, 70, 48, 52, -1, 0, 68, 38}},
+    {"FOREVER", {1, 88, 48, 30, 65, 55, 65, -2, 0, 54, 28}},
 }};
+
+float presetValue(const FactoryPreset& preset, std::size_t i) {
+  if (preset.values[i] != 0) return preset.values[i];
+  if (i == 12) return 1500.F;
+  if (i == 14) return 90.F;
+  if (i == 15) return 1.F;
+  return 0.F;
+}
 
 bool parseFiniteFloat(const juce::var& value, float& result) {
   double parsed{};
@@ -113,9 +128,9 @@ class FieldLookAndFeel final : public juce::LookAndFeel_V4 {
       graphics.drawEllipse(area.reduced(5), 2.0F);
     }
     graphics.setColour(active ? juce::Colour{kSurface} : juce::Colour{kInk});
-    graphics.setFont(juce::FontOptions{22.0F, juce::Font::bold});
-    graphics.drawText(button.getButtonText(), area,
-                      juce::Justification::centred);
+    graphics.setFont(juce::FontOptions{18.0F, juce::Font::bold});
+    graphics.drawFittedText(button.getButtonText(), area.toNearestInt(),
+                            juce::Justification::centred, 2, 1.F);
     graphics.setColour(active ? juce::Colour{kSurface}.withAlpha(0.7F)
                               : juce::Colour{kMuted});
     graphics.setFont(juce::FontOptions{10.0F, juce::Font::bold});
@@ -138,8 +153,11 @@ class Knob final : public juce::Component {
     slider_.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 78, 22);
     slider_.setDoubleClickReturnValue(true, initial);
     slider_.setTitle(name);
-    slider_.setDescription(aste::ui::explanation(id));
-    slider_.setTooltip(aste::ui::explanation(id));
+    slider_.setDescription(
+        aste::ui::explanation(id, state.processor.getName()));
+    slider_.setTooltip(
+        aste::ui::explanation(id, state.processor.getName()) +
+        " Shift-drag for fine adjustment; type an exact value below.");
     if (juce::String{id} == "pitch") {
       slider_.setDescription(
           "Amount of pitch-shifted audio returning into the field, not a "
@@ -155,6 +173,11 @@ class Knob final : public juce::Component {
     addAndMakeVisible(label_);
   }
 
+  void setHelp(const juce::String& text) {
+    slider_.setDescription(text);
+    slider_.setTooltip(text);
+    setDescription(text);
+  }
   void resized() override {
     auto area = getLocalBounds();
     label_.setBounds(area.removeFromTop(21));
@@ -162,7 +185,7 @@ class Knob final : public juce::Component {
   }
 
  private:
-  juce::Slider slider_;
+  aste::ui::PrecisionSlider slider_;
   juce::Label label_;
   juce::AudioProcessorValueTreeState::SliderAttachment attachment_;
 };
@@ -172,7 +195,7 @@ class FieldMeter final : public juce::Component, private juce::Timer {
   explicit FieldMeter(FieldAudioProcessor& processor) : processor_{processor} {
     setTitle("FIELD OBSERVATION");
     setDescription(
-        "Field activity measures the mono delay taps, not total stored energy. "
+        "Updated Field activity measures RMS across the late-network taps. "
         "Retention target is a coefficient before damping and pitch losses, "
         "not a measured decay time.");
     startTimerHz(30);
@@ -244,31 +267,140 @@ class FieldMeter final : public juce::Component, private juce::Timer {
   float retention_{};
 };
 
+class MemoryPanel final : public juce::Component, private juce::Timer {
+ public:
+  explicit MemoryPanel(FieldAudioProcessor& p)
+      : p_(p),
+        outer_{p.state(), "loop_ms", "OUTER PHRASE", " ms", 1500., 14},
+        inner_{p.state(), "inner_ms", "INNER FRAGMENT", " ms", 90., 16},
+        speed_{p.state(), "loop_speed", "SPEED", " x", 1., 17},
+        mix_{p.state(), "loop_mix", "MEMORY / FIELD", " %", 90., 19} {
+    const std::array<const char*, 3> ids{"loop_hold", "inner_repeat",
+                                         "loop_reverse"};
+    const std::array<const char*, 3> titles{"CAPTURE PHRASE", "REPEAT INSIDE",
+                                            "REVERSE"};
+    for (std::size_t i = 0; i < 3; ++i) {
+      buttons_[i].setButtonText(titles[i]);
+      buttons_[i].setTitle(titles[i]);
+      buttons_[i].setClickingTogglesState(true);
+      buttons_[i].setWantsKeyboardFocus(true);
+      addAndMakeVisible(buttons_[i]);
+      attachments_[i] = std::make_unique<
+          juce::AudioProcessorValueTreeState::ButtonAttachment>(
+          p.state(), ids[i], buttons_[i]);
+    }
+    buttons_[0].setTooltip(
+        "Capture the preceding outer phrase. Release returns to live audio; "
+        "capture again records a new phrase.");
+    buttons_[1].setTooltip(
+        "Repeat a short piece of the captured phrase. Release rejoins the "
+        "advancing outer phrase.");
+    for (auto* knob : {&outer_, &inner_, &speed_, &mix_})
+      addAndMakeVisible(knob);
+    startTimerHz(25);
+  }
+  void resized() override {
+    auto area = getLocalBounds().reduced(8);
+    area.removeFromTop(22);
+    area.removeFromBottom(14);
+    auto actions = area.removeFromLeft(190);
+    for (auto& button : buttons_)
+      button.setBounds(actions.removeFromTop(30).reduced(0, 2));
+    const int width = area.getWidth() / 4;
+    for (auto* knob : {&outer_, &inner_, &speed_, &mix_})
+      knob->setBounds(area.removeFromLeft(width));
+  }
+  void paint(juce::Graphics& g) override {
+    g.setColour(juce::Colour{kPanel});
+    g.fillRect(getLocalBounds());
+    const unsigned state = p_.loopStatus();
+    g.setColour(juce::Colour{kInk});
+    g.setFont(juce::FontOptions{11.F});
+    g.drawText("LOOP WITHIN LOOP / " +
+                   juce::String{state & 4   ? "WAITING FOR INPUT HISTORY"
+                                : state & 2 ? "INNER REPEATING / OUTER ADVANCES"
+                                : state & 1 ? "CAPTURED PHRASE"
+                                            : "LIVE / CAPTURE TO REPEAT"},
+               8, 2, getWidth() - 16, 20, juce::Justification::centredLeft);
+    const int width = getWidth() - 16;
+    g.setColour(juce::Colour{kMuted});
+    g.fillRect(8, getHeight() - 12, width, 3);
+    if (state & 1) {
+      g.setColour(juce::Colour{kAccent});
+      g.fillRect(8, getHeight() - 12,
+                 static_cast<int>(width * p_.loopPosition()), 3);
+    }
+  }
+
+ private:
+  void timerCallback() override {
+    buttons_[0].setButtonText(buttons_[0].getToggleState() ? "RELEASE PHRASE"
+                                                           : "CAPTURE PHRASE");
+    buttons_[1].setButtonText(buttons_[1].getToggleState() ? "RELEASE INNER"
+                                                           : "REPEAT INSIDE");
+    repaint();
+  }
+  FieldAudioProcessor& p_;
+  Knob outer_, inner_, speed_, mix_;
+  std::array<juce::TextButton, 3> buttons_;
+  std::array<
+      std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>, 3>
+      attachments_;
+};
+
 class FieldEditor final : public juce::AudioProcessorEditor,
                           private juce::Timer {
  public:
   explicit FieldEditor(FieldAudioProcessor& processor)
       : AudioProcessorEditor{processor},
         processor_{processor},
+        master_{processor.state()},
         meter_{processor},
         foreverAttachment_{processor.state(), "forever", forever_},
+        memory_{processor},
         mass_{processor.state(), "mass", "MASS", " %", 62.0, 2},
         grain_{processor.state(), "grain", "GRAIN", " %", 34.0, 3},
         pitch_{processor.state(), "pitch", "PITCH", " %", 28.0, 4},
         motion_{processor.state(), "motion", "MOTION", " %", 24.0, 5},
         distance_{processor.state(), "distance", "DISTANCE", " %", 45.0, 6},
         blend_{processor.state(), "blend", "BLEND", " %", 48.0, 7},
-        output_{processor.state(), "output", "OUTPUT", " dB", -3.0, 8} {
+        output_{processor.state(), "output", "OUTPUT", " dB", -3.0, 8},
+        texture_{processor.state(), "texture", "TRANSFORM", " %", 70.0, 11},
+        focus_{processor.state(), "focus", "FOCUS", " %", 75.0, 12} {
     setLookAndFeel(&lookAndFeel_);
-    forever_.setButtonText("FOREVER");
+    mass_.setHelp(
+        "Decay and spatial mass: 0.25 to 16 seconds in the updated engine.");
+    texture_.setHelp(
+        "TRANSFORM: blend evolving fragment and pitch readouts; zero gives the "
+        "clean reverb foundation.");
+    grain_.setHelp(
+        "Fragment movement amount, enabled by Transform. Does not shorten the "
+        "feedback decay.");
+    pitch_.setHelp(
+        "Pitch-shifted wet readout amount, enabled by Transform. Focus moves "
+        "the interval from fifth to octave.");
+    focus_.setHelp(
+        "Clarify low-mid energy and move the transformed pitch interval.");
+    addAndMakeVisible(master_);
+    workflow_.bind(
+        *this, "INPUT > DIFFUSED SPACE > TRANSFORM > FOREVER > MASTER",
+        "MASS sets decay; DISTANCE darkens the space. TRANSFORM enables "
+        "Grain and Pitch without shortening the decay. Feed audio "
+        "before FOREVER holds its stored energy.");
+    addAndMakeVisible(workflow_);
+    addAndMakeVisible(memory_);
+    addAndMakeVisible(focus_);
+    forever_.setButtonText("HOLD SPATIAL TAIL");
     forever_.setTitle("FOREVER");
     forever_.setDescription("Hold or release the stored spatial field");
     forever_.setClickingTogglesState(true);
     forever_.setWantsKeyboardFocus(true);
     forever_.setExplicitFocusOrder(1);
     forever_.setTooltip(
-        "Hold and evolve the field: adds grain, pitch and motion. Feed audio "
-        "or MIDI notes first.");
+        "Capture the existing spatial energy and close its input. Motion and "
+        "Transform "
+        "keep their control values. Release to admit new audio and resume "
+        "decay.");
     clear_.setButtonText("CLEAR FIELD");
     clear_.setTitle("CLEAR FIELD");
     clear_.setExplicitFocusOrder(10);
@@ -289,13 +421,22 @@ class FieldEditor final : public juce::AudioProcessorEditor,
     for (const auto& snapshot : kPresets)
       preset_.addSnapshot(processor_, processor_.state(), [&](auto set) {
         for (std::size_t i = 0; i < snapshot.values.size(); ++i)
-          set(kParameterIds[i], snapshot.values[i]);
+          set(kParameterIds[i], presetValue(snapshot, i));
       });
+    preset_.setMatchFilter([this](std::size_t index) {
+      return (index >= 9) == processor_.usesDiffuseSpace();
+    });
     preset_.watch(processor_);
-    response_.bind([this] { return !processor_.usesLegacyBehavior(); },
-                   [this] { processor_.useCurrentResponse(); },
-                   "Use independent hold coloration. Grain, Pitch and Motion "
-                   "stay at their controls.");
+    response_.bind(
+        [this] {
+          return processor_.usesDiffuseSpace() &&
+                 !processor_.usesLegacyBehavior() &&
+                 processor_.usesMaterialResponse();
+        },
+        [this] { processor_.useCurrentResponse(); },
+        "Use the dense diffused reverb. Existing projects keep their original "
+        "engine "
+        "until you explicitly adopt the updated sound.");
     addAndMakeVisible(response_);
     preset_.onChange = [this] {
       if (const int selected = preset_.getSelectedId(); selected > 0) {
@@ -303,13 +444,13 @@ class FieldEditor final : public juce::AudioProcessorEditor,
         preset_.remember(processor_);
       }
     };
-    for (auto* component : std::array<juce::Component*, 10>{
+    for (auto* component : std::array<juce::Component*, 11>{
              &meter_, &forever_, &mass_, &grain_, &pitch_, &motion_, &distance_,
-             &blend_, &output_, &preset_})
+             &blend_, &output_, &preset_, &texture_})
       addAndMakeVisible(component);
     setResizable(true, true);
-    setResizeLimits(900, 520, 1800, 1040);
-    setSize(1080, 620);
+    setResizeLimits(900, 680, 1800, 1200);
+    setSize(1080, 800);
     timerCallback();
     startTimerHz(15);
   }
@@ -325,36 +466,37 @@ class FieldEditor final : public juce::AudioProcessorEditor,
                       juce::Justification::centredLeft);
     graphics.setColour(juce::Colour{kAccent});
     graphics.setFont(juce::FontOptions{12.0F, juce::Font::bold});
-    header.removeFromRight(210);
+    header = juce::Rectangle<int>{24, 53, 310, 16};
     graphics.drawText("F-01 / STORED SPATIAL ENERGY", header,
-                      juce::Justification::centredRight);
+                      juce::Justification::centredLeft);
     graphics.setColour(juce::Colour{kMuted}.withAlpha(0.35F));
     graphics.fillRect(24, 74, getWidth() - 48, 1);
     graphics.setColour(juce::Colour{kInk});
     graphics.setFont(juce::FontOptions{11.0F});
-    graphics.drawText(
-        "Hold evolves. Sessions recall controls, not held audio; print audio "
-        "to keep it.",
-        24, getHeight() - 24, getWidth() - 260, 20,
-        juce::Justification::centredLeft);
   }
 
   void resized() override {
-    preset_.setBounds(getWidth() - 204, 28, 180, 28);
+    workflow_.setBounds(24, getHeight() - 80, getWidth() - 48, 48);
+    preset_.setBounds(getWidth() - 414, 28, 180, 28);
+    master_.setBounds(getWidth() - 214, 18, 190, 46);
     response_.setBounds(getWidth() - 224, getHeight() - 30, 200, 24);
     auto area = getLocalBounds().reduced(24);
     area.removeFromTop(68);
-    area.removeFromBottom(24);
+    area.removeFromBottom(60);
+    memory_.setBounds(area.removeFromBottom(160));
+    area.removeFromBottom(12);
     meter_.setBounds(area.removeFromLeft(142));
     area.removeFromLeft(20);
-    auto hero = area.removeFromLeft(std::min(310, area.getWidth() / 2));
+    auto hero = area.removeFromLeft(std::min(220, area.getWidth() / 3));
     clear_.setBounds(hero.removeFromBottom(32).reduced(18, 0));
+    focus_.setBounds(hero.removeFromBottom(110).reduced(18, 0));
     forever_.setBounds(hero.reduced(18));
     area.removeFromLeft(16);
     const int columnWidth = std::max(1, area.getWidth() / 4);
     const int rowHeight = std::max(1, area.getHeight() / 2);
-    const std::array<Knob*, 7> controls{&mass_,     &grain_, &pitch_, &motion_,
-                                        &distance_, &blend_, &output_};
+    const std::array<Knob*, 8> controls{&mass_,   &grain_,    &pitch_,
+                                        &motion_, &distance_, &blend_,
+                                        &output_, &texture_};
     for (std::size_t index = 0; index < controls.size(); ++index) {
       const int column = static_cast<int>(index % 4U);
       const int row = static_cast<int>(index / 4U);
@@ -383,10 +525,13 @@ class FieldEditor final : public juce::AudioProcessorEditor,
   }
   FieldLookAndFeel lookAndFeel_;
   FieldAudioProcessor& processor_;
+  aste::ui::MasterOutput master_;
+  aste::ui::WorkflowGuide workflow_;
   FieldMeter meter_;
   juce::ToggleButton forever_;
   juce::TextButton clear_;
   juce::AudioProcessorValueTreeState::ButtonAttachment foreverAttachment_;
+  MemoryPanel memory_;
   Knob mass_;
   Knob grain_;
   Knob pitch_;
@@ -394,6 +539,8 @@ class FieldEditor final : public juce::AudioProcessorEditor,
   Knob distance_;
   Knob blend_;
   Knob output_;
+  Knob texture_;
+  Knob focus_;
   aste::ui::PresetMenu preset_;
   aste::ui::ResponseButton response_;
   juce::TooltipWindow tooltips_{this, 400};
@@ -418,20 +565,41 @@ FieldAudioProcessor::createParameterLayout() {
       juce::NormalisableRange<float>{-18.0F, 12.0F, 0.01F}, -3.0F, attributes));
   layout.add(std::make_unique<juce::AudioParameterBool>(
       juce::ParameterID{"bypass", 1}, "Bypass", false));
+  aste::ui::MasterGain::addParameter(layout, 0.F);
+  addPercent(layout, "texture", "Texture", 70.F);
+  addPercent(layout, "focus", "Focus", 0.F);
+  layout.add(std::make_unique<juce::AudioParameterBool>(
+      juce::ParameterID{"loop_hold", 1}, "Capture phrase", false));
+  const auto addTime = [&](const char* id, const char* name, float low,
+                           float high, float initial) {
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID{id, 1}, name,
+        juce::NormalisableRange<float>{low, high, .01F}, initial));
+  };
+  addTime("loop_ms", "Outer phrase ms", 20, 4000, 1500);
+  layout.add(std::make_unique<juce::AudioParameterBool>(
+      juce::ParameterID{"inner_repeat", 1}, "Repeat inner fragment", false));
+  addTime("inner_ms", "Inner fragment ms", 4, 1000, 90);
+  addTime("loop_speed", "Loop speed", .25F, 2, 1);
+  layout.add(std::make_unique<juce::AudioParameterBool>(
+      juce::ParameterID{"loop_reverse", 1}, "Reverse fragment", false));
+  addPercent(layout, "loop_mix", "Memory / field", 0.F);
   return layout;
 }
 
 FieldAudioProcessor::FieldAudioProcessor()
-    : AudioProcessor{
-          BusesProperties{}
-              .withInput("Input", juce::AudioChannelSet::stereo(), true)
-              .withOutput("Output", juce::AudioChannelSet::stereo(), true)},
+    : AudioProcessor{BusesProperties{}
+                         .withInput("Input", juce::AudioChannelSet::stereo(),
+                                    true)
+                         .withOutput("Output", juce::AudioChannelSet::stereo(),
+                                     true)},
       state_{*this, nullptr, kStateType, createParameterLayout()} {
+  masterGain_.bind(state_);
   for (std::size_t index = 0; index < kParameterIds.size(); ++index) {
     parameterValues_[index] = state_.getRawParameterValue(kParameterIds[index]);
     jassert(parameterValues_[index] != nullptr);
   }
-  loadFactoryPreset(5);
+  loadFactoryPreset(9);
 }
 
 Parameters FieldAudioProcessor::currentParameters() const noexcept {
@@ -447,10 +615,22 @@ Parameters FieldAudioProcessor::currentParameters() const noexcept {
           .blend = value(blend) * 0.01F,
           .outputDb = value(output),
           .bypass = value(bypass) >= 0.5F,
-          .legacyBehavior = usesLegacyBehavior()};
+          .legacyBehavior = usesLegacyBehavior(),
+          .loopHold = value(loopHold) >= .5F,
+          .innerRepeat = value(innerRepeat) >= .5F,
+          .loopReverse = value(loopReverse) >= .5F,
+          .loopMs = value(loopMs),
+          .innerMs = value(innerMs),
+          .loopSpeed = value(loopSpeed),
+          .loopMix = value(loopMix) * .01F,
+          .focus = value(focus) * .01F,
+          .materialBehavior = usesMaterialResponse() && !usesLegacyBehavior(),
+          .diffuseBehavior = usesDiffuseSpace() && !usesLegacyBehavior(),
+          .texture = value(texture) * .01F};
 }
 
 void FieldAudioProcessor::prepareToPlay(double sampleRate, int) {
+  masterGain_.prepare(sampleRate);
   processor_.prepare(sampleRate);
   setLatencySamples(0);
   publishMeters({});
@@ -490,13 +670,14 @@ void FieldAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
         juce::jlimit(0, buffer.getNumSamples(), metadata.samplePosition);
     processRange(buffer, processed, position - processed, parameters);
     processed = position;
-    const auto& message = metadata.getMessage();
-    if (message.isNoteOn())
-      processor_.noteOn(message.getNoteNumber(), message.getFloatVelocity());
+    if (metadata.numBytes == 3 && (metadata.data[0] & 0xf0U) == 0x90U &&
+        metadata.data[2] > 0)
+      processor_.noteOn(metadata.data[1], metadata.data[2] / 127.F);
   }
   processRange(buffer, processed, buffer.getNumSamples() - processed,
                parameters);
   publishMeters(processor_.meters());
+  outputPeak_.store(masterGain_.process(buffer), std::memory_order_relaxed);
 }
 
 void FieldAudioProcessor::processBlockBypassed(juce::AudioBuffer<float>& buffer,
@@ -513,6 +694,11 @@ void FieldAudioProcessor::processBlockBypassed(juce::AudioBuffer<float>& buffer,
 }
 
 void FieldAudioProcessor::publishMeters(const MeterSnapshot& meters) noexcept {
+  loopPosition_.store(meters.loopPosition, std::memory_order_relaxed);
+  loopStatus_.store((meters.loopActive ? 1U : 0U) |
+                        (meters.innerActive ? 2U : 0U) |
+                        (meters.loopWaiting ? 4U : 0U),
+                    std::memory_order_relaxed);
   inputPeak_.store(meters.inputPeak, std::memory_order_relaxed);
   outputPeak_.store(meters.outputPeak, std::memory_order_relaxed);
   fieldEnergy_.store(meters.fieldEnergy, std::memory_order_relaxed);
@@ -541,12 +727,19 @@ juce::String FieldAudioProcessor::factoryPresetName(int index) {
 }
 void FieldAudioProcessor::loadFactoryPreset(int index) {
   if (!juce::isPositiveAndBelow(index, factoryPresetCount())) return;
+  if (index >= 9)
+    useCurrentResponse();
+  else {
+    if (engineRevision_.exchange(1) != 1) clearRequested_.store(true);
+    if (index == 8) materialRevision_.adopt();
+  }
   const auto& preset = kPresets[static_cast<std::size_t>(index)];
-  legacyBehavior_.store(index < 5, std::memory_order_relaxed);
+  legacyBehavior_.store(index < 5 && preset.values[9] == 0,
+                        std::memory_order_relaxed);
   for (std::size_t parameter = 0; parameter < preset.values.size(); ++parameter)
     if (auto* target = state_.getParameter(kParameterIds[parameter]))
       target->setValueNotifyingHost(
-          target->convertTo0to1(preset.values[parameter]));
+          target->convertTo0to1(presetValue(preset, parameter)));
 }
 
 juce::AudioProcessorParameter* FieldAudioProcessor::getBypassParameter() const {
@@ -557,7 +750,10 @@ void FieldAudioProcessor::getStateInformation(juce::MemoryBlock& destination) {
   auto state = state_.copyState();
   state.setProperty("schema", kStateSchema, nullptr);
   state.setProperty("product", kStateType, nullptr);
+  state.setProperty("engine", usesDiffuseSpace() ? 2 : 1, nullptr);
   state.setProperty("behavior", usesLegacyBehavior() ? 0 : 1, nullptr);
+  state.removeProperty("material", nullptr);
+  materialRevision_.write(state);
   if (const auto xml = state.createXml()) copyXmlToBinary(*xml, destination);
 }
 
@@ -571,9 +767,13 @@ void FieldAudioProcessor::setStateInformation(const void* data, int size) {
        restored.getProperty("schema").toString() != "2"))
     return;
   const bool oldSchema = restored.getProperty("schema").toString() == "1";
+  const auto engine = restored.getProperty("engine", 1).toString();
+  if (engine != "1" && engine != "2") return;
   const auto behavior = restored.getProperty("behavior").toString();
   if (!oldSchema && behavior != "0" && behavior != "1") return;
   const bool legacy = oldSchema || behavior == "0";
+  bool material = false;
+  if (!aste::parameters::MaterialRevision::parse(restored, material)) return;
   auto validated = state_.copyState();
   for (int index = 0; index < validated.getNumChildren(); ++index) {
     auto child = validated.getChild(index);
@@ -599,11 +799,30 @@ void FieldAudioProcessor::setStateInformation(const void* data, int size) {
     destination.setProperty(
         "value", juce::jlimit(range.start, range.end, value), nullptr);
   }
+  if (!seen.contains("texture"))
+    validated.getChildWithProperty("id", "texture")
+        .setProperty("value", 0.F, nullptr);
+  for (const auto* id :
+       {"loop_hold", "inner_repeat", "loop_reverse", "loop_mix"})
+    if (!seen.contains(id))
+      validated.getChildWithProperty("id", id).setProperty("value", 0.F,
+                                                           nullptr);
+  if (!seen.contains("focus"))
+    validated.getChildWithProperty("id", "focus")
+        .setProperty("value", 0.F, nullptr);
+  if (!seen.contains("master"))
+    validated.getChildWithProperty("id", "master")
+        .setProperty("value", 0.F, nullptr);
   validated.setProperty("schema", kStateSchema, nullptr);
   validated.setProperty("product", kStateType, nullptr);
+  validated.setProperty("engine", oldSchema ? 1 : engine.getIntValue(),
+                        nullptr);
   validated.setProperty("behavior", legacy ? 0 : 1, nullptr);
+  engineRevision_.store(oldSchema ? 1 : engine.getIntValue());
   legacyBehavior_.store(legacy, std::memory_order_relaxed);
+  materialRevision_.set(material);
   state_.replaceState(validated);
+  clearRequested_.store(true, std::memory_order_release);
 }
 
 juce::AudioProcessorEditor* FieldAudioProcessor::createEditor() {

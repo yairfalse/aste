@@ -17,6 +17,8 @@ struct Parameters {
   float detectorHpfHz{90.0F};
   bool protection{true};
   bool legacyBehavior{};
+  float character{};
+  bool materialBehavior{};
 };
 
 struct DensityMapping {
@@ -157,6 +159,11 @@ class Processor {
   bool coefficientAttack_{};
   Smoother attackLogStage2_{};
   Smoother crush_{};
+  Smoother character_{};
+  std::array<float, 2> weightLow_{};
+  float weightPower_{};
+  std::array<HighPass, 2> characterDc_{};
+  std::array<double, 2> characterPrevious_{};
   Smoother density_{};
   Smoother blend_{};
   Smoother blendStage2_{};

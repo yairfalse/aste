@@ -181,6 +181,8 @@ PressureMapping Processor::mapPressure(float amount) noexcept {
 void Processor::prepare(double sampleRate, const Parameters& initial) noexcept {
   sampleRate_ = std::clamp(std::isfinite(sampleRate) ? sampleRate : 48000.0,
                            8000.0, 384000.0);
+  performancePressure_.prepare(sampleRate_, .008, 0);
+  performanceBrightness_.prepare(sampleRate_, .012, 0);
   pressure_.prepare(sampleRate_, 0.010,
                     bounded(initial.pressure, 0.0F, 1.0F, 0.35F));
   shape_.prepare(sampleRate_, 0.010, bounded(initial.shape, 0.0F, 1.0F, 0.25F));
@@ -205,6 +207,9 @@ void Processor::prepare(double sampleRate, const Parameters& initial) noexcept {
 }
 
 void Processor::reset() noexcept {
+  expressionPressure_ = expressionBrightness_ = expressionTouch_ = 0;
+  performancePressure_.snap(0);
+  performanceBrightness_.snap(0);
   phase1_ = 0.0;
   phase2_ = 0.17;
   subPhase_ = 0.0;
@@ -222,6 +227,9 @@ void Processor::reset() noexcept {
   timelineFrames_ = 0;
   meters_ = {};
   meters_.currentStep = -1.0F;
+  resetWideVoices();
+  voiceMode_ = 0;
+  wideSequencing_ = false;
 }
 
 int Processor::heldNote() const noexcept {
@@ -235,6 +243,10 @@ int Processor::heldNote() const noexcept {
 
 void Processor::startNote(int note, float velocity, bool accent, bool slide,
                           float glideMs) noexcept {
+  if (voiceMode_ != 0) {
+    startWideNote(note, velocity, accent, slide, glideMs, false);
+    return;
+  }
   const float target = midiFrequency(note);
   if (!slide || !envelope_.active()) {
     frequency_.snap(target);
@@ -249,12 +261,21 @@ void Processor::startNote(int note, float velocity, bool accent, bool slide,
   envelope_.noteOn(!slide);
 }
 
-void Processor::stopNote() noexcept { envelope_.noteOff(); }
+void Processor::stopNote() noexcept {
+  envelope_.noteOff();
+  if (voiceMode_ != 0) {
+    voices_[0].amplitude.noteOff();
+    voices_[0].contour.noteOff();
+    voices_[0].down = false;
+  }
+}
 
 void Processor::handleMidi(const MidiEvent& event, bool sequencerRunning,
                            float glideMs, bool legacyBehavior) noexcept {
   const int note = std::clamp(event.note, 0, 127);
   switch (event.type) {
+    case MidiEventType::expression:
+      return;
     case MidiEventType::noteOn:
       if (event.velocity <= 0.0F) {
         heldNotes_[static_cast<std::size_t>(note)] = false;
@@ -282,6 +303,8 @@ void Processor::handleMidi(const MidiEvent& event, bool sequencerRunning,
           }
         }
       }
+      break;
+    case MidiEventType::sustain:
       break;
     case MidiEventType::allNotesOff:
       heldNotes_.fill(false);
@@ -346,8 +369,219 @@ void Processor::updateSequencer(const Parameters& parameters,
   wasPlaying_ = true;
 }
 
+void Processor::resetWideVoices() noexcept {
+  voices_ = {};
+  voiceAge_ = 0;
+  sustainDown_ = false;
+  for (std::size_t i = 0; i < voices_.size(); ++i) {
+    auto& v = voices_[i];
+    v.note = -1;
+    v.phase1 = i * 0.113;
+    v.phase2 = 0.19 + i * 0.071;
+    v.motion = i * 0.119;
+    v.pitch.prepare(sampleRate_, 0.001, 220.F);
+  }
+}
+
+void Processor::startWideNote(int note, float velocity, bool accent, bool slide,
+                              float glideMs, bool polyphonic) noexcept {
+  std::size_t selected = 0;
+  if (polyphonic) {
+    bool found = false;
+    for (std::size_t i = 0; i < voices_.size(); ++i) {
+      if (!voices_[i].amplitude.active()) {
+        selected = i;
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      // Prefer the quietest released voice, then the oldest held voice.
+      for (std::size_t i = 1; i < voices_.size(); ++i) {
+        const auto& a = voices_[i];
+        const auto& b = voices_[selected];
+        if ((!a.down && b.down) ||
+            (!a.down && !b.down && a.amplitude.value_ < b.amplitude.value_) ||
+            (a.down && b.down && a.age < b.age))
+          selected = i;
+      }
+    }
+  }
+  auto& v = voices_[selected];
+  const bool legato = slide && v.down && v.amplitude.active();
+  if (!legato) {
+    if (v.amplitude.active()) {
+      v.stolenOutput = v.lastOutput;
+      v.stealFade = static_cast<int>(sampleRate_ * .003);
+      v.amplitude.reset();
+      v.contour.reset();
+      v.filter.fill(0.F);
+    }
+    v.pitch.snap(midiFrequency(note));
+    // Keep free-running phase; preserve the current level when stealing.
+    if (!v.amplitude.active()) v.filter.fill(0.F);
+  } else {
+    const float seconds = bounded(glideMs, 0.F, 1000.F, 70.F) * .001F;
+    v.pitch.coefficient_ =
+        seconds <= 0
+            ? 0.F
+            : static_cast<float>(std::exp(-1.0 / (seconds * sampleRate_)));
+    v.pitch.setTarget(midiFrequency(note));
+  }
+  v.note = note;
+  v.velocity = bounded(velocity, 0.F, 1.F, 0.8F);
+  v.accent = accent ? 1.F : 0.F;
+  v.down = true;
+  v.age = ++voiceAge_;
+  v.amplitude.noteOn(!legato);
+  v.contour.noteOn(!legato);
+}
+
+void Processor::wideMidi(const MidiEvent& event, bool sequencerRunning,
+                         const Parameters& p) noexcept {
+  const int note = std::clamp(event.note, 0, 127);
+  if (event.type == MidiEventType::sustain) {
+    sustainDown_ = event.velocity >= .5F;
+    if (!sustainDown_ && !sequencerRunning)
+      for (auto& v : voices_)
+        if (!v.down) {
+          v.amplitude.noteOff();
+          v.contour.noteOff();
+        }
+    return;
+  }
+  if (event.type == MidiEventType::allNotesOff) {
+    heldNotes_.fill(false);
+    lastMidiNote_ = -1;
+    sustainDown_ = false;
+    if (!sequencerRunning)
+      for (auto& v : voices_) {
+        v.down = false;
+        v.amplitude.noteOff();
+        v.contour.noteOff();
+      }
+    return;
+  }
+  const bool on = event.type == MidiEventType::noteOn && event.velocity > 0;
+  heldNotes_[static_cast<std::size_t>(note)] = on;
+  if (on)
+    lastMidiNote_ = note;
+  else if (lastMidiNote_ == note)
+    lastMidiNote_ = heldNote();
+  if (sequencerRunning) return;
+  if (p.voiceMode == 1) {
+    // Retriggering a held key replaces its voice, rather than stacking stuck
+    // notes.
+    for (auto& v : voices_)
+      if (v.note == note && v.down) {
+        v.down = false;
+        if (on || !sustainDown_) {
+          v.amplitude.noteOff();
+          v.contour.noteOff();
+        }
+      }
+    if (on) startWideNote(note, event.velocity, false, false, p.glideMs, true);
+  } else if (on) {
+    startWideNote(note, event.velocity, event.velocity > .9F, true, p.glideMs,
+                  false);
+  } else if (voices_[0].note == note) {
+    if (lastMidiNote_ >= 0)
+      startWideNote(lastMidiNote_, voices_[0].velocity, false, true, p.glideMs,
+                    false);
+    else {
+      voices_[0].down = false;
+      if (!sustainDown_) stopNote();
+    }
+  }
+}
+
+std::array<float, 3> Processor::renderWide(const Parameters& p, float pressure,
+                                           float shape, float pulseWidth,
+                                           float mix, float sub, float cutoff,
+                                           float resonance, float weight,
+                                           float drive, float output) noexcept {
+  std::array<float, 3> result{};
+  const bool poly = voiceMode_ == 1 && !wideSequencing_;
+  const float detune = bounded(p.detuneSemitones, -12.F, 12.F, .08F);
+  const float depth = bounded(p.envelopeAmount, 0.F, 1.F, .55F);
+  const float gain = dbToGain(output) * (poly ? .46F : .9F);
+  for (std::size_t i = 0; i < voices_.size(); ++i) {
+    auto& v = voices_[i];
+    // Motion and oscillators remain free-running while the voice is idle.
+    v.motion += (0.09 + i * .013) / sampleRate_;
+    v.motion -= std::floor(v.motion);
+    const float motion = std::sin(2.F * std::numbers::pi_v<float> *
+                                  static_cast<float>(v.motion));
+    const float offset = (static_cast<float>(i) - 3.5F) * .003F;
+    const float f = v.pitch.next();
+    const float a = oscillator(
+        v.phase1, f * std::exp2((offset + .018F * motion) / 12.F), shape,
+        std::clamp(pulseWidth + .025F * motion, .1F, .9F), true);
+    const float b = oscillator(
+        v.phase2, f * std::exp2((detune - offset - .013F * motion) / 12.F),
+        shape, std::clamp(pulseWidth - .025F * motion, .1F, .9F), true);
+    const float low = oscillator(v.subPhase, f * .5F, 1.F, .5F);
+    if (!v.amplitude.active()) continue;
+    const float amp = v.amplitude.process(sampleRate_, p.attackMs, p.decayMs,
+                                          p.sustain, p.releaseMs);
+    // A separate, decaying filter contour leaves sustained chords warm rather
+    // than holding the filter at the amplifier's sustain level.
+    const float env = v.contour.process(
+        sampleRate_, p.filterAttackMs > 0 ? p.filterAttackMs : p.attackMs,
+        p.filterDecayMs > 0 ? p.filterDecayMs : p.decayMs, p.filterSustain,
+        p.releaseMs);
+    const float accent = v.accent * pressure;
+    const float tracking =
+        std::exp2((static_cast<float>(v.note) - 60.F) * .35F / 12.F);
+    const float hz =
+        std::clamp(cutoff * tracking *
+                       std::exp2(depth * (3.4F + 1.5F * pressure) * env *
+                                     (.65F + .35F * v.velocity) +
+                                 accent),
+                   20.F, static_cast<float>(sampleRate_ * .18));
+    const float g = std::tan(std::numbers::pi_v<float> * hz /
+                             static_cast<float>(sampleRate_));
+    const float k = 2.F - 1.78F * resonance;
+    const float a1 = 1.F / (1.F + g * (g + k));
+    const auto lowpass = [&](float input, std::size_t index) {
+      const float band =
+          a1 * (v.filter[index] + g * (input - v.filter[index + 1]));
+      const float lowpassOut = v.filter[index + 1] + g * band;
+      v.filter[index] = flush(2.F * band - v.filter[index]);
+      v.filter[index + 1] = flush(2.F * lowpassOut - v.filter[index + 1]);
+      return lowpassOut;
+    };
+    const float loading = 1.F + 1.8F * drive + 1.2F * pressure;
+    const float source = (1.F - mix) * a + mix * b + .4F * sub * low;
+    const float two =
+        lowpass(std::tanh(loading * source) / std::sqrt(loading), 0);
+    const float four = lowpass(two, 2);
+    float signal = (two + weight * (four - two)) * (1.F + .35F * resonance);
+    signal *= amp * (.65F + .35F * v.velocity) * (1.F + .4F * accent) * gain;
+    if (v.stealFade > 0) {
+      const float blend =
+          static_cast<float>(v.stealFade) /
+          static_cast<float>(static_cast<int>(sampleRate_ * .003));
+      signal = blend * v.stolenOutput + (1.F - blend) * signal;
+      --v.stealFade;
+    }
+    v.lastOutput = signal;
+    // Fixed voice positions keep release tails in place and leave a stable
+    // centre when the output is folded to mono.
+    constexpr std::array<float, 8> pans{-.55F, .55F, -.2F,  .2F,
+                                        -.75F, .75F, -.38F, .38F};
+    const float pan = poly ? pans[i] : 0.F;
+    result[0] += signal * std::sqrt(1.F - pan);
+    result[1] += signal * std::sqrt(1.F + pan);
+    result[2] = std::max(result[2], amp);
+  }
+  result[0] = flush(std::tanh(result[0]));
+  result[1] = flush(std::tanh(result[1]));
+  return result;
+}
+
 float Processor::oscillator(double& phase, float frequency, float shape,
-                            float pulseWidth) noexcept {
+                            float pulseWidth, bool aligned) noexcept {
   const float increment =
       bounded(frequency / static_cast<float>(sampleRate_), 0.0F, 0.45F, 0.0F);
   const float current = static_cast<float>(phase);
@@ -355,12 +589,14 @@ float Processor::oscillator(double& phase, float frequency, float shape,
   pulseWidth = bounded(pulseWidth, 0.1F, 0.9F, 0.5F);
   const float wrapped = current >= pulseWidth ? current - pulseWidth
                                               : current + 1.0F - pulseWidth;
-  const float pulse = (current < pulseWidth ? 1.0F : -1.0F) +
-                      polyBlep(current, increment) -
-                      polyBlep(wrapped, increment);
+  const float pulse =
+      ((current < pulseWidth ? 1.0F : -1.0F) + polyBlep(current, increment) -
+       polyBlep(wrapped, increment)) *
+      (aligned ? -1.F : 1.F);
   phase += increment;
   phase -= std::floor(phase);
-  const float sine = std::sin(2.0F * std::numbers::pi_v<float> * current);
+  const float sine = std::sin(2.0F * std::numbers::pi_v<float> * current) *
+                     (aligned ? -1.F : 1.F);
   shape = bounded(shape, 0.0F, 1.0F, 0.25F);
   if (shape < 0.5F) {
     return saw + (shape * 2.0F) * (pulse - saw);
@@ -377,6 +613,29 @@ void Processor::process(float* left, float* right, std::size_t frames,
     meters_.currentStep = static_cast<float>(currentStep_);
     return;
   }
+  if (!parameters.materialBehavior) {
+    expressionPressure_ = expressionBrightness_ = expressionTouch_ = 0;
+    performancePressure_.snap(0);
+    performanceBrightness_.snap(0);
+  }
+  const int requestedMode = std::clamp(parameters.voiceMode, 0, 2);
+  const bool wideRunning = parameters.sequenceEnabled && transport.valid &&
+                           transport.playing && std::isfinite(transport.bpm) &&
+                           transport.bpm > 0 &&
+                           std::isfinite(transport.ppqPosition);
+  if (requestedMode != voiceMode_ ||
+      (requestedMode != 0 && wideRunning != wideSequencing_)) {
+    resetWideVoices();
+    envelope_.reset();
+    characterFilter_.reset();
+    heldNotes_.fill(false);
+    lastMidiNote_ = -1;
+    absoluteStep_ = -1;
+    wasPlaying_ = false;
+    timelineKnown_ = false;
+  }
+  voiceMode_ = requestedMode;
+  wideSequencing_ = wideRunning;
   pressure_.setTarget(bounded(parameters.pressure, 0.0F, 1.0F, 0.35F));
   shape_.setTarget(bounded(parameters.shape, 0.0F, 1.0F, 0.25F));
   pulseWidth_.setTarget(bounded(parameters.pulseWidth, 0.1F, 0.9F, 0.5F));
@@ -417,16 +676,61 @@ void Processor::process(float* left, float* right, std::size_t frames,
   measured.currentStep = static_cast<float>(currentStep_);
   for (std::size_t sample = 0; sample < frames; ++sample) {
     while (midiIndex < midi.size() && midi[midiIndex].sampleOffset <= sample) {
-      handleMidi(midi[midiIndex], sequencerRunning, parameters.glideMs,
-                 parameters.legacyBehavior);
+      const auto& performance = midi[midiIndex];
+      if (performance.type == MidiEventType::expression) {
+        if (parameters.materialBehavior) {
+          const float value = bounded(performance.velocity, 0.F, 1.F, 0.F);
+          if (performance.note == 1) expressionPressure_ = value;
+          if (performance.note == 74) expressionBrightness_ = 4.F * value - 2.F;
+          if (performance.note == 128) expressionTouch_ = value;
+        }
+        ++midiIndex;
+        continue;
+      }
+      if (performance.type == MidiEventType::allNotesOff)
+        expressionPressure_ = expressionBrightness_ = expressionTouch_ = 0;
+
+      if (voiceMode_ != 0)
+        wideMidi(midi[midiIndex], wideRunning, parameters);
+      else
+        handleMidi(midi[midiIndex], sequencerRunning, parameters.glideMs,
+                   parameters.legacyBehavior);
       ++midiIndex;
     }
     updateSequencer(parameters, clock, clockOffset + sample);
+    performancePressure_.setTarget(
+        parameters.materialBehavior
+            ? std::max(expressionPressure_, expressionTouch_)
+            : 0.F);
+    performanceBrightness_.setTarget(
+        parameters.materialBehavior ? expressionBrightness_ : 0.F);
+    const float gesture = performancePressure_.next(),
+                brightness = std::exp2(performanceBrightness_.next());
+    const float basePressure = pressure_.next();
+    const float performedPressure =
+        basePressure + (1.F - basePressure) * gesture * .9F;
+
+    if (voiceMode_ != 0) {
+      const auto result =
+          renderWide(parameters, performedPressure, shape_.next(),
+                     pulseWidth_.next(), mix_.next(), sub_.next(),
+                     cutoff_.next() * brightness, resonance_.next(),
+                     filterMorph_.next(), filterDrive_.next(), output_.next());
+      const float l = parameters.bypass ? 0.F : result[0];
+      const float r = parameters.bypass ? 0.F : result[1];
+      left[sample] = right != nullptr ? l : 0.5F * (l + r);
+      if (right != nullptr) right[sample] = r;
+      measured.outputPeak =
+          std::max({measured.outputPeak, std::abs(l), std::abs(r)});
+      measured.envelope = std::max(measured.envelope, result[2]);
+      measured.currentStep = static_cast<float>(currentStep_);
+      continue;
+    }
     const float envelope =
         envelope_.process(sampleRate_, parameters.attackMs, parameters.decayMs,
                           parameters.sustain, parameters.releaseMs);
     const float frequency = frequency_.next();
-    const float pressure = pressure_.next();
+    const float pressure = performedPressure;
     const auto mapping = mapPressure(pressure);
     const float shape = shape_.next();
     const float pulseWidth = pulseWidth_.next();
@@ -446,7 +750,7 @@ void Processor::process(float* left, float* right, std::size_t frames,
     const float envelopeAmount =
         bounded(parameters.envelopeAmount, 0.0F, 1.0F, 0.55F);
     const float cutoff =
-        cutoff_.next() *
+        cutoff_.next() * brightness *
         std::exp2(5.0F * envelope * envelopeAmount * mapping.envelopeDepth);
     const float resonance = resonance_.next();
     const float outputFromFilter = characterFilter_.process(

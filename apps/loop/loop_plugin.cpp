@@ -29,7 +29,7 @@ struct Preset {
   std::array<float, kParameterIds.size()> values;
 };
 
-constexpr std::array<Preset, 6> kPresets{{
+constexpr std::array<Preset, 7> kPresets{{
     {"Clean Memory",
      {0, 50, 90, 1, 4, 2, 0, 1, 0, 0, 3, 2, 1, 1, 2, 12, 2, 100, -3, 0}},
     {"Oxide Circle",
@@ -42,6 +42,8 @@ constexpr std::array<Preset, 6> kPresets{{
                       12, 30, 12, 12, 28, 62, 0,  86,   -8, 0}},
     {"First take",
      {0, 0, 85, 1, 4, 2, 0, 1, 0, 0, 3, 8, 3, 2, 8, 25, 1, 100, -3, 0}},
+    {"Evolving material",
+     {0, 0, 90, 1, 4, 2, 0, 1, 0, 0, 3, 12, 4, 3, 28, 48, 1, 100, -6, 0}},
 }};
 
 bool parseFiniteFloat(const juce::var& value, float& result) {
@@ -116,8 +118,11 @@ class Knob final : public juce::Component {
     slider_.setTextValueSuffix(suffix);
     slider_.setDoubleClickReturnValue(true, initial);
     slider_.setTitle(name);
-    slider_.setDescription(aste::ui::explanation(id));
-    slider_.setTooltip(aste::ui::explanation(id));
+    slider_.setDescription(
+        aste::ui::explanation(id, state.processor.getName()));
+    slider_.setTooltip(
+        aste::ui::explanation(id, state.processor.getName()) +
+        " Shift-drag for fine adjustment; type an exact value below.");
     slider_.setWantsKeyboardFocus(true);
     slider_.setExplicitFocusOrder(order);
     label_.setText(name, juce::dontSendNotification);
@@ -133,7 +138,7 @@ class Knob final : public juce::Component {
   }
 
  private:
-  juce::Slider slider_;
+  aste::ui::PrecisionSlider slider_;
   juce::Label label_;
   juce::AudioProcessorValueTreeState::SliderAttachment attachment_;
 };
@@ -159,7 +164,7 @@ class Toggle final : public juce::TextButton {
 class MemoryPanel final : public juce::Component, private juce::Timer {
  public:
   explicit MemoryPanel(LoopAudioProcessor& processor) : processor_{processor} {
-    reloop_.setButtonText("RELOOP");
+    reloop_.setButtonText("PRINT NEW TAKE");
     reloop_.setTitle("RELOOP");
     reloop_.setColour(juce::TextButton::buttonColourId, juce::Colour{kAccent});
     reloop_.setColour(juce::TextButton::textColourOffId,
@@ -167,10 +172,10 @@ class MemoryPanel final : public juce::Component, private juce::Timer {
     reloop_.onClick = [this] { processor_.reloop(); };
     reloop_.setTooltip(
         "Print the transformed loop onto the next tape. Capture audio first.");
-    previous_.setButtonText("PREVIOUS");
+    previous_.setButtonText("OLDER TAKE");
     previous_.setTitle("PREVIOUS GENERATION");
     previous_.onClick = [this] { processor_.previousGeneration(); };
-    next_.setButtonText("NEXT");
+    next_.setButtonText("NEWER TAKE");
     next_.setTitle("NEXT GENERATION");
     next_.onClick = [this] { processor_.nextGeneration(); };
     clear_.setButtonText("CLEAR MEMORY");
@@ -282,6 +287,13 @@ class MemoryPanel final : public juce::Component, private juce::Timer {
     activeDeck_ = processor_.activeDeck();
     const bool available = printing_ == 0 && !processor_.isBypassed();
     reloop_.setEnabled(captured_ > 0 && available);
+    reloop_.setDescription(
+        captured_ <= 0 ? "Capture audio first. Printing makes a new take from "
+                         "the transformed loop."
+        : !available ? "Wait for printing to finish and turn bypass off before "
+                       "printing another take."
+                     : "Print the transformed loop onto a new take, then "
+                       "compare it with Older / Newer Take.");
     previous_.setEnabled(generation_ > processor_.oldestGeneration() &&
                          available);
     next_.setEnabled(generation_ < processor_.newestGeneration() && available);
@@ -306,6 +318,7 @@ class LoopEditor final : public juce::AudioProcessorEditor,
   explicit LoopEditor(LoopAudioProcessor& processor)
       : AudioProcessorEditor{processor},
         processor_{processor},
+        master_{processor.state()},
         memory_{processor},
         capture_{processor.state(), "capture", "CAPTURE", 1},
         sync_{processor.state(), "sync", "HOST SYNC", 2},
@@ -327,6 +340,13 @@ class LoopEditor final : public juce::AudioProcessorEditor,
         mix_{processor.state(), "mix", "MIX", " %", 100, 17},
         output_{processor.state(), "output", "OUTPUT", " dB", -3, 18} {
     setLookAndFeel(&lookAndFeel_);
+    addAndMakeVisible(master_);
+    workflow_.bind(*this,
+                   "CAPTURE > PLAY > TRANSFORM > PRINT TAKE > COMPARE TAKES",
+                   "Feed audio, press Capture, then stop Capture to play it. "
+                   "Transform the loop; PRINT NEW TAKE records the result. "
+                   "Older/Newer compares takes.");
+    addAndMakeVisible(workflow_);
     capture_.setButtonText("CAPTURE INPUT");
     capture_.setColour(juce::TextButton::buttonColourId, juce::Colour{kAccent});
     capture_.setTooltip(
@@ -391,25 +411,22 @@ class LoopEditor final : public juce::AudioProcessorEditor,
                juce::Justification::centredLeft);
     g.setColour(juce::Colour{kAccent});
     g.setFont(juce::FontOptions{12.0F, juce::Font::bold});
-    header.removeFromRight(210);
+    header = juce::Rectangle<int>{24, 53, 310, 16};
     g.drawText("L-01 / PLAYABLE MEMORY", header,
-               juce::Justification::centredRight);
+               juce::Justification::centredLeft);
     g.setColour(juce::Colour{kMuted}.withAlpha(0.35F));
     g.fillRect(24, 72, getWidth() - 48, 1);
     g.setColour(juce::Colour{kInk});
     g.setFont(juce::FontOptions{11.0F});
-    g.drawText(
-        "Feed audio > Capture > stop Capture to play > transform > RELOOP to "
-        "print. Hover for help.",
-        24, getHeight() - 24, getWidth() - 260, 20,
-        juce::Justification::centredLeft);
   }
   void resized() override {
-    preset_.setBounds(getWidth() - 204, 27, 180, 28);
+    workflow_.setBounds(24, getHeight() - 80, getWidth() - 48, 48);
+    preset_.setBounds(getWidth() - 414, 28, 180, 28);
+    master_.setBounds(getWidth() - 214, 18, 190, 46);
     response_.setBounds(getWidth() - 224, getHeight() - 30, 200, 24);
     auto area = getLocalBounds().reduced(24);
     area.removeFromTop(66);
-    area.removeFromBottom(24);
+    area.removeFromBottom(60);
     memory_.setBounds(area.removeFromLeft(310));
     area.removeFromLeft(14);
     auto switches = area.removeFromTop(36);
@@ -439,6 +456,14 @@ class LoopEditor final : public juce::AudioProcessorEditor,
   void timerCallback() override {
     const bool synced =
         processor_.state().getRawParameterValue("sync")->load() >= 0.5F;
+    lengthBeats_.setDescription(
+        synced ? "Capture duration in beats at the DAW tempo."
+               : "Inactive: Host Sync is off. Free Length currently sets "
+                 "capture duration.");
+    freeLength_.setDescription(
+        synced ? "Inactive: Host Sync is on. Beats currently sets capture "
+                 "duration."
+               : "Capture duration in seconds, independently of DAW tempo.");
     lengthBeats_.setEnabled(synced);
     freeLength_.setEnabled(!synced);
     lengthBeats_.setAlpha(synced ? 1.0F : 0.35F);
@@ -448,6 +473,8 @@ class LoopEditor final : public juce::AudioProcessorEditor,
   }
   LoopLookAndFeel lookAndFeel_;
   LoopAudioProcessor& processor_;
+  aste::ui::MasterOutput master_;
+  aste::ui::WorkflowGuide workflow_;
   MemoryPanel memory_;
   Toggle capture_, sync_, reverse_;
   Knob overdub_, feedback_, lengthBeats_, freeLength_, start_, speed_, pitch_;
@@ -493,20 +520,23 @@ LoopAudioProcessor::createParameterLayout() {
   addFloat(layout, "output", "Output", {-24, 12, 0.01F}, -3, "dB");
   layout.add(std::make_unique<juce::AudioParameterBool>(
       juce::ParameterID{"bypass", 1}, "Bypass", false));
+  aste::ui::MasterGain::addParameter(layout, 0.F);
   return layout;
 }
 
 LoopAudioProcessor::LoopAudioProcessor()
-    : AudioProcessor{
-          BusesProperties{}
-              .withInput("Input", juce::AudioChannelSet::stereo(), true)
-              .withOutput("Output", juce::AudioChannelSet::stereo(), true)},
+    : AudioProcessor{BusesProperties{}
+                         .withInput("Input", juce::AudioChannelSet::stereo(),
+                                    true)
+                         .withOutput("Output", juce::AudioChannelSet::stereo(),
+                                     true)},
       state_{*this, nullptr, kStateType, createParameterLayout()} {
+  masterGain_.bind(state_);
   for (std::size_t index = 0; index < kParameterIds.size(); ++index) {
     parameterValues_[index] = state_.getRawParameterValue(kParameterIds[index]);
     jassert(parameterValues_[index] != nullptr);
   }
-  loadFactoryPreset(5);
+  loadFactoryPreset(6);
 }
 
 Parameters LoopAudioProcessor::currentParameters() const noexcept {
@@ -572,6 +602,7 @@ void LoopAudioProcessor::adoptPending() noexcept {
 }
 
 void LoopAudioProcessor::prepareToPlay(double sampleRate, int) {
+  masterGain_.prepare(sampleRate);
   const std::lock_guard lock{lifecycle_};
   adoptPending();
   auto tape = engine_.load()->processor.tapeState();
@@ -657,6 +688,7 @@ void LoopAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
   captureActive_.store(parameters.capture);
   engine_.load()->processor.publishTape();
   publishMeters(engine_.load()->processor.meters());
+  outputPeak_.store(masterGain_.process(buffer), std::memory_order_relaxed);
 }
 
 void LoopAudioProcessor::processBlockBypassed(juce::AudioBuffer<float>& buffer,
@@ -911,6 +943,9 @@ void LoopAudioProcessor::setStateInformation(const void* data, int size) {
     destination.setProperty(
         "value", juce::jlimit(range.start, range.end, value), nullptr);
   }
+  if (!seen.contains("master"))
+    validated.getChildWithProperty("id", "master")
+        .setProperty("value", 0.F, nullptr);
   validated.setProperty("schema", kStateSchema, nullptr);
   validated.setProperty("product", kStateType, nullptr);
   validated.setProperty("behavior", legacy ? 0 : 1, nullptr);

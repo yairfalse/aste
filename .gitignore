@@ -16,3 +16,7 @@
 /.sykli/
 /.toimija/*
 !/.toimija/repo.yaml
+
+# Python bytecode is regenerated locally.
+__pycache__/
+*.py[cod]

@@ -141,3 +141,12 @@ All default off. Updated unlocked hits derive Level/Pitch/Decay/Color from
 the object's first event; articulation and timing remain per-event. GUI lock
 enabling copies the current object sound before setting the lock. Automation
 uses the stored hit values directly. Older-response sessions ignore these locks.
+
+## Click K-01
+
+K-01 schema 1 exposes 2592 stable parameters: 22 globals, 34 fields for each
+of four objects, 19 locks/articulation fields for each of 128 events, then Master
+and Bypass. All object/event host titles identify their address. Sample bounds
+remain normalized host values; editor entry shows frames and also accepts ms.
+Absolute sample references and four scene snapshots are metadata; live PCM and
+master captures are not serialized. See [the contract](products/click/CONTRACT.md).

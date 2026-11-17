@@ -1,4 +1,6 @@
+#include "workflow_checks.hpp"
 #include "density_plugin.hpp"
+#include "master_output_checks.hpp"
 #include "response_upgrade_checks.hpp"
 #include "preset_recall_checks.hpp"
 #include "editor_artifact.hpp"
@@ -349,7 +351,7 @@ void testStateRoundTrip() {
 
 void testFactoryPresets() {
   aste::density::plugin::DensityAudioProcessor processor;
-  require(processor.factoryPresetCount() == 7,
+  require(processor.factoryPresetCount() == 8,
           "Density exposes the reviewed factory preset count");
   for (int index = 0; index < processor.factoryPresetCount(); ++index) {
     require(!processor.factoryPresetName(index).isEmpty(),
@@ -665,9 +667,10 @@ void testProcessingBoundary() {
 void testTrackLevelCompression() {
   aste::density::plugin::DensityAudioProcessor processor;
   require(std::abs(processor.state().getRawParameterValue("blend")->load() -
-                   60.0F) < 0.01F &&
-              std::abs(rawValue(processor, "attack") - 12.0F) < 0.011F,
-          "Pulse starts with dry attack retained; old reset defaults remain "
+                   85.0F) < 0.01F &&
+              std::abs(rawValue(processor, "character") - 80.0F) < 0.011F,
+          "Bite starts with explicit character and parallel attack; reset "
+          "defaults remain "
           "unchanged");
   processor.loadFactoryPreset(5);
   require(rawValue(processor, "blend") == 100.0F &&
@@ -753,7 +756,7 @@ void testEditorContract() {
           "Protection is keyboard and accessibility reachable");
 
   auto* presets = dynamic_cast<juce::ComboBox*>(findTitled(*editor, "PRESETS"));
-  require(presets != nullptr && presets->getNumItems() == 7 &&
+  require(presets != nullptr && presets->getNumItems() == 8 &&
               presets->getWantsKeyboardFocus() && presets->isAccessible(),
           "Factory presets are compact, keyboard reachable, and accessible");
   if (presets != nullptr) {
@@ -874,8 +877,37 @@ int createEditorArtifacts(const char* directoryPath) {
 
 }  // namespace
 
+void testNewColorRecall() {
+  aste::density::plugin::DensityAudioProcessor p;
+  juce::MemoryBlock current;
+  p.getStateInformation(current);
+  auto tree = juce::ValueTree::fromXml(*juce::AudioProcessor::getXmlFromBinary(
+      current.getData(), static_cast<int>(current.getSize())));
+  tree.removeChild(tree.getChildWithProperty("id", "character"), nullptr);
+  juce::MemoryBlock old;
+  auto xml = tree.createXml();
+  juce::AudioProcessor::copyXmlToBinary(*xml, old);
+  p.setStateInformation(old.getData(), static_cast<int>(old.getSize()));
+  require(p.state().getRawParameterValue("character")->load() == 0.F,
+          "Old sessions disable new coloration");
+  auto* parameter = p.state().getParameter("character");
+  parameter->setValueNotifyingHost(parameter->convertTo0to1(73.25F));
+  juce::MemoryBlock saved, repeated;
+  p.getStateInformation(saved);
+  p.setStateInformation(saved.getData(), static_cast<int>(saved.getSize()));
+  p.getStateInformation(repeated);
+  require(saved == repeated &&
+              std::abs(p.state().getRawParameterValue("character")->load() -
+                       73.25F) < .02F,
+          "New coloration recalls byte-stably");
+}
 int main(int argc, char** argv) {
   juce::ScopedJuceInitialiser_GUI juce;
+  aste::tests::workflowChecks<aste::density::plugin::DensityAudioProcessor>(
+      require);
+  testNewColorRecall();
+  aste::tests::masterOutputChecks<aste::density::plugin::DensityAudioProcessor>(
+      require);
   aste::tests::responseUpgradeChecks<
       aste::density::plugin::DensityAudioProcessor>(require, 1);
   aste::tests::presetRecallChecks<aste::density::plugin::DensityAudioProcessor>(

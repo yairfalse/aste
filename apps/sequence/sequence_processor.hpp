@@ -37,7 +37,12 @@ struct Parameters {
   int division{16};
   bool sequenceEnabled{true};
   bool bypass{};
-  bool legacyBehavior{};  // Session-owned; not a host parameter.
+  bool legacyBehavior{};   // Session-owned; not a host parameter.
+  float filterAttackMs{};  // Zero follows amplifier attack.
+  float filterDecayMs{};   // Zero follows amplifier decay.
+  float filterSustain{.12F};
+  bool materialBehavior{};
+  int voiceMode{};  // 0: original mono, 1: eight-voice poly, 2: new mono.
   std::array<Step, kStepCount> steps{{
       {0, true, true, false},
       {0, true, false, true},
@@ -58,7 +63,7 @@ struct Parameters {
   }};
 };
 
-enum class MidiEventType { noteOn, noteOff, allNotesOff };
+enum class MidiEventType { noteOn, noteOff, allNotesOff, sustain, expression };
 
 struct MidiEvent {
   std::size_t sampleOffset{};
@@ -135,6 +140,29 @@ class Processor {
     std::array<float, 4> state_{};
   };
 
+  struct WideVoice {
+    Envelope amplitude;
+    Envelope contour;
+    Smoother pitch;
+    std::array<float, 4> filter{};
+    double phase1{}, phase2{}, subPhase{}, motion{};
+    float velocity{}, accent{};
+    int note{-1};
+    bool down{};
+    unsigned long long age{};
+    float lastOutput{}, stolenOutput{};
+    int stealFade{};
+  };
+  void resetWideVoices() noexcept;
+  void startWideNote(int note, float velocity, bool accent, bool slide,
+                     float glideMs, bool polyphonic) noexcept;
+  void wideMidi(const MidiEvent&, bool sequencerRunning,
+                const Parameters&) noexcept;
+  [[nodiscard]] std::array<float, 3> renderWide(
+      const Parameters&, float pressure, float shape, float pulseWidth,
+      float mix, float sub, float cutoff, float resonance, float weight,
+      float drive, float output) noexcept;
+
   void handleMidi(const MidiEvent& event, bool sequencerRunning, float glideMs,
                   bool legacyBehavior) noexcept;
   void startNote(int note, float velocity, bool accent, bool slide,
@@ -143,9 +171,12 @@ class Processor {
   void updateSequencer(const Parameters& parameters, const Transport& transport,
                        std::size_t sample) noexcept;
   [[nodiscard]] float oscillator(double& phase, float frequency, float shape,
-                                 float pulseWidth) noexcept;
+                                 float pulseWidth,
+                                 bool aligned = false) noexcept;
   [[nodiscard]] int heldNote() const noexcept;
 
+  float expressionPressure_{}, expressionBrightness_{}, expressionTouch_{};
+  Smoother performancePressure_, performanceBrightness_;
   double sampleRate_{48000.0};
   double phase1_{};
   double phase2_{0.17};
@@ -175,6 +206,11 @@ class Processor {
   std::size_t timelineFrames_{};
   bool timelineKnown_{};
   MeterSnapshot meters_{};
+  std::array<WideVoice, 8> voices_{};
+  unsigned long long voiceAge_{};
+  bool sustainDown_{};
+  int voiceMode_{};
+  bool wideSequencing_{};
 };
 
 }  // namespace aste::sequence

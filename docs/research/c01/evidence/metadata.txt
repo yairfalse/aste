@@ -1,0 +1,5 @@
+C01 laboratory 0.1; 48000 Hz stereo IEEE float32; 14 seconds per take
+Compiler Apple LLVM 17.0.0 (clang-1700.0.13.5)
+Engine bytes 8200
+Matched target -20 dBFS RMS, capped at -1 dBFS peak. Not LUFS matching.
+CPU render_fraction = wall seconds / audio seconds, serial lab, not deadline guarantee.

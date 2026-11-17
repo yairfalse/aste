@@ -29,6 +29,8 @@ struct Study {
   bool local{}, master{}, suspend{}, reverse{}, shorten{}, hard{};
   int source{-1};
   bool constant{}, single{};
+  bool articulationStudy{};
+  Articulation articulation{Articulation::Restart};
 };
 constexpr std::array studies{
     Study{.name = "sparse_single", .single = true},
@@ -57,7 +59,16 @@ constexpr std::array studies{
           .shorten = true},
     Study{.name = "pressure", .source = 0},
     Study{.name = "impact", .source = 1},
-    Study{.name = "dust", .source = 2}};
+    Study{.name = "dust", .source = 2},
+    Study{.name = "retrigger_restart", .source = 1, .articulationStudy = true},
+    Study{.name = "retrigger_carry",
+          .source = 1,
+          .articulationStudy = true,
+          .articulation = Articulation::Carry},
+    Study{.name = "retrigger_crossfade",
+          .source = 1,
+          .articulationStudy = true,
+          .articulation = Articulation::Crossfade}};
 
 std::vector<Command> gestures(const Study& study) {
   std::vector<Command> result;
@@ -87,6 +98,14 @@ Audio render(const Study& study, std::size_t block = 127) {
         e.enabled = false;
       if (study.constant) e.acceleration = 1;
       if (study.single) e.repeats = 1;
+      if (study.articulationStudy) {
+        e.articulation = study.articulation;
+        e.repeats = 6;
+        e.interval = .02;
+        e.acceleration = .65;
+        e.decay = .18F;
+        e.probability = 1;
+      }
     }
   Engine engine;
   if (!engine.prepare(kRate, pattern))
@@ -265,17 +284,39 @@ void pack(const std::filesystem::path& path) {
   auto edits = csv(path / "edits.csv");
   edits << "variant,sample,action,delta_at_action,max_delta_next_64\n";
   // Deterministic obscured order, not a statistical randomization claim.
-  constexpr std::array<unsigned, 17> ids{12, 4, 9,  1, 15, 7,  3, 11, 2,
-                                         16, 5, 13, 8, 17, 10, 6, 14};
+  constexpr auto ids = [] {
+    std::array<unsigned, studies.size() + 2> result{};
+    for (std::size_t i = 0; i < result.size(); ++i)
+      result[i] = static_cast<unsigned>((i * 7 + 3) % result.size() + 1);
+    return result;
+  }();
+  auto articulationEdges = csv(path / "retrigger-edges.csv");
+  articulationEdges << "variant,sample,repeat,left_delta,max_delta_next_64\n";
   const auto base = render(studies[2]);
   for (std::size_t i = 0; i < ids.size(); ++i) {
     const std::string name =
-        i < studies.size()
-            ? studies[i].name
-            : (i == 15 ? "impulse_matched_events" : "impulse_into_loop");
-    const auto audio =
-        i < studies.size() ? render(studies[i]) : reference(base, i == 16);
+        i < studies.size() ? studies[i].name
+                           : (i == studies.size() ? "impulse_matched_events"
+                                                  : "impulse_into_loop");
+    const auto audio = i < studies.size()
+                           ? render(studies[i])
+                           : reference(base, i == studies.size() + 1);
     const auto m = measure(audio);
+    if (i < studies.size() && studies[i].articulationStudy) {
+      for (const auto& hit : audio.hits) {
+        const auto at = static_cast<std::size_t>(hit.sample);
+        double maximum = 0;
+        for (std::size_t n = std::max<std::size_t>(1, at);
+             n < std::min(at + 64, kFrames); ++n)
+          maximum = std::max(
+              maximum,
+              static_cast<double>(std::abs(audio.left[n] - audio.left[n - 1])));
+        articulationEdges << name << ',' << at << ',' << hit.repeat << ','
+                          << (at ? std::abs(audio.left[at] - audio.left[at - 1])
+                                 : 0)
+                          << ',' << maximum << '\n';
+      }
+    }
     if (m.rms == 0)
       throw std::runtime_error("unexpected empty listening fixture");
     const double gain = std::min(.06 / m.rms, .85 / m.peak);
@@ -341,7 +382,8 @@ void pack(const std::filesystem::path& path) {
          "identical-control null test.\n"
          "No imported material, musician responses, Cubase or usability "
          "evidence included.\n";
-  std::cout << "pack: 17 variants, 34 WAVs, 48000 Hz stereo, 16 seconds each\n";
+  std::cout << "pack: " << ids.size() << " variants, " << ids.size() * 2
+            << " WAVs, 48000 Hz stereo, 16 seconds each\n";
 }
 
 void benchmark() {
@@ -422,7 +464,8 @@ int main(int argc, char** argv) {
                                    s.name);
         if (measure(a).rms == 0) throw std::runtime_error("empty fixture");
       }
-      std::cout << "15 studies: identical stereo audio and event traces at "
+      std::cout << studies.size()
+                << " studies: identical stereo audio and event traces at "
                    "127/511 frames\n";
     } else {
       std::cerr

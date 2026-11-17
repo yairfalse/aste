@@ -1,4 +1,6 @@
+#include "workflow_checks.hpp"
 #include "sequence_plugin.hpp"
+#include "master_output_checks.hpp"
 #include "response_upgrade_checks.hpp"
 #include "preset_recall_checks.hpp"
 #include "editor_artifact.hpp"
@@ -97,8 +99,17 @@ juce::Component* findTitled(juce::Component& component,
 
 void testParameterAndStateContract() {
   Sequence source;
-  require(source.getParameters().size() == 85,
+  require(source.getParameters().size() == 90,
           "Sequence exposes its exact stable parameter set");
+  require(
+      rawValue(source, "voice_mode") == 1 && rawValue(source, "sequence") == 0,
+      "Fresh Sequence opens as a playable polyphonic keyboard");
+  require(
+      source.getParameters()[21] ==
+              source.state().getParameter("step_01_note") &&
+          source.getParameters()[85] ==
+              source.state().getParameter("voice_mode"),
+      "Polyphony is appended without moving existing host automation indices");
   for (const char* id : std::array<const char*, 21>{
            "pressure",    "shape",    "osc_mix",   "detune",
            "sub",         "cutoff",   "resonance", "filter_form",
@@ -133,6 +144,24 @@ void testParameterAndStateContract() {
       state.getData(), static_cast<int>(state.getSize()));
   require(xml != nullptr, "Sequence state exposes valid migration XML");
   if (xml != nullptr) {
+    auto previous = juce::ValueTree::fromXml(*xml);
+    previous.setProperty("schema", 3, nullptr);
+    previous.removeChild(previous.getChildWithProperty("id", "voice_mode"),
+                         nullptr);
+    juce::MemoryBlock previousBytes;
+    juce::AudioProcessor::copyXmlToBinary(*previous.createXml(), previousBytes);
+    Sequence previousSession;
+    previousSession.setStateInformation(
+        previousBytes.getData(), static_cast<int>(previousBytes.getSize()));
+    require(rawValue(previousSession, "voice_mode") == 0 &&
+                !previousSession.usesLegacyBehavior(),
+            "Schema 3 preserves the original mono voice and corrected clock");
+    previousSession.getStateInformation(previousBytes);
+    Sequence previousReopened;
+    previousReopened.setStateInformation(
+        previousBytes.getData(), static_cast<int>(previousBytes.getSize()));
+    require(rawValue(previousReopened, "voice_mode") == 0,
+            "Original voice choice survives a schema 4 save and reopen");
     auto legacy = juce::ValueTree::fromXml(*xml);
     legacy.setProperty("schema", 1, nullptr);
     for (const char* id : {"pulse_width", "filter_drive"}) {
@@ -150,6 +179,8 @@ void testParameterAndStateContract() {
                                  static_cast<int>(legacyBytes.getSize()));
     require(migrated.usesLegacyBehavior(),
             "Old Sequence state keeps its original sound laws");
+    require(rawValue(migrated, "voice_mode") == 0,
+            "Schema 1 always restores the original synthesis engine");
     juce::MemoryBlock migratedBytes;
     migrated.getStateInformation(migratedBytes);
     Sequence reopened;
@@ -175,8 +206,8 @@ void testParameterAndStateContract() {
   restored.setStateInformation(malformed, static_cast<int>(sizeof(malformed)));
   require(std::abs(rawValue(restored, "pressure") - 71.25F) < 0.011F,
           "Malformed Sequence state leaves current state unchanged");
-  require(restored.factoryPresetCount() == 4,
-          "Sequence exposes four internal starting points");
+  require(restored.factoryPresetCount() == 6,
+          "Sequence exposes six internal starting points");
   for (int index = 0; index < restored.factoryPresetCount(); ++index) {
     restored.loadFactoryPreset(index);
     require(!restored.factoryPresetName(index).isEmpty(),
@@ -227,8 +258,8 @@ void testInstrumentBoundary() {
           "Sequence publishes audible voice meters");
   for (int sample = 0; sample < audio.getNumSamples(); ++sample) {
     require(std::isfinite(audio.getSample(0, sample)) &&
-                audio.getSample(0, sample) == audio.getSample(1, sample),
-            "Sequence adapter output is finite and mono-compatible");
+                std::isfinite(audio.getSample(1, sample)),
+            "Sequence adapter stereo output is finite");
   }
 
   midi.clear();
@@ -255,7 +286,7 @@ void testEditorContract() {
   setValue(processor, "division", 0);
   std::unique_ptr<juce::AudioProcessorEditor> editor{processor.createEditor()};
   require(editor != nullptr && editor->getWidth() == 1280 &&
-              editor->getHeight() == 760 && editor->isResizable(),
+              editor->getHeight() == 860 && editor->isResizable(),
           "Sequence editor opens at its intended scalable size");
   if (editor == nullptr) {
     return;
@@ -277,7 +308,7 @@ void testEditorContract() {
     require(findTitled(*editor, title) != nullptr,
             "Every essential Sequence control is visible and titled");
   }
-  editor->setSize(960, 600);
+  editor->setSize(960, 700);
   auto* step = findTitled(*editor, "Step 01 Program");
   if (step) {
     for (const auto& shortcut : std::array{std::pair{'g', "step_01_gate"},
@@ -298,6 +329,70 @@ void testEditorContract() {
   editor->paintEntireComponent(graphics, true);
   require(image.getPixelAt(0, 0).getAlpha() == 255,
           "Minimum Sequence editor size paints an opaque panel");
+}
+
+int createListeningArtifacts(const char* directoryPath) {
+  struct Clock final : juce::AudioPlayHead {
+    double ppq{};
+    juce::Optional<PositionInfo> getPosition() const override {
+      PositionInfo info;
+      info.setBpm(120.);
+      info.setPpqPosition(ppq);
+      info.setIsPlaying(true);
+      return info;
+    }
+  } clock;
+  const juce::File directory{juce::String::fromUTF8(directoryPath)};
+  if (directory.createDirectory().failed()) return 2;
+  for (int preset = 0; preset < 5; ++preset) {
+    Sequence processor;
+    processor.loadFactoryPreset(preset);
+    processor.setPlayHead(&clock);
+    processor.prepareToPlay(48000, 127);
+    const auto file =
+        directory.getChildFile(Sequence::factoryPresetName(preset) + ".wav");
+    std::unique_ptr<juce::OutputStream> stream = file.createOutputStream();
+    if (!stream || !stream->setPosition(0)) return 2;
+    juce::WavAudioFormat format;
+    auto writer =
+        format.createWriterFor(stream, juce::AudioFormatWriterOptions{}
+                                           .withSampleRate(48000)
+                                           .withNumChannels(2)
+                                           .withBitsPerSample(24));
+    if (!writer) return 2;
+    juce::AudioBuffer<float> audio{2, 127};
+    constexpr int frames = 48000 * 8;
+    float peak = 0;
+    double energy = 0;
+    for (int at = 0; at < frames;) {
+      const int count = std::min({127, frames - at, 48000 - at % 48000});
+      audio.setSize(2, count, false, false, true);
+      juce::MidiBuffer midi;
+      if (preset < 3 && at % 96000 == 0) {
+        midi.addEvent(juce::MidiMessage::allNotesOff(1), 0);
+        if (at < 288000) {
+          const int transpose = (at / 96000) % 2 ? -2 : 0;
+          for (int note : {48, 55, 58, 62})
+            midi.addEvent(juce::MidiMessage::noteOn(1, note + transpose, .8F),
+                          0);
+        }
+      }
+      clock.ppq = at / 24000.;
+      processor.processBlock(audio, midi);
+      for (int ch = 0; ch < 2; ++ch)
+        for (int n = 0; n < count; ++n) {
+          const float sample = audio.getSample(ch, n);
+          if (!std::isfinite(sample)) return 3;
+          peak = std::max(peak, std::abs(sample));
+          energy += sample * sample;
+        }
+      if (!writer->writeFromAudioSampleBuffer(audio, 0, count)) return 2;
+      at += count;
+    }
+    std::cout << Sequence::factoryPresetName(preset) << " peak=" << peak
+              << " rms=" << std::sqrt(energy / (frames * 2)) << '\n';
+  }
+  return 0;
 }
 
 int createEditorArtifact(const char* directoryPath) {
@@ -330,14 +425,20 @@ int createEditorArtifact(const char* directoryPath) {
 
 int main(int argc, char** argv) {
   juce::ScopedJuceInitialiser_GUI juce;
+  aste::tests::workflowChecks<aste::sequence::plugin::SequenceAudioProcessor>(
+      require);
+  aste::tests::masterOutputChecks<
+      aste::sequence::plugin::SequenceAudioProcessor>(require);
   aste::tests::responseUpgradeChecks<
       aste::sequence::plugin::SequenceAudioProcessor>(require, 2);
   aste::tests::presetRecallChecks<
       aste::sequence::plugin::SequenceAudioProcessor>(require);
-  aste::tests::behaviorStateChecks<Sequence>(require, 2, 3);
+  aste::tests::behaviorStateChecks<Sequence>(require, 2, 4);
   if (argc == 3 && std::string_view{argv[1]} == "--editor-artifacts") {
     return createEditorArtifact(argv[2]);
   }
+  if (argc == 3 && std::string_view{argv[1]} == "--listening-artifacts")
+    return createListeningArtifacts(argv[2]);
   if (argc != 1) {
     return 2;
   }

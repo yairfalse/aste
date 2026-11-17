@@ -13,6 +13,18 @@ int fail(const juce::String& message) {
   return 1;
 }
 
+class FieldPlayHead final : public juce::AudioPlayHead {
+ public:
+  bool playing{};
+  double ppq{}, tempo{120};
+  juce::Optional<PositionInfo> getPosition() const override {
+    PositionInfo p;
+    p.setIsPlaying(playing);
+    p.setBpm(tempo);
+    p.setPpqPosition(ppq);
+    return p;
+  }
+};
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -60,9 +72,8 @@ int main(int argc, char** argv) {
       plugin->getTotalNumOutputChannels() != 2) {
     return fail("default bus layout is neither a stereo effect nor instrument");
   }
-  if (plugin->getLatencySamples() != 0) {
-    return fail("reported latency is not zero");
-  }
+  const int expectedLatency =
+      expectedComponent == "Contamination C-01" ? 16 : expectedComponent == "Click K-01" ? 8 : 0;
 
   const auto& parameters = plugin->getParameters();
   if (parameters.size() != expectedParameterCount) {
@@ -79,7 +90,9 @@ int main(int argc, char** argv) {
   }
   auto* portabilityParameter = *portabilityEntry;
 
-  constexpr float portabilityValue = 0.8125F;
+  // K-01 uses Master (-36..18 dB, .01 dB steps); .8 maps to the exact
+  // physical grid at +7.20 dB. .8125 falls between two legal dB values.
+  const float portabilityValue = expectedComponent == "Click K-01" ? .8F : .8125F;
   const juce::File stateFile{argc == 7 ? argv[6] : ""};
   if (stateMode == "--read-state") {
     juce::MemoryBlock importedState;
@@ -118,15 +131,39 @@ int main(int argc, char** argv) {
     return fail("state did not restore byte-for-byte");
   }
 
+  // This scenario supplies MIDI with no host transport. N-01 now makes input
+  // ownership explicit; select its MIDI mode rather than double-triggering the
+  // default DAW pattern. Its playing/seek/PPQ tests live in the adapter suite.
+  if (expectedComponent == "Non-Machine N-01") {
+    const auto inputMode = std::find_if(
+        parameters.begin(), parameters.end(), [](const auto* parameter) {
+          return parameter->getName(64) == "PATTERN (OFF: MIDI)";
+        });
+    if (inputMode == parameters.end())
+      return fail("N-01 input selector missing");
+    (*inputMode)->setValueNotifyingHost(0.F);
+  }
+
+  if (expectedComponent == "Click K-01") {
+    const auto selector = std::find_if(parameters.begin(), parameters.end(), [](const auto* parameter) { return parameter->getName(64) == "PLAYBACK"; });
+    if (selector == parameters.end()) return fail("K-01 playback selector missing");
+    (*selector)->setValueNotifyingHost(0.F);
+  }
   plugin->setRateAndBufferSizeDetails(sampleRate, maximumBlockSize);
   plugin->prepareToPlay(sampleRate, maximumBlockSize);
+  // Latency becomes valid after the processor has prepared its rate-dependent
+  // DSP. C-01 intentionally reports its 16-sample filter delay here.
+  if (plugin->getLatencySamples() != expectedLatency) {
+    plugin->releaseResources();
+    return fail("prepared latency differs from the product contract");
+  }
   plugin->setNonRealtime(false);
 
   constexpr std::array blockSizes{1, 2, 7, 127, 511, maximumBlockSize};
   juce::AudioBuffer<float> audio{2, maximumBlockSize};
   juce::MidiBuffer midi;
   if (inputChannels == 0) {
-    midi.addEvent(juce::MidiMessage::noteOn(1, 48, 0.8F), 0);
+    midi.addEvent(juce::MidiMessage::noteOn(1, expectedComponent == "Click K-01" ? 36 : 48, 0.8F), 0);
   }
   double checksum = 0.0;
   std::uint64_t sampleOffset = 0;
@@ -155,6 +192,44 @@ int main(int argc, char** argv) {
       }
     }
     sampleOffset += static_cast<std::uint64_t>(blockSize);
+  }
+  if (expectedComponent == "Field F-01") {
+    FieldPlayHead transport;
+    plugin->setPlayHead(&transport);
+    for (double rate : {44100., 48000., 96000., 192000.}) {
+      plugin->releaseResources();
+      plugin->setRateAndBufferSizeDetails(rate, maximumBlockSize);
+      plugin->prepareToPlay(rate, maximumBlockSize);
+      if (plugin->getLatencySamples() != 0)
+        return fail("Field latency changed on rate change");
+      for (int step = 0; step < 40; ++step) {
+        transport.playing = step % 3 != 0;
+        transport.ppq = step < 20 ? step * .25 : 2 - (step - 20) * .125;
+        transport.tempo = step < 20 ? 83 : 147;
+        for (int i = 0; i < parameters.size(); ++i)
+          parameters[i]->setValueNotifyingHost(float((step + i) % 7) / 6);
+        audio.setSize(2, 127, false, false, true);
+        for (int ch = 0; ch < 2; ++ch)
+          for (int j = 0; j < 127; ++j)
+            audio.setSample(ch, j,
+                            .03F * std::sin(float(step * 127 + j) * .021F));
+        plugin->processBlock(audio, midi);
+        for (int ch = 0; ch < 2; ++ch)
+          for (int j = 0; j < 127; ++j)
+            if (!std::isfinite(audio.getSample(ch, j)))
+              return fail(
+                  "Field automation/rate/transport produced nonfinite audio");
+      }
+    }
+    plugin->setPlayHead(nullptr);
+    plugin->setStateInformation(initialState.getData(),
+                                int(initialState.getSize()));
+    juce::MemoryBlock recalled;
+    plugin->getStateInformation(recalled);
+    if (recalled != initialState)
+      return fail("Field recall after automation/rates failed");
+    std::cerr << "Field extended validation: 19 parameters, four sample rates, "
+                 "start/stop/seeks/tempo changes and state recall passed\n";
   }
   plugin->releaseResources();
   if (!(checksum > 0.0) || !std::isfinite(checksum)) {

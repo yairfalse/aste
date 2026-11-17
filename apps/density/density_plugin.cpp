@@ -18,16 +18,16 @@ constexpr auto kPanel = 0xff19191cU;
 constexpr auto kInk = 0xffe8e5dcU;
 constexpr auto kMuted = 0xff85827bU;
 constexpr auto kAccent = 0xff812d3dU;
-constexpr std::array<const char*, 11> kParameterIds{
+constexpr std::array<const char*, 12> kParameterIds{
     "drive",  "crush",  "attack",       "release",    "density", "blend",
-    "output", "stereo", "detector_hpf", "protection", "bypass"};
+    "output", "stereo", "detector_hpf", "protection", "bypass",  "character"};
 
 struct FactoryPreset {
   const char* name;
   std::array<float, kParameterIds.size()> values;
 };
 
-constexpr std::array<FactoryPreset, 7> kFactoryPresets{{
+constexpr std::array<FactoryPreset, 8> kFactoryPresets{{
     {"Default",
      {0.0F, 65.0F, 1.0F, 180.0F, 50.0F, 90.0F, -7.0F, 100.0F, 90.0F, 1.0F,
       0.0F}},
@@ -49,6 +49,7 @@ constexpr std::array<FactoryPreset, 7> kFactoryPresets{{
     {"Pulse / parallel",
      {3.0F, 70.0F, 12.0F, 110.0F, 55.0F, 60.0F, -5.0F, 100.0F, 100.0F, 1.0F,
       0.0F}},
+    {"Bite / breathing", {6, 90, 9, 75, 70, 85, -6, 100, 120, 1, 0, 80}},
 }};
 
 bool parseFiniteFloat(const juce::var& value, float& result) {
@@ -145,8 +146,11 @@ class Knob final : public juce::Component {
     slider_.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 82, 22);
     slider_.setDoubleClickReturnValue(true, initial);
     slider_.setTitle(name);
-    slider_.setDescription(aste::ui::explanation(id));
-    slider_.setTooltip(aste::ui::explanation(id));
+    slider_.setDescription(
+        aste::ui::explanation(id, state.processor.getName()));
+    slider_.setTooltip(
+        aste::ui::explanation(id, state.processor.getName()) +
+        " Shift-drag for fine adjustment; type an exact value below.");
     slider_.setWantsKeyboardFocus(true);
     slider_.setExplicitFocusOrder(focusOrder);
     label_.setText(name, juce::dontSendNotification);
@@ -163,7 +167,7 @@ class Knob final : public juce::Component {
   }
 
  private:
-  juce::Slider slider_;
+  aste::ui::PrecisionSlider slider_;
   juce::Label label_;
   juce::AudioProcessorValueTreeState::SliderAttachment attachment_;
 };
@@ -268,6 +272,7 @@ class DensityEditor final : public juce::AudioProcessorEditor {
   explicit DensityEditor(DensityAudioProcessor& processor)
       : AudioProcessorEditor{processor},
         processor_{processor},
+        master_{processor.state()},
         meter_{processor},
         density_{processor.state(), "density", "DENSITY", " %", 50.0, 1},
         drive_{processor.state(), "drive", "DRIVE", " dB", 0.0, 2},
@@ -278,8 +283,16 @@ class DensityEditor final : public juce::AudioProcessorEditor {
         stereo_{processor.state(), "stereo", "STEREO", " %", 100.0, 7},
         hpf_{processor.state(), "detector_hpf", "DETECTOR HPF", " Hz", 90.0, 8},
         output_{processor.state(), "output", "OUTPUT", " dB", -7.0, 9},
-        protection_{processor.state(), "protection", "PROTECTION", 10} {
+        protection_{processor.state(), "protection", "PROTECTION", 10},
+        character_{
+            processor.state(), "character", "WEIGHT / COLOR", " %", 80., 12} {
     setLookAndFeel(&lookAndFeel_);
+    addAndMakeVisible(master_);
+    workflow_.bind(*this, "INPUT > CHARACTER + COMPRESSION > BLEND > MASTER",
+                   "Feed audio. Shape Character and Crush, set Attack/Release, "
+                   "then mix with Blend. Master Output sets the final level.");
+    addAndMakeVisible(workflow_);
+    addAndMakeVisible(character_);
     preset_.setTextWhenNothingSelected("PRESETS");
     preset_.setTitle("PRESETS");
     preset_.setDescription("Load a Density factory starting point");
@@ -297,10 +310,14 @@ class DensityEditor final : public juce::AudioProcessorEditor {
           set(kParameterIds[i], snapshot.values[i]);
       });
     preset_.watch(processor_);
-    response_.bind([this] { return !processor_.usesLegacyBehavior(); },
-                   [this] { processor_.useCurrentResponse(); },
-                   "Use independent Drive coloration without changing "
-                   "controls. This changes the recalled sound.");
+    response_.bind(
+        [this] {
+          return !processor_.usesLegacyBehavior() &&
+                 processor_.usesMaterialResponse();
+        },
+        [this] { processor_.useCurrentResponse(); },
+        "Use independent Drive coloration without changing "
+        "controls. This changes the recalled sound.");
     addAndMakeVisible(response_);
     preset_.onChange = [this] {
       const int selected = preset_.getSelectedId();
@@ -330,30 +347,30 @@ class DensityEditor final : public juce::AudioProcessorEditor {
                       juce::Justification::centredLeft);
     graphics.setColour(juce::Colour{kAccent});
     graphics.setFont(juce::FontOptions{12.0F, juce::Font::bold});
-    header.removeFromRight(210);
+    header = juce::Rectangle<int>{24, 53, 310, 16};
     graphics.drawText("D-01 / PARALLEL DYNAMICS", header,
-                      juce::Justification::centredRight);
+                      juce::Justification::centredLeft);
     graphics.setColour(juce::Colour{kMuted}.withAlpha(0.35F));
     graphics.fillRect(24, 74, getWidth() - 48, 1);
     graphics.setFont(juce::FontOptions{11.0F});
     graphics.setColour(juce::Colour{kInk});
-    graphics.drawText(
-        "Drive colors / Blend brings attacks back / Output trims level.", 24,
-        getHeight() - 24, getWidth() - 260, 20,
-        juce::Justification::centredLeft);
   }
 
   void resized() override {
-    preset_.setBounds(getWidth() - 204, 28, 180, 28);
+    workflow_.setBounds(24, getHeight() - 80, getWidth() - 48, 48);
+    preset_.setBounds(getWidth() - 414, 28, 180, 28);
+    master_.setBounds(getWidth() - 214, 18, 190, 46);
     response_.setBounds(getWidth() - 224, getHeight() - 30, 200, 24);
     auto area = getLocalBounds().reduced(24);
     area.removeFromTop(68);
-    area.removeFromBottom(24);
+    area.removeFromBottom(60);
     auto meterColumn = area.removeFromLeft(138);
     protection_.setBounds(meterColumn.removeFromBottom(50));
     meter_.setBounds(meterColumn);
     area.removeFromLeft(18);
-    density_.setBounds(area.removeFromLeft(std::min(220, area.getWidth() / 3)));
+    auto macros = area.removeFromLeft(std::min(220, area.getWidth() / 3));
+    density_.setBounds(macros.removeFromTop(macros.getHeight() / 2));
+    character_.setBounds(macros);
     area.removeFromLeft(18);
 
     const int columnWidth = std::max(1, area.getWidth() / 4);
@@ -372,6 +389,8 @@ class DensityEditor final : public juce::AudioProcessorEditor {
  private:
   DensityLookAndFeel lookAndFeel_;
   DensityAudioProcessor& processor_;
+  aste::ui::MasterOutput master_;
+  aste::ui::WorkflowGuide workflow_;
   MeterPanel meter_;
   Knob density_;
   Knob drive_;
@@ -383,6 +402,7 @@ class DensityEditor final : public juce::AudioProcessorEditor {
   Knob hpf_;
   Knob output_;
   Switch protection_;
+  Knob character_;
   aste::ui::PresetMenu preset_;
   aste::ui::ResponseButton response_;
   juce::TooltipWindow tooltips_{this, 400};
@@ -409,20 +429,24 @@ DensityAudioProcessor::createParameterLayout() {
       juce::ParameterID{"protection", 1}, "Protection", true));
   layout.add(std::make_unique<juce::AudioParameterBool>(
       juce::ParameterID{"bypass", 1}, "Bypass", false));
+  aste::ui::MasterGain::addParameter(layout, 0.F);
+  addFloat(layout, "character", "Character", {0.F, 100.F, .01F}, 0.F, "%");
   return layout;
 }
 
 DensityAudioProcessor::DensityAudioProcessor()
-    : AudioProcessor{
-          BusesProperties{}
-              .withInput("Input", juce::AudioChannelSet::stereo(), true)
-              .withOutput("Output", juce::AudioChannelSet::stereo(), true)},
+    : AudioProcessor{BusesProperties{}
+                         .withInput("Input", juce::AudioChannelSet::stereo(),
+                                    true)
+                         .withOutput("Output", juce::AudioChannelSet::stereo(),
+                                     true)},
       state_{*this, nullptr, kStateType, createParameterLayout()} {
+  masterGain_.bind(state_);
   for (std::size_t i = 0; i < kParameterIds.size(); ++i) {
     parameterValues_[i] = state_.getRawParameterValue(kParameterIds[i]);
     jassert(parameterValues_[i] != nullptr);
   }
-  loadFactoryPreset(6);
+  loadFactoryPreset(7);
 }
 
 Parameters DensityAudioProcessor::currentParameters() const noexcept {
@@ -442,10 +466,14 @@ Parameters DensityAudioProcessor::currentParameters() const noexcept {
       .protection =
           parameterValues_[protection]->load(std::memory_order_relaxed) >= 0.5F,
       .legacyBehavior = usesLegacyBehavior(),
+      .character =
+          parameterValues_[character]->load(std::memory_order_relaxed) * .01F,
+      .materialBehavior = usesMaterialResponse() && !usesLegacyBehavior(),
   };
 }
 
 void DensityAudioProcessor::prepareToPlay(double sampleRate, int) {
+  masterGain_.prepare(sampleRate);
   processor_.prepare(sampleRate, currentParameters());
   setLatencySamples(static_cast<int>(processor_.latencySamples()));
   publishMeters({});
@@ -478,6 +506,7 @@ void DensityAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
                      static_cast<std::size_t>(buffer.getNumSamples()),
                      currentParameters());
   publishMeters(processor_.meters());
+  outputPeak_.store(masterGain_.process(buffer), std::memory_order_relaxed);
 }
 
 void DensityAudioProcessor::processBlockBypassed(
@@ -548,6 +577,8 @@ void DensityAudioProcessor::getStateInformation(
   state.setProperty("schema", kStateSchema, nullptr);
   state.setProperty("product", kStateType, nullptr);
   state.setProperty("behavior", usesLegacyBehavior() ? 0 : 1, nullptr);
+  state.removeProperty("material", nullptr);
+  materialRevision_.write(state);
   if (const auto xml = state.createXml()) {
     copyXmlToBinary(*xml, destination);
   }
@@ -567,6 +598,8 @@ void DensityAudioProcessor::setStateInformation(const void* data, int size) {
   if (!oldSchema && behavior != "0" && behavior != "1") return;
   const bool legacy = oldSchema || behavior == "0";
 
+  bool material = false;
+  if (!aste::parameters::MaterialRevision::parse(restored, material)) return;
   auto validated = state_.copyState();
   for (int index = 0; index < validated.getNumChildren(); ++index) {
     auto child = validated.getChild(index);
@@ -603,10 +636,17 @@ void DensityAudioProcessor::setStateInformation(const void* data, int size) {
     destination.setProperty(
         "value", juce::jlimit(range.start, range.end, value), nullptr);
   }
+  if (!seen.contains("character"))
+    validated.getChildWithProperty("id", "character")
+        .setProperty("value", 0.F, nullptr);
+  if (!seen.contains("master"))
+    validated.getChildWithProperty("id", "master")
+        .setProperty("value", 0.F, nullptr);
   validated.setProperty("schema", kStateSchema, nullptr);
   validated.setProperty("product", kStateType, nullptr);
   validated.setProperty("behavior", legacy ? 0 : 1, nullptr);
   legacyBehavior_.store(legacy, std::memory_order_relaxed);
+  materialRevision_.set(material);
   state_.replaceState(validated);
 }
 

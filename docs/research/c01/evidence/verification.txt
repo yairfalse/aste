@@ -1,0 +1,8 @@
+Release c01_contracts: PASS
+ASan/UBSan c01_contracts: PASS
+JUCE c01_plugin_contracts: PASS
+Core and plugin callback audits: zero sampled allocation/lock/open/write activity
+Reproduction: 76 WAVs byte-identical
+VST3 smoke host: component Contamination C-01; 12 parameters; latency 16; 6 blocks; state bytes 944; finite true
+Ad-hoc codesign --verify --deep --strict: PASS
+Human listening, Cubase, universal/x86_64, VST3 SDK validator: NOT PERFORMED

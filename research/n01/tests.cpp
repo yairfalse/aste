@@ -261,7 +261,11 @@ void nested() {
 
 void hostAndRealtime() {
   Engine e;
-  check(e.prepare(48000, studyPattern()), "host test prepared");
+  auto articulationPattern = studyPattern();
+  for (auto& track : articulationPattern.tracks)
+    for (auto& event : track.events)
+      event.articulation = Articulation::Crossfade;
+  check(e.prepare(48000, articulationPattern), "host test prepared");
   std::array<float, 512> out{};
   std::array<Hit, 512> hits{};
   Trace trace{hits};
@@ -396,7 +400,49 @@ void transportSegments() {
         "nonfinite host position is silent");
 }
 }  // namespace
+void articulations() {
+  Pattern p;
+  p.tracks[1].events[0] = {.enabled = true,
+                           .repeats = 2,
+                           .interval = .04,
+                           .repeatGain = 1,
+                           .gain = .7F,
+                           .pitch = 173.F,
+                           .decay = .4F};
+  const std::array<std::size_t, 1> fixed{127};
+  const std::array<std::size_t, 4> irregular{1, 7, 511, 2048};
+  const auto restart = render(p, fixed);
+  p.tracks[1].events[0].articulation = Articulation::Carry;
+  const auto carry = render(p, fixed);
+  p.tracks[1].events[0].articulation = Articulation::Crossfade;
+  const auto crossfade = render(p, fixed);
+  check(restart.hits == carry.hits && carry.hits == crossfade.hits,
+        "articulation leaves scheduling and lock decisions unchanged");
+  check(restart.audio != carry.audio && restart.audio != crossfade.audio,
+        "articulations produce distinct source audio");
+  for (auto policy : {Articulation::Carry, Articulation::Crossfade}) {
+    p.tracks[1].events[0].articulation = policy;
+    for (double rate : {44100., 48000., 96000., 192000.})
+      check(render(p, fixed, rate).audio == render(p, irregular, rate).audio,
+            "new articulation is partition-independent at low/high rates");
+  }
+  p.tracks[1].events[0].repeats = 1;
+  const auto continuous = render(p, fixed);
+  check(crossfade.audio[960] == continuous.audio[960],
+        "crossfade begins on the uninterrupted outgoing source sample");
+  check(
+      std::equal(crossfade.audio.begin() + 1056, crossfade.audio.begin() + 5000,
+                 restart.audio.begin() + 1056),
+      "two-ms crossfade reaches the exact restarted source without an extra "
+      "tail");
+  p.tracks[1].events[0].articulation = static_cast<Articulation>(99);
+  Engine engine;
+  check(!engine.prepare(48000, p),
+        "invalid articulation is rejected during setup");
+}
+
 int main() {
+  articulations();
   scheduler();
   determinism();
   boundaries();

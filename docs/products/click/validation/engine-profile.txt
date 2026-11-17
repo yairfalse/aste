@@ -1,0 +1,5 @@
+rate,held_voices,heap_bytes,mean_cpu_fraction,p99_cpu_fraction,max_cpu_fraction
+48000,48,125239296,0.425454,0.469266,0.493547
+96000,24,125239296,0.450506,0.508344,0.519719
+192000,12,125239296,0.49597,0.5995,0.652875
+K01 engine contracts passed

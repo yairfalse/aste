@@ -355,6 +355,8 @@ void Processor::prepare(double sampleRate, const Parameters& initial) noexcept {
   attackLog_.prepare(sampleRate_, 0.005, std::log(initialAttack));
   attackCoefficient_.prepare(sampleRate_, 0.005,
                              timeCoefficient(initialAttack, sampleRate_));
+  character_.prepare(sampleRate_, 0.02,
+                     bounded(initial.character, 0.F, 1.F, 0.F));
   crush_.prepare(sampleRate_, 0.010, bounded(initial.crush, 0.0F, 1.0F, 0.65F));
   density_.prepare(sampleRate_, 0.010,
                    bounded(initial.density, 0.0F, 1.0F, 0.5F));
@@ -445,6 +447,10 @@ void Processor::prepareAutomationReferencePrototype(
 
 void Processor::reset() noexcept {
   envelopes_ = {};
+  for (auto& filter : characterDc_) filter.reset();
+  characterPrevious_.fill(0.);
+  weightLow_.fill(0.F);
+  weightPower_ = 0.F;
   for (auto& filter : detectorHpf_) {
     filter.reset();
   }
@@ -466,6 +472,11 @@ void Processor::process(float* left, float* right, std::size_t frames,
   }
 
   drive_.setTarget(bounded(parameters.driveDb, -12.0F, 24.0F, 0.0F));
+  if (!parameters.materialBehavior) {
+    weightLow_.fill(0.F);
+    weightPower_ = 0.F;
+  }
+  character_.setTarget(bounded(parameters.character, 0.F, 1.F, 0.F));
   crush_.setTarget(bounded(parameters.crush, 0.0F, 1.0F, 0.65F));
   density_.setTarget(bounded(parameters.density, 0.0F, 1.0F, 0.5F));
   blend_.setTarget(bounded(parameters.blend, 0.0F, 1.0F, 0.9F));
@@ -484,6 +495,8 @@ void Processor::process(float* left, float* right, std::size_t frames,
   const float hpfCoefficient =
       std::exp(-2.0F * kPi * hpfHz / static_cast<float>(sampleRate_));
   meters_ = {};
+  const float dcCoefficient =
+      std::exp(-2.F * kPi * 12.F / static_cast<float>(sampleRate_));
 
   for (std::size_t i = 0; i < frames; ++i) {
     const float dryLeft = cleanSample(left[i]);
@@ -507,6 +520,7 @@ void Processor::process(float* left, float* right, std::size_t frames,
         detectorRight + stereoLink * (linkedDetector - detectorRight)};
     const float density = density_.next();
     const float crush = crush_.next();
+    const float character = character_.next();
     const DensityMapping mapping = mapDensity(density);
 
     const float threshold = mapping.thresholdDb + 12.0F * (1.0F - crush);
@@ -531,8 +545,14 @@ void Processor::process(float* left, float* right, std::size_t frames,
       if (detector > envelope) {
         envelope = detector + attackCoefficient * (envelope - detector);
       } else {
-        const float programme = 1.0F + (mapping.releaseCurve - 1.0F) *
-                                           std::clamp(envelope, 0.0F, 1.0F);
+        const float originalProgramme =
+            1.0F +
+            (mapping.releaseCurve - 1.0F) * std::clamp(envelope, 0.0F, 1.0F);
+        const float expressiveProgramme =
+            .35F + 2.65F * envelope / (envelope + .1F);
+        const float programme =
+            originalProgramme +
+            character * (expressiveProgramme - originalProgramme);
         const float releaseCoefficient =
             timeCoefficient(releaseMs * programme, sampleRate_);
         envelope = detector + releaseCoefficient * (envelope - detector);
@@ -568,6 +588,58 @@ void Processor::process(float* left, float* right, std::size_t frames,
       crushedRight =
           controlledClipSample(saturateSample(crushedRight, saturationDrive));
     }
+
+    if (parameters.materialBehavior) {
+      const float power = std::max(dryLeft * dryLeft, dryRight * dryRight);
+      const float follower =
+          1.F - std::exp(-1.F / static_cast<float>(
+                                    sampleRate_ *
+                                    (power > weightPower_ ? .012 : .22)));
+      weightPower_ += follower * (power - weightPower_);
+      const float lift =
+          std::clamp(.18F / std::sqrt(weightPower_ + .001F), 1.F, 3.5F);
+      const float bodyAlpha =
+          1.F - std::exp(-2.F * kPi * (95.F + 140.F * density) /
+                         static_cast<float>(sampleRate_));
+      const std::array<float, 2> source{
+          drivenLeft * compressedGain[0] * makeupGain,
+          drivenRight * compressedGain[1] * makeupGain};
+      for (std::size_t channel = 0; channel < 2; ++channel)
+        weightLow_[channel] +=
+            bodyAlpha * (source[channel] * lift - weightLow_[channel]);
+      crushedLeft += character * .85F * weightLow_[0];
+      crushedRight += character * .85F * weightLow_[1];
+    }
+    // Parallel asymmetric branch. Subtract its zero-input bias, then remove
+    // signal-dependent DC before blending. Character zero preserves old audio.
+    const auto color = [&](float input, std::size_t channel) {
+      if (character == 0.F) {
+        characterPrevious_[channel] = input;
+        characterDc_[channel].reset();
+        return input;
+      }
+      const float drive = 1.F + 11.F * character;
+      const float bias = .24F * character * (1.F - compressedGain[channel]);
+      // First-order antiderivative antialiasing of the new tanh branch.
+      // Stable log(cosh(x)) avoids overflow at extreme Drive settings.
+      const double x = static_cast<double>(drive) * input + bias;
+      const double previous = characterPrevious_[channel];
+      characterPrevious_[channel] = x;
+      const auto integral = [](double v) {
+        const double magnitude = std::abs(v);
+        return magnitude + std::log1p(std::exp(-2. * magnitude)) - std::log(2.);
+      };
+      const double delta = x - previous;
+      const double bandLimited =
+          std::abs(delta) < 1.e-5 ? std::tanh(.5 * (x + previous))
+                                  : (integral(x) - integral(previous)) / delta;
+      const float shaped = static_cast<float>((bandLimited - std::tanh(bias)) /
+                                              std::sqrt(drive));
+      const float ac = characterDc_[channel].process(shaped, dcCoefficient);
+      return input + character * (ac - input);
+    };
+    crushedLeft = color(crushedLeft, 0);
+    crushedRight = color(crushedRight, 1);
 
     float blend = blend_.next();
     if (blendCascade_) {

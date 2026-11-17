@@ -155,8 +155,11 @@ class Knob final : public juce::Component {
     slider_.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 86, 22);
     slider_.setDoubleClickReturnValue(true, initial);
     slider_.setTitle(name);
-    slider_.setDescription(aste::ui::explanation(id));
-    slider_.setTooltip(aste::ui::explanation(id));
+    slider_.setDescription(
+        aste::ui::explanation(id, state.processor.getName()));
+    slider_.setTooltip(
+        aste::ui::explanation(id, state.processor.getName()) +
+        " Shift-drag for fine adjustment; type an exact value below.");
     slider_.setWantsKeyboardFocus(true);
     slider_.setExplicitFocusOrder(focusOrder);
     label_.setText(name, juce::dontSendNotification);
@@ -173,7 +176,7 @@ class Knob final : public juce::Component {
   }
 
  private:
-  juce::Slider slider_;
+  aste::ui::PrecisionSlider slider_;
   juce::Label label_;
   juce::AudioProcessorValueTreeState::SliderAttachment attachment_;
 };
@@ -247,6 +250,7 @@ class HarmonicEditor final : public juce::AudioProcessorEditor,
   explicit HarmonicEditor(HarmonicAudioProcessor& processor)
       : AudioProcessorEditor{processor},
         processor_{processor},
+        master_{processor.state()},
         meter_{processor},
         harmonic_{processor.state(), "harmonic", "HARMONIC", " %", 35.0, 1},
         input_{processor.state(), "input", "INPUT", " dB", 0.0, 2},
@@ -279,6 +283,17 @@ class HarmonicEditor final : public juce::AudioProcessorEditor,
                       "AIR FREQUENCY",   " Hz",
                       12000.0,           11} {
     setLookAndFeel(&lookAndFeel_);
+    addAndMakeVisible(master_);
+    response_.bind([this] { return processor_.usesMaterialResponse(); },
+                   [this] { processor_.useCurrentResponse(); },
+                   "Adopt the new material behavior. This changes sound and "
+                   "interaction while preserving saved parameter values.");
+    addAndMakeVisible(response_);
+    workflow_.bind(*this, "INPUT > FREQUENCY REGION > MATERIAL > GAIN > MASTER",
+                   "Feed audio. Tune a frequency region, turn Harmonic to "
+                   "transform its substance, then shape its gain. PUSH/PULL "
+                   "changes how hard the material is driven.");
+    addAndMakeVisible(workflow_);
     preset_.setTextWhenNothingSelected("PRESETS");
     preset_.setTitle("PRESETS");
     preset_.setDescription("Load a Harmonic factory starting point");
@@ -343,25 +358,23 @@ class HarmonicEditor final : public juce::AudioProcessorEditor,
                       juce::Justification::centredLeft);
     graphics.setColour(juce::Colour{kAccent});
     graphics.setFont(juce::FontOptions{12.0F, juce::Font::bold});
-    header.removeFromRight(210);
+    header = juce::Rectangle<int>{24, 53, 310, 16};
     graphics.drawText("H-01 / SPECTRAL NONLINEARITY", header,
-                      juce::Justification::centredRight);
+                      juce::Justification::centredLeft);
     graphics.setColour(juce::Colour{kMuted}.withAlpha(0.35F));
     graphics.fillRect(24, 74, getWidth() - 48, 1);
     graphics.setFont(juce::FontOptions{11.0F});
     graphics.setColour(juce::Colour{kInk});
-    graphics.drawText(
-        "Boost a band to engage Harmonic. Flat and cut bands stay clean. Hover "
-        "a control for help.",
-        24, getHeight() - 24, getWidth() - 48, 20,
-        juce::Justification::centredLeft);
   }
 
   void resized() override {
-    preset_.setBounds(getWidth() - 204, 28, 180, 28);
+    response_.setBounds(getWidth() - 224, getHeight() - 28, 200, 24);
+    workflow_.setBounds(24, getHeight() - 80, getWidth() - 48, 48);
+    preset_.setBounds(getWidth() - 414, 28, 180, 28);
+    master_.setBounds(getWidth() - 214, 18, 190, 46);
     auto area = getLocalBounds().reduced(24);
     area.removeFromTop(68);
-    area.removeFromBottom(24);
+    area.removeFromBottom(60);
     meter_.setBounds(area.removeFromLeft(136));
     area.removeFromLeft(16);
     auto hero = area.removeFromRight(214);
@@ -424,18 +437,31 @@ class HarmonicEditor final : public juce::AudioProcessorEditor,
     for (const char* id :
          {"foundation_gain", "body_gain", "presence_gain", "air_gain"})
       boosted |= processor_.state().getRawParameterValue(id)->load() > 0;
+    const bool material = processor_.usesMaterialResponse();
     const bool active =
-        boosted &&
+        (boosted || material) &&
         processor_.state().getRawParameterValue("harmonic")->load() > 0;
-    engagement_.setText(active ? "COLOR READY / level dependent"
-                               : (boosted ? "CLEAN / Harmonic is zero"
-                                          : "CLEAN / boost a band to color"),
-                        juce::dontSendNotification);
+    harmonic_.setDescription(
+        !boosted && !material
+            ? "Inactive color: boost at least one band to hear Harmonic. "
+              "Flat and cut bands remain clean."
+        : !active ? "Raise Harmonic to transform the tuned frequency regions."
+                  : "Harmonic is engaged; tune the regions, then use Input or "
+                    "PUSH/PULL to change the material response.");
+    engagement_.setText(
+        active ? (material ? "MATERIAL / level dependent"
+                           : "COLOR READY / level dependent")
+               : ((boosted || material) ? "CLEAN / Harmonic is zero"
+                                        : "CLEAN / boost a band to color"),
+        juce::dontSendNotification);
   }
   juce::Label engagement_;
   juce::TextButton push_, pull_;
   HarmonicLookAndFeel lookAndFeel_;
   HarmonicAudioProcessor& processor_;
+  aste::ui::MasterOutput master_;
+  aste::ui::WorkflowGuide workflow_;
+  aste::ui::ResponseButton response_;
   MeterPanel meter_;
   Knob harmonic_;
   Knob input_;
@@ -476,15 +502,18 @@ HarmonicAudioProcessor::createParameterLayout() {
   addFloat(layout, "output", "Output", {-18.0F, 18.0F, 0.01F}, 0.0F, "dB");
   layout.add(std::make_unique<juce::AudioParameterBool>(
       juce::ParameterID{"bypass", 1}, "Bypass", false));
+  aste::ui::MasterGain::addParameter(layout, 0.F);
   return layout;
 }
 
 HarmonicAudioProcessor::HarmonicAudioProcessor()
-    : AudioProcessor{
-          BusesProperties{}
-              .withInput("Input", juce::AudioChannelSet::stereo(), true)
-              .withOutput("Output", juce::AudioChannelSet::stereo(), true)},
+    : AudioProcessor{BusesProperties{}
+                         .withInput("Input", juce::AudioChannelSet::stereo(),
+                                    true)
+                         .withOutput("Output", juce::AudioChannelSet::stereo(),
+                                     true)},
       state_{*this, nullptr, kStateType, createParameterLayout()} {
+  masterGain_.bind(state_);
   for (std::size_t index = 0; index < kParameterIds.size(); ++index) {
     parameterValues_[index] = state_.getRawParameterValue(kParameterIds[index]);
     jassert(parameterValues_[index] != nullptr);
@@ -512,10 +541,12 @@ Parameters HarmonicAudioProcessor::currentParameters() const noexcept {
       .harmonic =
           parameterValues_[harmonic]->load(std::memory_order_relaxed) * 0.01F,
       .outputDb = parameterValues_[output]->load(std::memory_order_relaxed),
+      .materialBehavior = usesMaterialResponse(),
   };
 }
 
 void HarmonicAudioProcessor::prepareToPlay(double sampleRate, int) {
+  masterGain_.prepare(sampleRate);
   processor_.prepare(sampleRate, currentParameters());
   setLatencySamples(static_cast<int>(processor_.latencySamples()));
   publishMeters({});
@@ -548,6 +579,7 @@ void HarmonicAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
                      static_cast<std::size_t>(buffer.getNumSamples()),
                      currentParameters());
   publishMeters(processor_.meters());
+  outputPeak_.store(masterGain_.process(buffer), std::memory_order_relaxed);
 }
 
 void HarmonicAudioProcessor::processBlockBypassed(
@@ -613,6 +645,8 @@ void HarmonicAudioProcessor::getStateInformation(
   auto state = state_.copyState();
   state.setProperty("schema", kStateSchema, nullptr);
   state.setProperty("product", kStateType, nullptr);
+  state.removeProperty("material", nullptr);
+  materialRevision_.write(state);
   if (const auto xml = state.createXml()) {
     copyXmlToBinary(*xml, destination);
   }
@@ -627,6 +661,8 @@ void HarmonicAudioProcessor::setStateInformation(const void* data, int size) {
   if (!restored.isValid()) {
     return;
   }
+  bool material = false;
+  if (!aste::parameters::MaterialRevision::parse(restored, material)) return;
   auto validated = state_.copyState();
   for (int index = 0; index < validated.getNumChildren(); ++index) {
     auto child = validated.getChild(index);
@@ -661,8 +697,12 @@ void HarmonicAudioProcessor::setStateInformation(const void* data, int size) {
     destination.setProperty(
         "value", juce::jlimit(range.start, range.end, value), nullptr);
   }
+  if (!seen.contains("master"))
+    validated.getChildWithProperty("id", "master")
+        .setProperty("value", 0.F, nullptr);
   validated.setProperty("schema", kStateSchema, nullptr);
   validated.setProperty("product", kStateType, nullptr);
+  materialRevision_.set(material);
   state_.replaceState(validated);
 }
 

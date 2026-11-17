@@ -26,7 +26,7 @@ struct Study {
   Memory memory{Memory::Shared};
   Excitation excitation{Excitation::White};
   Controls controls{};
-  bool external{}, fixed{}, release{}, midi{};
+  bool external{}, fixed{}, release{}, midi{}, retuneOnly{};
 };
 const std::vector<Study> studies = [] {
   std::vector<Study> s;
@@ -80,6 +80,12 @@ const std::vector<Study> studies = [] {
     individual.modeDecay[i] = i % 3 == 1 ? .15 : 1;
   s.push_back({.name = "individual_mode_damping", .controls = individual});
   s.push_back({.name = "midi_chord_replacement", .midi = true});
+  s.push_back({.name = "retune_without_new_excitation",
+               .controls = {.t60 = 8, .damping = .15},
+               .retuneOnly = true});
+  s.push_back({.name = "coupled_retune_without_new_excitation",
+               .controls = {.t60 = 8, .damping = .15, .couplingHz = 8},
+               .retuneOnly = true});
   return s;
 }();
 struct Audio {
@@ -110,7 +116,8 @@ std::vector<float> excitation(const Study& s, double fs,
   Exciter e;
   if (!e.prepare(fs)) throw std::runtime_error("exciter rate rejected");
   for (std::size_t i = 0; i < events.size(); ++i) {
-    if (events[i].type != EventType::Strike) continue;
+    if (events[i].type != EventType::Strike || (s.retuneOnly && i > 0))
+      continue;
     const auto length = static_cast<std::size_t>(fs * .04);
     std::vector<float> burst(length);
     e.trigger(s.excitation, 501 + i, length);
@@ -135,7 +142,15 @@ std::vector<float> excitation(const Study& s, double fs,
   return input;
 }
 std::vector<Event> performanceEvents(const Study& study, double fs) {
-  const auto snapshots = score(fs, study.fixed, study.release);
+  auto snapshots = score(fs, study.fixed, study.release);
+  if (study.retuneOnly) {
+    bool initial = true;
+    for (auto& event : snapshots)
+      if (event.type == EventType::Strike) {
+        if (!initial) event.type = EventType::Retune;
+        initial = false;
+      }
+  }
   if (!study.midi) return snapshots;
   std::vector<Event> result;
   std::array<int, kTones> held{};
@@ -184,7 +199,7 @@ Audio render(const Study& s, std::size_t block = 127, double fs = rate) {
   return a;
 }
 
-Audio reference(bool fieldOnly) {
+Audio reference(bool fieldOnly, bool current = false, std::size_t block = 127) {
   const auto events = score(rate);
   Audio a;
   a.input = excitation(studies[0], rate, events);
@@ -197,7 +212,18 @@ Audio reference(bool fieldOnly) {
   fp.mass = .8F;
   fp.pitch = .2F;
   fp.outputDb = -6;
+  if (current) {
+    fp.mass = .75F;
+    fp.grain = .65F;
+    fp.pitch = .55F;
+    fp.motion = .55F;
+    fp.distance = .20F;
+    fp.blend = .65F;
+    fp.outputDb = 0;
+    fp.texture = .70F;
+  }
   std::array<aste::sequence::Processor, 4> voices;
+  aste::sequence::Processor polyphonic;
   aste::sequence::Parameters sp;
   sp.sequenceEnabled = false;
   sp.sustain = 0;
@@ -206,17 +232,38 @@ Audio reference(bool fieldOnly) {
   sp.releaseMs = 120;
   sp.outputDb = -12;
   sp.glideMs = 0;
+  if (current) {
+    sp.voiceMode = 1;
+    sp.pressure = .18F;
+    sp.shape = .08F;
+    sp.oscillatorMix = .5F;
+    sp.detuneSemitones = .14F;
+    sp.subLevel = .08F;
+    sp.cutoffHz = 1600;
+    sp.resonance = .18F;
+    sp.filterMorph = .15F;
+    sp.filterDrive = .25F;
+    sp.envelopeAmount = .35F;
+    sp.attackMs = 18;
+    sp.decayMs = 650;
+    sp.sustain = .78F;
+    sp.releaseMs = 550;
+    sp.outputDb = -8;
+  }
   for (auto& voice : voices) voice.prepare(rate, sp);
+  polyphonic.prepare(rate, sp);
   std::array<int, 4> held{};
   held.fill(-1);
   std::size_t event{};
   std::size_t off = a.left.size();
   for (std::size_t at = 0; at < a.left.size();) {
-    auto count = std::min<std::size_t>(127, a.left.size() - at);
+    auto count = std::min<std::size_t>(block, a.left.size() - at);
     if (event < events.size() && events[event].offset > at)
       count = std::min(count, events[event].offset - at);
     if (off > at) count = std::min(count, off - at);
     const bool onset = event < events.size() && events[event].offset == at;
+    std::array<aste::sequence::MidiEvent, 8> polyMidi{};
+    std::size_t polyCount{};
     for (std::size_t v = 0; v < voices.size() && !fieldOnly; ++v) {
       std::array<aste::sequence::MidiEvent, 2> midi{};
       std::size_t n{};
@@ -229,12 +276,32 @@ Audio reference(bool fieldOnly) {
                                    events[event].chord.intervals[v]);
         midi[n++] = {0, aste::sequence::MidiEventType::noteOn, held[v], .75F};
       }
-      std::array<float, 127> left{}, right{};
+      if (current) {
+        for (std::size_t i = 0; i < n; ++i) polyMidi[polyCount++] = midi[i];
+        continue;
+      }
+      std::array<float, 2048> left{}, right{};
       voices[v].process(left.data(), right.data(), count, sp, {},
                         std::span(midi).first(n));
       for (std::size_t i = 0; i < count; ++i) {
         a.left[at + i] += left[i] * .25F;
         a.right[at + i] += right[i] * .25F;
+      }
+    }
+    if (current && !fieldOnly) {
+      std::sort(polyMidi.begin(),
+                polyMidi.begin() + static_cast<std::ptrdiff_t>(polyCount),
+                [](const auto& a, const auto& b) {
+                  return a.type == aste::sequence::MidiEventType::noteOff &&
+                         b.type != aste::sequence::MidiEventType::noteOff;
+                });
+      polyphonic.process(a.left.data() + at, a.right.data() + at, count, sp, {},
+                         std::span(polyMidi).first(polyCount));
+      // Reproduce the new plugin's independent +3 dB final master stage.
+      constexpr float master = 1.4125375446F;
+      for (std::size_t i = 0; i < count; ++i) {
+        a.left[at + i] *= master;
+        a.right[at + i] *= master;
       }
     }
     if (fieldOnly)
@@ -386,18 +453,22 @@ void pack(const std::filesystem::path& path) {
   events
       << "variant,sample,event,midi_note,root,interval_1,interval_2,interval_3,"
          "interval_4\n";
-  for (std::size_t i = 0; i < studies.size() + 2; ++i) {
+  for (std::size_t i = 0; i < studies.size() + 4; ++i) {
+    const std::array referenceNames{"four_sequence_into_field",
+                                    "same_noise_into_field",
+                                    "current_poly_sequence_into_textured_field",
+                                    "same_noise_into_textured_field"};
+    const auto referenceIndex = i >= studies.size() ? i - studies.size() : 0;
     const std::string name =
-        i < studies.size() ? studies[i].name
-                           : (i == studies.size() ? "four_sequence_into_field"
-                                                  : "same_noise_into_field");
+        i < studies.size() ? studies[i].name : referenceNames[referenceIndex];
     const auto a = i < studies.size() ? render(studies[i])
-                                      : reference(i != studies.size());
+                                      : reference(referenceIndex % 2 != 0,
+                                                  referenceIndex >= 2);
     const auto m = measure(a);
     if (m.rms == 0) throw std::runtime_error("unexpected empty study");
     const double gain = std::min(.05 / m.rms, .8 / m.peak);
     // Reversed cyclic order is bijective, not a claim of randomization.
-    const auto number = (studies.size() + 13 - i) % (studies.size() + 2) + 1;
+    const auto number = (studies.size() + 13 - i) % (studies.size() + 4) + 1;
     const std::string id = (number < 10 ? "0" : "") + std::to_string(number);
     wave(path / "audio" / (id + ".wav"), a, gain);
     wave(path / "source" / (name + ".wav"), a, 1);
@@ -429,32 +500,36 @@ void pack(const std::filesystem::path& path) {
     }
   }
   auto manifest = file(path / "MANIFEST.txt");
-  manifest << "R-01 isolated research, source commit at configure: "
-           << R01_COMMIT << "\ncompiler: " << R01_COMPILER
-           << "\n48000 Hz stereo float32 WAV, 8 seconds each; no clipped "
-              "export samples.\n"
-              "Each synthetic excitation burst has unit squared-sample energy. "
-              "Identical streams enter modal/waveguide comparisons.\n"
-              "Four-chord score: minor7, suspended, minor9 and ambiguous. "
-              "Exact cents and generators live in lab.cpp.\n"
-              "audio/: obscured IDs, RMS target .05 with peak cap .8. source/: "
-              "unchanged raw outputs.\n"
-              "RMS matching is not perceptual loudness matching. FNV is only a "
-              "build-specific fingerprint.\n"
-              "Listen quietly first; disable normalization/dynamics. Use "
-              "monitors, headphones and mono.\n"
-              "Complete responses before revealing answer-key. No preference "
-              "is a valid result.\n"
-              "No human listening or musical-success claim; generated audio "
-              "and numerical assessment only.\n"
-              "External excitation is a generated transient/chirp passed "
-              "through the audio-input API, not a file importer.\n"
-              "Sequence comparison uses four independent monophonic voices "
-              "into one Field, not a crippled one-note baseline.\n"
-              "Field-only uses the same unpitched input. Neither reference is "
-              "an equivalent-control null test.\n";
-  std::cout << "pack: " << studies.size() + 2 << " variants, "
-            << (studies.size() + 2) * 2 << " WAVs\n";
+  manifest
+      << "R-01 isolated research, source commit at configure: " << R01_COMMIT
+      << "\ncompiler: " << R01_COMPILER
+      << "\n48000 Hz stereo float32 WAV, 8 seconds each; no clipped "
+         "export samples.\n"
+         "Each synthetic excitation burst has unit squared-sample energy. "
+         "Identical streams enter modal/waveguide comparisons.\n"
+         "Four-chord score: minor7, suspended, minor9 and ambiguous. "
+         "Exact cents and generators live in lab.cpp.\n"
+         "audio/: obscured IDs, RMS target .05 with peak cap .8. source/: "
+         "unchanged raw outputs.\n"
+         "RMS matching is not perceptual loudness matching. FNV is only a "
+         "build-specific fingerprint.\n"
+         "Listen quietly first; disable normalization/dynamics. Use "
+         "monitors, headphones and mono.\n"
+         "Complete responses before revealing answer-key. No preference "
+         "is a valid result.\n"
+         "No human listening or musical-success claim; generated audio "
+         "and numerical assessment only.\n"
+         "External excitation is a generated transient/chirp passed "
+         "through the audio-input API, not a file importer.\n"
+         "Sequence comparison uses four independent monophonic voices "
+         "into one Field, not a crippled one-note baseline.\n"
+         "Two further references use one current eight-voice Sequence "
+         "with Warm Brass values and +3 dB Master into Open Field/Texture 70, "
+         "and identical unpitched noise into that Field.\n"
+         "Field-only uses the same unpitched input. Neither reference is "
+         "an equivalent-control null test.\n";
+  std::cout << "pack: " << studies.size() + 4 << " variants, "
+            << (studies.size() + 4) * 2 << " WAVs\n";
 }
 
 void tuning(const std::filesystem::path& path) {
@@ -696,9 +771,22 @@ int main(int argc, char** argv) {
         throw std::runtime_error("FFT independent sinusoid calibration failed");
       for (const auto& s : studies) {
         const auto a = render(s, 127), b = render(s, 511);
+        if (s.retuneOnly &&
+            !std::all_of(
+                a.input.begin() + static_cast<std::ptrdiff_t>(rate * .15),
+                a.input.end(), [](float x) { return x == 0; }))
+          throw std::runtime_error(
+              "retuning memory study received fresh excitation");
         if (a.left != b.left || a.right != b.right || measure(a).rms == 0)
           throw std::runtime_error(std::string("render mismatch: ") + s.name);
       }
+      for (bool current : {false, true})
+        for (bool fieldOnly : {false, true}) {
+          const auto a = reference(fieldOnly, current, 127);
+          const auto b = reference(fieldOnly, current, 511);
+          if (a.left != b.left || a.right != b.right || measure(a).rms == 0)
+            throw std::runtime_error("family reference partition mismatch");
+        }
       if (render(studies[0]).input != render(studies[6]).input)
         throw std::runtime_error("architecture comparison changed excitation");
       std::cout << studies.size()

@@ -1,0 +1,13 @@
+{
+  "product": "Click K-01",
+  "version": "0.12.0",
+  "installed": "/Library/Audio/Plug-Ins/VST3/Click K-01.vst3",
+  "sha256": "52bb462d37d36212270563451d9ac331a40f96f14eb18c36e50d33bf944af4be",
+  "architectures": [
+    "arm64",
+    "x86_64"
+  ],
+  "changed_products": [
+    "click-k01"
+  ]
+}

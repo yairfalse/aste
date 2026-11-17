@@ -1,0 +1,294 @@
+{
+  "head": "ea5936cc09053dac3f96e89081813858c7ff6945",
+  "tracked_patch_sha256": "798646a8b2c15d6ad4b3997634522b7765be5e1f4b27059c864174fcae244ae2",
+  "source_sha256": {
+    "LICENSE": "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0",
+    "apps/field/field_plugin.cpp": "fe2e43c38c24b0ffd818d27a4e488dcb94a0a7613a2d8be0a231374d8d5eb20e",
+    "apps/field/field_plugin.hpp": "ebb19dc8bba40f31efc17776168f1c10582839a816a02a77df3d48c9267fd363",
+    "apps/field/field_processor.cpp": "1fd63c4b15f912e303ccfffa4f2fe2a14642b86ba97daa301455f16faf448867",
+    "apps/field/field_processor.hpp": "1129bbd65ec08ec02856c56ec1ac5b039f933af57c7143d72acdbda34b188881",
+    "apps/impulse/impulse_plugin.cpp": "e30b9721529dcd763d3714031d289356e43a042f2afc7924f87e750dc017d186",
+    "apps/impulse/impulse_plugin.hpp": "6076244d55e71e6e34ba1cddb35e878250e08603653ffee13e04cbb66ba503ea",
+    "apps/impulse/impulse_processor.cpp": "d704986ed36c204d68c53a8c29238adf8d39a4c5c130113753990e21153d5f0d",
+    "apps/impulse/impulse_processor.hpp": "7ebb5d782273e0d81ae503a82b2dd6a431ebbddca22e02db0bba4dab3d4861cd",
+    "apps/impulse/impulse_starting_points.hpp": "069fa3512318eaee6c686c52c720760c025b1fb476118fa5e1f3f2a79aed822b",
+    "apps/loop/loop_plugin.cpp": "784329514c6307019d4dfce5b65ce6a8168d483b0a40ea5ce5f00e2f53d19a4a",
+    "apps/loop/loop_plugin.hpp": "5dbbf71525d57d27ce81c72e3e78ead265cee400adb3d9ea4371d7389f15e56a",
+    "apps/loop/loop_processor.cpp": "28588e4df4f23f98e182786d42ddfce753e35443404e48df27d02a9f35e80a4c",
+    "apps/loop/loop_processor.hpp": "f5e5c0cb7566de68d5119d52b79e17247334014dbac157117a76024b934b6055",
+    "apps/loop/tape_snapshots.hpp": "d5e9ad743bc113053849ffeee26e56f78fd6ee61bdc24391f2734cb21e649be6",
+    "apps/sequence/sequence_plugin.cpp": "02f82e68e6ebdb8298cd8e778d337af0badc004f702ac241f4bf648ce16a52dc",
+    "apps/sequence/sequence_plugin.hpp": "cd7141248f566f384e6cc0f784ca5d0470486888b16e2d6e3b5dbc858e349427",
+    "apps/sequence/sequence_processor.cpp": "676c9c6476a48ab39050768816a70f2162676d8f6e37cd5b1eb3705c179f6854",
+    "apps/sequence/sequence_processor.hpp": "d1150e6448979532ac5b28a0fc6bbdf51b310ecbb7c7a70a8073ccbd1418c2a0",
+    "libs/parameters/decimal_parse.hpp": "2de54584332de65a981eb024005a35265e2f5a2c06927604d0517711371461a1",
+    "libs/parameters/master_output.hpp": "e790e21e4868a9f46fdd73465132d76feddb59c0339c6c6c2174641ed7c2dab1",
+    "libs/parameters/plugin_ui.hpp": "fea119fc018222bba784cdfc453d5cce53e2689919738f9da56d71648e8ba0e0",
+    "libs/parameters/precision_slider.hpp": "2d72416520c7388782903b79622a042afbf22d9c2b351f43f8ef910167101e6d",
+    "research/integration/reproduce_labs.py": "7a2a9d9fe1a3d9bb2ac37b72b616e7bdd65760f6442ef02917e836890af985e2",
+    "research/n01/CMakeLists.txt": "63ac7966f8bcc960b5a43edd0c3fce56211b85ae6534d426dfd38d02577dcb04",
+    "research/n01/core.cpp": "f969e740d10a58aa7b64ff0dbb670e5041843bb1625fc726093afbf2058f1d9e",
+    "research/n01/core.hpp": "ec14fb02198a08cedb985d7f6423a547657feb08b66174e9a44c9b6386bdd225",
+    "research/n01/lab.cpp": "6fda6f41087c970dae0ce0979a5721bdfd6352f17476b804f2f4eb1aa847a3f7",
+    "research/n01/mutations.cpp": "c9e31d7055388a0c5dde15c7fef35b0db109b8a7ed03ca5a5954c5f4bfb127cf",
+    "research/n01/tests.cpp": "b558147b57e77e5fa1a9e01a2916f42babb267cb4cc88067de81adcd8d794e20",
+    "research/r01/CMakeLists.txt": "713182bb0c9e742b6b2716cc8b239c7eda634992058c45816e65c4d5a9b48128",
+    "research/r01/core.cpp": "ca81ebbb1e1331996a58107fe78e75869f4b6011a2d88b3149ecfb5853bcdd3d",
+    "research/r01/core.hpp": "986587d2c2d82658afbc49834f04596fc51f71995b564d6083be0d2bd7950e0b",
+    "research/r01/lab.cpp": "99dbe5f9d73b66c45c4fe09a3c8aeebde8749982579ccd60628a5dfce7bc9135",
+    "research/r01/mutations.cpp": "6d3ef31aa73bd394477d4e3236de2f4adedcd60c525418b2feb5e008a8d775d2",
+    "research/r01/tests.cpp": "7499b5acd7e73f66ebc5e3494a35ae34e38a037daeee32d27f7523bb13a64664",
+    "tests/realtime_audit_mac.cpp": "3d331980ef9ead0f7593ff02813a83a41c8f4a6765f6e83efd521d36fcda3405"
+  },
+  "platform": "macOS-15.6.1-arm64-arm-64bit-Mach-O",
+  "machine": "arm64",
+  "musical_listening_assessment": "not performed",
+  "source_archive_sha256": "57bb9bc453b1dc95925548c43fb834a68810e99b1938346b0b77a059042a7516",
+  "invocation": [
+    "research/integration/reproduce_labs.py",
+    "--cmake",
+    "/private/tmp/aste-build-tools/bin/cmake",
+    "--output",
+    "build-research-cycle2-20261115",
+    "--sdk",
+    "/Library/Developer/CommandLineTools/SDKs/MacOSX15.5.sdk",
+    "--cxx-include",
+    "/Library/Developer/CommandLineTools/SDKs/MacOSX15.5.sdk/usr/include/c++/v1",
+    "--mutations"
+  ],
+  "commands": [
+    {
+      "name": "n01-configure",
+      "argv": [
+        "/private/tmp/aste-build-tools/bin/cmake",
+        "-S",
+        "/Users/yair/projects/aste/research/n01",
+        "-B",
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/n01/release",
+        "-DCMAKE_BUILD_TYPE=Release",
+        "-DCMAKE_OSX_SYSROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX15.5.sdk",
+        "-DCMAKE_CXX_FLAGS=-isystem /Library/Developer/CommandLineTools/SDKs/MacOSX15.5.sdk/usr/include/c++/v1"
+      ]
+    },
+    {
+      "name": "n01-build",
+      "argv": [
+        "/private/tmp/aste-build-tools/bin/cmake",
+        "--build",
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/n01/release",
+        "--parallel",
+        "3"
+      ]
+    },
+    {
+      "name": "n01-tests",
+      "argv": [
+        "/private/tmp/aste-build-tools/bin/ctest",
+        "--test-dir",
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/n01/release",
+        "--output-on-failure"
+      ]
+    },
+    {
+      "name": "n01-pack-a",
+      "argv": [
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/n01/release/n01_lab",
+        "--pack",
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/n01/listening-a"
+      ]
+    },
+    {
+      "name": "n01-pack-b",
+      "argv": [
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/n01/release/n01_lab",
+        "--pack",
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/n01/listening-b"
+      ]
+    },
+    {
+      "name": "n01-sanitize-configure",
+      "argv": [
+        "/private/tmp/aste-build-tools/bin/cmake",
+        "-S",
+        "/Users/yair/projects/aste/research/n01",
+        "-B",
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/n01/sanitized",
+        "-DCMAKE_BUILD_TYPE=Debug",
+        "-DN01_SANITIZERS=ON",
+        "-DCMAKE_OSX_SYSROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX15.5.sdk",
+        "-DCMAKE_CXX_FLAGS=-isystem /Library/Developer/CommandLineTools/SDKs/MacOSX15.5.sdk/usr/include/c++/v1"
+      ]
+    },
+    {
+      "name": "n01-sanitize-build",
+      "argv": [
+        "/private/tmp/aste-build-tools/bin/cmake",
+        "--build",
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/n01/sanitized",
+        "--parallel",
+        "3"
+      ]
+    },
+    {
+      "name": "n01-sanitize-tests",
+      "argv": [
+        "/private/tmp/aste-build-tools/bin/ctest",
+        "--test-dir",
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/n01/sanitized",
+        "--output-on-failure"
+      ]
+    },
+    {
+      "name": "n01-mutations",
+      "argv": [
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/n01/release/n01_mutations",
+        "/Users/yair/projects/aste/research/n01",
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/n01/mutations",
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/n01/research-cxx"
+      ]
+    },
+    {
+      "name": "r01-configure",
+      "argv": [
+        "/private/tmp/aste-build-tools/bin/cmake",
+        "-S",
+        "/Users/yair/projects/aste/research/r01",
+        "-B",
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/r01/release",
+        "-DCMAKE_BUILD_TYPE=Release",
+        "-DCMAKE_OSX_SYSROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX15.5.sdk",
+        "-DCMAKE_CXX_FLAGS=-isystem /Library/Developer/CommandLineTools/SDKs/MacOSX15.5.sdk/usr/include/c++/v1"
+      ]
+    },
+    {
+      "name": "r01-build",
+      "argv": [
+        "/private/tmp/aste-build-tools/bin/cmake",
+        "--build",
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/r01/release",
+        "--parallel",
+        "3"
+      ]
+    },
+    {
+      "name": "r01-tests",
+      "argv": [
+        "/private/tmp/aste-build-tools/bin/ctest",
+        "--test-dir",
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/r01/release",
+        "--output-on-failure"
+      ]
+    },
+    {
+      "name": "r01-pack-a",
+      "argv": [
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/r01/release/r01_lab",
+        "--pack",
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/r01/listening-a"
+      ]
+    },
+    {
+      "name": "r01-pack-b",
+      "argv": [
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/r01/release/r01_lab",
+        "--pack",
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/r01/listening-b"
+      ]
+    },
+    {
+      "name": "r01-tuning",
+      "argv": [
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/r01/release/r01_lab",
+        "--tuning",
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/r01/tuning.csv"
+      ]
+    },
+    {
+      "name": "r01-alias",
+      "argv": [
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/r01/release/r01_lab",
+        "--alias",
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/r01/alias.csv"
+      ]
+    },
+    {
+      "name": "r01-stress",
+      "argv": [
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/r01/release/r01_lab",
+        "--stress",
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/r01/stress.csv"
+      ]
+    },
+    {
+      "name": "r01-sanitize-configure",
+      "argv": [
+        "/private/tmp/aste-build-tools/bin/cmake",
+        "-S",
+        "/Users/yair/projects/aste/research/r01",
+        "-B",
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/r01/sanitized",
+        "-DCMAKE_BUILD_TYPE=Debug",
+        "-DR01_SANITIZERS=ON",
+        "-DCMAKE_OSX_SYSROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX15.5.sdk",
+        "-DCMAKE_CXX_FLAGS=-isystem /Library/Developer/CommandLineTools/SDKs/MacOSX15.5.sdk/usr/include/c++/v1"
+      ]
+    },
+    {
+      "name": "r01-sanitize-build",
+      "argv": [
+        "/private/tmp/aste-build-tools/bin/cmake",
+        "--build",
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/r01/sanitized",
+        "--parallel",
+        "3"
+      ]
+    },
+    {
+      "name": "r01-sanitize-tests",
+      "argv": [
+        "/private/tmp/aste-build-tools/bin/ctest",
+        "--test-dir",
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/r01/sanitized",
+        "--output-on-failure"
+      ]
+    },
+    {
+      "name": "r01-mutations",
+      "argv": [
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/r01/release/r01_mutations",
+        "/Users/yair/projects/aste/research/r01",
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/r01/mutations",
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/r01/research-cxx"
+      ]
+    },
+    {
+      "name": "n01-benchmark",
+      "argv": [
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/n01/release/n01_lab",
+        "--benchmark"
+      ]
+    },
+    {
+      "name": "r01-benchmark",
+      "argv": [
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/r01/release/r01_lab",
+        "--benchmark",
+        "/Users/yair/projects/aste/build-research-cycle2-20261115/r01/benchmark.csv"
+      ]
+    }
+  ],
+  "results": {
+    "n01": {
+      "wav_count": 40,
+      "pack_byte_reproducible": true,
+      "pack": "n01/listening-a",
+      "zip_sha256": "d4d509fd0a4e85e6bcfe500b96732e9e985a50262737deb2a15ca73b571f8f69"
+    },
+    "r01": {
+      "wav_count": 64,
+      "pack_byte_reproducible": true,
+      "pack": "r01/listening-a",
+      "zip_sha256": "31ed06410ad3c8209254bb8b105416658a3045d630722e4fc798d3cae2001da5"
+    }
+  }
+}

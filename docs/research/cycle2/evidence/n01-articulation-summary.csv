@@ -1,0 +1,4 @@
+policy,active_repeat_edges,median_boundary_delta,max_boundary_delta,median_max_delta_next_64
+retrigger_restart,65,0.0678296461701,0.13933506608,0.0678296461701
+retrigger_carry,65,0.00940763950348,0.0291592776775,0.00978627521545
+retrigger_crossfade,65,0.0022155046463,0.00645241886377,0.00517404545099

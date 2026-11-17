@@ -1,5 +1,8 @@
 #pragma once
 
+#include "master_output.hpp"
+#include "material_revision.hpp"
+
 #include "impulse_processor.hpp"
 
 #include <juce_audio_utils/juce_audio_utils.h>
@@ -44,6 +47,9 @@ class ImpulseAudioProcessor final : public juce::AudioProcessor {
   }
   [[nodiscard]] float outputPeak() const noexcept;
   [[nodiscard]] int currentStep(std::size_t track) const noexcept;
+  bool usesMaterialResponse() const noexcept {
+    return materialRevision_.active();
+  }
   [[nodiscard]] static int factoryPresetCount() noexcept;
   [[nodiscard]] static juce::String factoryPresetName(int index);
   void loadFactoryPreset(int index);
@@ -54,6 +60,7 @@ class ImpulseAudioProcessor final : public juce::AudioProcessor {
     return sampleClock_.load();
   }
   void useCurrentResponse() {
+    materialRevision_.adopt();
     legacyBehavior_.store(false);
     sampleClock_.store(true);
     updateHostDisplay(ChangeDetails{}.withNonParameterStateChanged(true));
@@ -73,11 +80,13 @@ class ImpulseAudioProcessor final : public juce::AudioProcessor {
                                                     int frames) noexcept;
   void publishMeters(const MeterSnapshot&) noexcept;
 
+  aste::parameters::MaterialRevision materialRevision_;
   Processor processor_{};
   std::atomic<unsigned> auditionRequests_{};
   std::atomic<bool> legacyBehavior_{};
   std::atomic<bool> sampleClock_{true};
   juce::AudioProcessorValueTreeState state_;
+  aste::ui::MasterGain masterGain_;
   std::array<std::atomic<float>*, kGlobalCount> globals_{};
   std::array<std::array<std::atomic<float>*, kTrackParameterCount>, kTrackCount>
       tracks_{};
