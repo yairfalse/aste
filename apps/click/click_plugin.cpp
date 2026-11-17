@@ -1,4 +1,5 @@
 #include "click_plugin.hpp"
+#include "audio_state.hpp"
 #include <cmath>
 #include <numbers>
 
@@ -111,8 +112,20 @@ void Processor::render(juce::AudioBuffer<float>& b,const juce::MidiBuffer& midi)
   meters_[8].store(m.masterPosition);meters_[9].store(m.reduction);meters_[10].store(m.capturedSeconds);meters_[11].store(m.repeating?1.F:0.F);meters_[12].store(m.nested?1.F:0.F);meters_[13].store(m.holding?1.F:0.F);meters_[14].store(m.empty?1.F:0.F);meters_[15].store(static_cast<float>(m.dropped));meters_[16].store(static_cast<float>(m.stolen));meters_[17].store(static_cast<float>(m.hits));meters_[19].store(static_cast<float>(m.gestures));
 }
 void Processor::loadSample(int n,const juce::String& path) {
+  loadStoredSample(n, path, {});
+}
+void Processor::loadStoredSample(int n, const juce::String& path,
+                                 const juce::ValueTree& audio) {
   if(n<0||n>=4)return;
-  {std::lock_guard lock(metadata_);engine_.unloadSample(n);paths_[n]=path;status_[n]=path.isEmpty()?"No sample":"Loading...";++requested_[n];}
+  {
+    std::lock_guard lock(metadata_);
+    engine_.unloadSample(n);
+    paths_[n] = path;
+    audio_[n] = audio;
+    frames_[n] = 0;
+    status_[n] = path.isEmpty() ? "No sample" : "Loading...";
+    ++requested_[n];
+  }
   notify();updateHostDisplay(ChangeDetails{}.withNonParameterStateChanged(true));
 }
 juce::String Processor::sampleStatus(int n) const {std::lock_guard lock(metadata_);return status_[n];}
@@ -124,18 +137,37 @@ void Processor::run() {
   while(!threadShouldExit()) {
     bool work=false;
     for(int n=0;n<4&&!threadShouldExit();++n) {
-      juce::String path;std::uint64_t generation;
-      {std::lock_guard lock(metadata_);generation=requested_[n];if(generation==completed_[n])continue;path=paths_[n];}
+      juce::String path;
+      std::uint64_t generation;
+      juce::ValueTree embedded;
+      {
+        std::lock_guard lock(metadata_);
+        generation = requested_[n];
+        if (generation == completed_[n]) continue;
+        path = paths_[n];
+        embedded = audio_[n];
+      }
       work=true;int bank=-1;std::size_t frames=0;double rate=48000;juce::String message;std::array<float,256> wave{};
-      if(!path.isEmpty()) {
+      if (!path.isEmpty() || embedded.isValid()) {
         bank=engine_.reserveSample(n);if(bank<0){wait(15);continue;}
         auto* l=engine_.sampleData(n,bank,0);auto* r=engine_.sampleData(n,bank,1);
-        if(path.startsWith("builtin:")) {
+        if (embedded.isValid()) {
+          if (const auto saved =
+                  aste::parameters::decodeAudio(embedded, sampleCapacity)) {
+            frames = saved->stereo.size() / 2;
+            rate = saved->rate;
+            for (std::size_t i = 0; i < frames; ++i) {
+              l[i] = saved->stereo[i * 2];
+              r[i] = saved->stereo[i * 2 + 1];
+            }
+            message = "Embedded / " + juce::File{path}.getFileName();
+          }
+        } else if (path.startsWith("builtin:")) {
           const int source=juce::jlimit(0,3,path.substring(8).getIntValue());
           frames=12000;std::uint64_t rng=static_cast<std::uint64_t>(source+1)*1234567;const double frequency=70+source*413.;
           for(std::size_t i=0;i<frames;++i){rng^=rng<<13;rng^=rng>>7;rng^=rng<<17;const double random=(rng>>11)*0x1.0p-52-1;const double time=i/rate;const float x=static_cast<float>((.65*std::sin(2*std::numbers::pi*frequency*time*(1+3*std::exp(-time*110)))+.35*random)*std::exp(-time*(22+n*17)));l[i]=x;r[i]=x;}
           message="Factory fragment "+juce::String(source+1)+" / 250 ms";
-        }else {
+        } else {
           const juce::File file{path};std::unique_ptr<juce::AudioFormatReader> reader(formats_.createReaderFor(file));
           if(!reader)message="MISSING / UNREADABLE - LOAD to relink: "+file.getFileName();
           else if(reader->lengthInSamples<2||reader->lengthInSamples>static_cast<juce::int64>(sampleCapacity)||reader->sampleRate<8000||reader->sampleRate>192000)
@@ -149,11 +181,26 @@ void Processor::run() {
           }
         }
         if(frames>0)for(std::size_t i=0;i<frames;++i){auto bin=std::min<std::size_t>(255,i*256/frames);wave[bin]=std::max(wave[bin],std::max(std::abs(l[i]),std::abs(r[i])));}
-      }else message="No sample - LOAD or drop an audio file";
+        if (frames >= 2 && !path.startsWith("builtin:") &&
+            !embedded.isValid()) {
+          std::vector<float> stereo(frames * 2);
+          for (std::size_t i = 0; i < frames; ++i) {
+            stereo[i * 2] = l[i];
+            stereo[i * 2 + 1] = r[i];
+          }
+          embedded = aste::parameters::encodeAudio("AUDIO", rate, stereo);
+        }
+      } else
+        message = "No sample - LOAD or drop an audio file";
       {std::lock_guard lock(metadata_);
         if(generation!=requested_[n]){if(bank>=0)engine_.cancelSample(n,bank);continue;}
         if(bank>=0){if(frames>=2)engine_.publishSample(n,bank,frames,rate);else engine_.cancelSample(n,bank);}
-        status_[n]=message;waves_[n]=wave;frames_[n]=frames;sampleRates_[n]=rate;completed_[n]=generation;
+        audio_[n] = embedded;
+        status_[n] = message;
+        waves_[n] = wave;
+        frames_[n] = frames;
+        sampleRates_[n] = rate;
+        completed_[n] = generation;
       }
     }
     if(!work)wait(100);
@@ -200,7 +247,11 @@ void Processor::moveEvent(int n,int from,int to) {
 }
 void Processor::storeScene(int index) {
   if(index<0||index>3)return;auto tree=state().copyState();
-  {std::lock_guard lock(metadata_);for(int n=0;n<4;++n)tree.setProperty("sample"+juce::String(n),paths_[n],nullptr);scenes_[index]=tree;}
+  {
+    std::lock_guard lock(metadata_);
+    writeSamples(tree);
+    scenes_[index] = tree;
+  }
   updateHostDisplay(ChangeDetails{}.withNonParameterStateChanged(true));
 }
 bool Processor::hasScene(int n) const {if(n<0||n>=4)return false;std::lock_guard lock(metadata_);return scenes_[n].isValid();}
@@ -208,38 +259,133 @@ bool Processor::recallScene(int index) {
   if(index<0||index>=4)return false;
   juce::ValueTree tree;{std::lock_guard lock(metadata_);tree=scenes_[index].createCopy();}if(!tree.isValid())return false;
   for(auto child:tree)if(auto* p=state().getParameter(child.getProperty("id").toString()))set(p->paramID,static_cast<float>(child.getProperty("value")));
-  for(int n=0;n<4;++n)loadSample(n,tree.getProperty("sample"+juce::String(n)).toString());panic();return true;
+  for (int n = 0; n < 4; ++n)
+    loadStoredSample(n, tree.getProperty("sample" + juce::String(n)).toString(),
+                     tree.getChildWithName("AUDIO" + juce::String(n)));
+  panic();
+  return true;
+}
+void Processor::writeSamples(juce::ValueTree& tree) const {
+  for (int n = 0; n < 4; ++n) {
+    tree.setProperty("sample" + juce::String(n), paths_[n], nullptr);
+    const juce::Identifier type{"AUDIO" + juce::String(n)};
+    tree.removeChild(tree.getChildWithName(type), nullptr);
+    if (audio_[n].isValid()) {
+      juce::ValueTree child{type};
+      child.copyPropertiesFrom(audio_[n], nullptr);
+      tree.appendChild(child, nullptr);
+    }
+  }
+}
+bool Processor::validSamples(const juce::ValueTree& tree) {
+  for (int n = 0; n < 4; ++n) {
+    const juce::Identifier type{"AUDIO" + juce::String(n)};
+    int count = 0;
+    for (auto child : tree)
+      if (child.hasType(type)) ++count;
+    if (count > 1) return false;
+    if (count == 1) {
+      const auto saved = aste::parameters::decodeAudio(
+          tree.getChildWithName(type), sampleCapacity);
+      if (!saved || saved->stereo.size() < 4) return false;
+    }
+  }
+  return true;
 }
 void Processor::writeProductMetadata(juce::ValueTree& tree) const {
-  std::lock_guard lock(metadata_);for(int n=0;n<4;++n)tree.setProperty("sample"+juce::String(n),paths_[n],nullptr);
+  std::lock_guard lock(metadata_);
+  writeSamples(tree);
   juce::ValueTree scenes{"SCENES"};for(int n=0;n<4;++n)if(scenes_[n].isValid()){auto entry=scenes_[n].createCopy();entry.setProperty("slot",n,nullptr);scenes.appendChild(entry,nullptr);}tree.appendChild(scenes,nullptr);
 }
 bool Processor::validateProductMetadata(const juce::ValueTree& tree) const {
+  if (!validSamples(tree)) return false;
   for(int n=0;n<4;++n)if(tree.getProperty("sample"+juce::String(n)).toString().length()>4096)return false;
   const auto scenes=tree.getChildWithName("SCENES");if(scenes.getNumChildren()>4)return false;
   std::array<bool,4> seen{};
-  for(auto entry:scenes){double parsedSlot=0;if(!entry.hasType("click-k01")||entry.getNumChildren()>getParameters().size()||!aste::parameters::parseFiniteDecimal(entry.getProperty("slot",-1).toString().toStdString(),parsedSlot)||parsedSlot!=std::floor(parsedSlot)||parsedSlot<0||parsedSlot>3)return false;int slot=static_cast<int>(parsedSlot);if(seen[slot])return false;seen[slot]=true;
+  for (auto entry : scenes) {
+    double parsedSlot = 0;
+    if (!validSamples(entry) || !entry.hasType("click-k01") ||
+        entry.getNumChildren() > getParameters().size() + 4 ||
+        !aste::parameters::parseFiniteDecimal(
+            entry.getProperty("slot", -1).toString().toStdString(),
+            parsedSlot) ||
+        parsedSlot != std::floor(parsedSlot) || parsedSlot < 0 ||
+        parsedSlot > 3)
+      return false;
+    int slot = static_cast<int>(parsedSlot);
+    if (seen[slot]) return false;
+    seen[slot] = true;
     for(int n=0;n<4;++n)if(entry.getProperty("sample"+juce::String(n)).toString().length()>4096)return false;
-    juce::StringArray ids;for(auto parameter:entry){const auto id=parameter.getProperty("id").toString();if(!const_cast<Processor*>(this)->state().getParameter(id)||ids.contains(id))return false;ids.add(id);double v=0;if(!aste::parameters::parseFiniteDecimal(parameter.getProperty("value").toString().toStdString(),v))return false;}
+    juce::StringArray ids;
+    for (auto parameter : entry) {
+      if (parameter.hasType("AUDIO0") || parameter.hasType("AUDIO1") ||
+          parameter.hasType("AUDIO2") || parameter.hasType("AUDIO3"))
+        continue;
+      const auto id = parameter.getProperty("id").toString();
+      if (!const_cast<Processor*>(this)->state().getParameter(id) ||
+          ids.contains(id))
+        return false;
+      ids.add(id);
+      double v = 0;
+      if (!aste::parameters::parseFiniteDecimal(
+              parameter.getProperty("value").toString().toStdString(), v))
+        return false;
+    }
   }
   return true;
 }
 void Processor::restoreProductMetadata(const juce::ValueTree& tree) {
   {std::lock_guard lock(metadata_);scenes_={};for(auto entry:tree.getChildWithName("SCENES")){int slot=static_cast<int>(entry.getProperty("slot"));scenes_[slot]=entry.createCopy();}}
-  for(int n=0;n<4;++n)loadSample(n,tree.hasProperty("sample"+juce::String(n))?tree.getProperty("sample"+juce::String(n)).toString():"builtin:"+juce::String(n));
+  for (int n = 0; n < 4; ++n)
+    loadStoredSample(
+        n,
+        tree.hasProperty("sample" + juce::String(n))
+            ? tree.getProperty("sample" + juce::String(n)).toString()
+            : "builtin:" + juce::String(n),
+        tree.getChildWithName("AUDIO" + juce::String(n)));
+}
+void Processor::setStateInformation(const void* data, int size) {
+  if (!data || size <= 0 || size > 256 * 1024 * 1024) return;
+  Instrument::setStateInformation(data, size);
 }
 
 juce::ValueTree Processor::soundPreset(int object) {
-  juce::ValueTree tree{"click-sound"};tree.setProperty("schema",1,nullptr);tree.setProperty("sample",samplePath(object),nullptr);
+  juce::ValueTree tree{"click-sound"};
+  tree.setProperty("schema", 1, nullptr);
+  if (object < 0 || object >= 4) return {};
+  {
+    std::lock_guard lock(metadata_);
+    tree.setProperty("sample", paths_[object], nullptr);
+    if (audio_[object].isValid()) {
+      juce::ValueTree audio{"AUDIO"};
+      audio.copyPropertiesFrom(audio_[object], nullptr);
+      tree.appendChild(audio, nullptr);
+    }
+  }
   for(int field=0;field<objectFields;++field)if(field<24||field==27||field==33) {
     juce::ValueTree child{"PARAM"};child.setProperty("id",objectIds[static_cast<std::size_t>(field)],nullptr);child.setProperty("value",value(globals+object*objectFields+field),nullptr);tree.appendChild(child,nullptr);
   }
   return tree;
 }
 bool Processor::restoreSound(int object,const juce::ValueTree& tree) {
-  if(object<0||object>=4||!tree.hasType("click-sound")||tree.getProperty("schema").toString()!="1"||tree.getProperty("sample").toString().length()>4096||tree.getNumChildren()>26)return false;
+  if (object < 0 || object >= 4 || !tree.hasType("click-sound") ||
+      tree.getProperty("schema").toString() != "1" ||
+      tree.getProperty("sample").toString().length() > 4096 ||
+      tree.getNumChildren() > 27)
+    return false;
+  const auto audio = tree.getChildWithName("AUDIO");
+  if (audio.isValid()) {
+    const auto decoded = aste::parameters::decodeAudio(audio, sampleCapacity);
+    if (!decoded || decoded->stereo.size() < 4) return false;
+  }
+  bool sawAudio = false;
   std::array<bool,objectFields> seen{};std::array<float,objectFields> values{};
   for(auto child:tree) {
+    if (child.hasType("AUDIO")) {
+      if (sawAudio) return false;
+      sawAudio = true;
+      continue;
+    }
     const auto id=child.getProperty("id").toString();int field=-1;
     for(int i=0;i<objectFields;++i)if(id==objectIds[static_cast<std::size_t>(i)]&&(i<24||i==27||i==33))field=i;
     if(field<0||seen[static_cast<std::size_t>(field)])return false;double v=0;
@@ -247,7 +393,8 @@ bool Processor::restoreSound(int object,const juce::ValueTree& tree) {
     values[static_cast<std::size_t>(field)]=static_cast<float>(v);seen[static_cast<std::size_t>(field)]=true;
   }
   for(int i=0;i<objectFields;++i)if(seen[static_cast<std::size_t>(i)])set(objectId(object,objectIds[static_cast<std::size_t>(i)]),values[static_cast<std::size_t>(i)]);
-  loadSample(object,tree.getProperty("sample").toString());return true;
+  loadStoredSample(object, tree.getProperty("sample").toString(), audio);
+  return true;
 }
 void Processor::replaceSound(int n,int preset) {
   Object sound=factory(0).object[static_cast<std::size_t>(std::clamp(preset,0,3))];
@@ -263,7 +410,15 @@ void Processor::duplicateSound(int from,int to) {
   if(from<0||from>=4||to<0||to>=4||from==to)return;
   auto copy=currentControls().object[from];const auto destination=currentControls().object[to];
   copy.length=destination.length;copy.division=destination.division;copy.midi=destination.midi;copy.mute=destination.mute;copy.solo=destination.solo;
-  applySound(to,copy);loadSample(to,samplePath(from));
+  juce::String path;
+  juce::ValueTree audio;
+  {
+    std::lock_guard lock(metadata_);
+    path = paths_[from];
+    audio = audio_[from];
+  }
+  applySound(to, copy);
+  loadStoredSample(to, path, audio);
 }
 } // namespace aste::click::plugin
 #ifndef ASTE_NO_PLUGIN_FACTORY

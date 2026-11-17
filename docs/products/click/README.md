@@ -72,9 +72,12 @@ The header factory menu supplies six complete starting patterns: First impacts,
 Microscopic, Sub pressure, Broken lattice, Fragment material and Sample ready.
 Factory sample fragments are original, procedurally generated audio. SAVE/OPEN
 in the header exchange complete `.k01` presets including four stored scenes.
-Samples are referenced by absolute path, not embedded. A missing file leaves a
-visible MISSING/UNREADABLE message; LOAD relinks it. Move production samples into
-a durable project folder before saving the Cubase session.
+Loaded samples are embedded in sessions, `.k01` presets, stored scenes and
+`.k01sound` sounds. Wait for LOAD to finish before saving: a file still loading
+has not yet become captured sample data. Paths remain as provenance and for
+older path-only sessions. Those older sessions still need their source files;
+a missing file shows MISSING/UNREADABLE and LOAD relinks it. Factory fragments
+remain deterministic built-ins rather than duplicated audio payloads.
 
 ## Perform
 
@@ -106,7 +109,7 @@ recorded, the available material is used and the actual captured seconds are
 shown. An empty capture arms until sufficient material is recorded. After release,
 the buffer starts collecting new material. Transport stop/seek, sample-rate
 preparation, panic and session restore clear live voices/repeats. Captured audio
-is temporary performance state; parameters, patterns, scenes and sample paths
+is temporary performance state; parameters, patterns, scenes and loaded samples
 are recalled. A recalled latched repeat arms again rather than restoring audio.
 
 **Pressure** controls threshold, ratio and compensated gain in the internal

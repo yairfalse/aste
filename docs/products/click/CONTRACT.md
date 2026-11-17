@@ -100,13 +100,21 @@ unknown IDs are ignored; finite out-of-range values clamp.
 
 Four `sample0`–`sample3` attributes contain absolute references or `builtin:0`–`3`.
 A `SCENES` child holds up to four validated scalar snapshots with sample paths.
+Optional `AUDIO0`–`AUDIO3` children embed loaded external samples, including in
+each stored scene. Format 1 stores rate, frames and interleaved little-endian
+float32 Base64; maximum 1,048,576 frames, 8–192 kHz, finite samples in [-8, 8].
+Duplicate or malformed audio rejects the complete restore. The state envelope
+is limited to 256 MiB before parsing. Embedded audio takes precedence over the
+path and loads through the existing off-thread sample handoff. Original
+path-only state is still accepted; older binaries cannot use embedded audio.
 Sample-boundary automation values are normalized fractions; editor text fields
 show frames and accept either frame numbers or ms. Their continuous host ranges
 preserve subframe precision rather than quantizing edits to percentages.
 
-No voices, pending hits, compressor detector, random execution history, sample
-PCM or captured master audio is serialized. Restore clears live DSP and queues
-sample reads on the worker; missing references remain visible and relinkable.
+No voices, pending hits, compressor detector, random execution history or
+captured master audio is serialized. Restore clears live DSP and queues
+sample decoding on the worker; missing path-only references remain relinkable.
 Full `.k01` presets use the host state format. `.k01sound` is a separate strict
-`click-sound` schema 1 XML format containing sound fields/sample reference only;
+`click-sound` schema 1 XML format containing sound fields, sample reference and
+optional embedded `AUDIO` using the same format;
 pattern, MIDI mapping, cycle and mute/solo are preserved on sound import.

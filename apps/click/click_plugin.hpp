@@ -10,6 +10,7 @@ class Processor final : public aste::experimental::Instrument, private juce::Thr
   ~Processor() override;
   juce::AudioProcessorEditor* createEditor() override;
   void processBlock(juce::AudioBuffer<float>&,juce::MidiBuffer&) override;
+  void setStateInformation(const void*, int) override;
   double getTailLengthSeconds() const override {return 16;}
   static constexpr int globals=22,objectFields=34,eventFields=19;
   static juce::String objectId(int,const char*);
@@ -46,6 +47,9 @@ class Processor final : public aste::experimental::Instrument, private juce::Thr
   bool validateProductMetadata(const juce::ValueTree&) const override;
   void restoreProductMetadata(const juce::ValueTree&) override;
   void applySound(int,const Object&);
+  void loadStoredSample(int, const juce::String&, const juce::ValueTree&);
+  void writeSamples(juce::ValueTree&) const;  // metadata_ held by caller.
+  static bool validSamples(const juce::ValueTree&);
   Engine engine_;
   std::array<float,512> mono_{};
   std::atomic<unsigned> audition_{};
@@ -58,5 +62,6 @@ class Processor final : public aste::experimental::Instrument, private juce::Thr
   std::array<std::size_t,4> frames_{};std::array<double,4> sampleRates_{};
   std::array<std::uint64_t,4> requested_{},completed_{};
   std::array<juce::ValueTree,4> scenes_;
+  std::array<juce::ValueTree, 4> audio_;
 };
 }

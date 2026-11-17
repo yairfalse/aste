@@ -62,11 +62,69 @@ int main(int argc,char** argv){
   auto sound=p->soundPreset(0);p->set("o1_tune",24);require(p->restoreSound(0,sound),"independent sound preset restore");require(std::abs(p->value(24)+12)<.001F,"sound preset retains tune");
   for(int load=0;load<8;++load){p->loadSample(0,file.getFullPathName());require(wait("test_sample.wav"),"repeated sample handoff");p->audition(0);p->processBlock(b,midi);}
   p->storeScene(1);p->set("o1_tune",24);require(p->recallScene(1),"user scene recall");require(std::abs(p->value(24)+12)<.001F,"scene sound recall");
-  p->getStateInformation(state);auto reloaded=std::make_unique<Processor>();reloaded->setStateInformation(state.getData(),static_cast<int>(state.getSize()));reloaded->prepareToPlay(96000,256);
-  require(reloaded->samplePath(0)==file.getFullPathName(),"sample path persists across instance reload");juce::MemoryBlock recalled;reloaded->getStateInformation(recalled);require(recalled==state,"project bytes round trip");reloaded.reset();
-  p->loadSample(0,folder.getChildFile("missing_sample.wav").getFullPathName());require(wait("MISSING"),"missing file visible");
-  p->scene(0);require(wait("Factory fragment"),"factory sample available for editor");
-  auto editor=std::unique_ptr<juce::AudioProcessorEditor>(p->createEditor());
+  p->getStateInformation(state);
+  auto reloaded = std::make_unique<Processor>();
+  reloaded->setStateInformation(state.getData(),
+                                static_cast<int>(state.getSize()));
+  reloaded->prepareToPlay(96000, 256);
+  require(reloaded->samplePath(0) == file.getFullPathName(),
+          "sample path persists across instance reload");
+  juce::MemoryBlock recalled;
+  reloaded->getStateInformation(recalled);
+  require(recalled == state, "project bytes round trip");
+  reloaded.reset();
+  const auto moved = folder.getChildFile("moved_sample.wav");
+  require(file.moveFileTo(moved), "move original sample away from saved path");
+  auto portable = std::make_unique<Processor>();
+  portable->setStateInformation(state.getData(),
+                                static_cast<int>(state.getSize()));
+  portable->prepareToPlay(48000, 256);
+  for (int attempt = 0; attempt < 2500 && portable->sampleFrames(0) != 4096;
+       ++attempt) {
+    portable->processBlock(b, midi);
+    juce::Thread::sleep(1);
+  }
+  const bool recovered = portable->sampleFrames(0) == 4096;
+  require(portable->recallScene(1),
+          "embedded scene restores while file is absent");
+  for (int attempt = 0; attempt < 2500 && portable->sampleFrames(0) != 4096;
+       ++attempt) {
+    portable->processBlock(b, midi);
+    juce::Thread::sleep(1);
+  }
+  const bool sceneRecovered = portable->sampleFrames(0) == 4096;
+  portable->loadSample(0, {});
+  require(portable->restoreSound(0, sound), "embedded sound preset restores");
+  for (int attempt = 0; attempt < 2500 && portable->sampleFrames(0) != 4096;
+       ++attempt) {
+    portable->processBlock(b, midi);
+    juce::Thread::sleep(1);
+  }
+  const bool soundRecovered = portable->sampleFrames(0) == 4096;
+  require(moved.moveFileTo(file), "restore test fixture path");
+  require(recovered,
+          "project embeds sample audio independently of original path");
+  require(sceneRecovered && soundRecovered,
+          "scenes and individual sounds carry their samples too");
+  portable->audition(0);
+  portable->processBlock(b, midi);
+  require(b.getMagnitude(0, 256) > 0, "embedded sample actually plays");
+  portable.reset();
+  p->getStateInformation(canonical);
+  xml = juce::AudioProcessor::getXmlFromBinary(
+      canonical.getData(), static_cast<int>(canonical.getSize()));
+  malformed = juce::ValueTree::fromXml(*xml);
+  malformed.getChildWithName("AUDIO0").setProperty("frames", 1048577, nullptr);
+  juce::AudioProcessor::copyXmlToBinary(*malformed.createXml(), bad);
+  p->setStateInformation(bad.getData(), static_cast<int>(bad.getSize()));
+  p->getStateInformation(unchanged);
+  require(unchanged == canonical,
+          "oversized embedded audio rejects the whole state");
+  p->loadSample(0, folder.getChildFile("missing_sample.wav").getFullPathName());
+  require(wait("MISSING"), "missing file visible");
+  p->scene(0);
+  require(wait("Factory fragment"), "factory sample available for editor");
+  auto editor = std::unique_ptr<juce::AudioProcessorEditor>(p->createEditor());
   require(writeMinimumEditorArtifact(*editor,folder.getChildFile("sequence.png")),"minimum sequence layout");
   auto* soundView=button(*editor,"SOUND");require(soundView&&soundView->onClick,"sound view connected");soundView->onClick();require(writeMinimumEditorArtifact(*editor,folder.getChildFile("sound.png")),"minimum sound layout");
   auto* more=button(*editor,"ADVANCED SOUND");require(more&&more->onClick,"advanced sound connected");more->setToggleState(true,juce::dontSendNotification);more->onClick();require(writeMinimumEditorArtifact(*editor,folder.getChildFile("sound_advanced.png")),"advanced layout");
