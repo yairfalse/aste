@@ -32,9 +32,14 @@ Cubase can record the change as automation.
 
 ## Memory and session recall
 
-Parameters, routes and freeze choices save in the project. **Captured audio is
-live memory and is not saved. Render frozen results to an audio track before
-closing the project.** Recalled freezes with empty memory arm for fresh source:
+Parameters, routes, freeze choices and each node's latest completed source bank
+save in the project. Frozen material now reopens without feeding it again.
+Audio is embedded, with no external files to collect. Host re-preparation retains
+it; a different host sample rate resamples it while preserving duration.
+Active grains, read positions and an unfinished capture are not serialized, so
+print the performance when exact sample-for-sample continuation matters.
+Older controls-only sessions cannot recover previously unsaved audio.
+Recalled freezes with empty memory arm for fresh source:
 they wait through silence, capture incoming material and then hold it. The graph
 says ARMED / FEED AUDIO. Freeze with existing material acts immediately and can
 seal a partial capture. Capture must be enabled for an armed freeze to acquire
@@ -83,6 +88,14 @@ Malformed/cross-product/unknown-schema state is rejected transactionally. Base
 response metadata does not select an older Grain algorithm; Grain has no legacy
 sound revision. UI meters use lock-free atomics. Core storage is prepared before
 processing; callbacks do not allocate/free, lock, log, wait or access files.
+
+Optional `MEMORY format="1"` metadata contains exactly three `NODE0`–`NODE2`
+records: sample rate, frame count and interleaved little-endian float32 Base64.
+Each bank is bounded to four seconds at 44.1–192 kHz, with finite samples in
+[-8, 8]. Malformed audio rejects the whole restore. Input state is capped at
+64 MiB before XML parsing. Old state without MEMORY restores empty banks;
+older binaries do not restore this new audio metadata. Bank readers pin
+immutable audio using lock-free ownership flags; capture never waits on a save.
 
 The [original laboratory](../../../research/g01/README.md) remains reproducible.
 Its measurements describe that engine revision, not this product’s reduced

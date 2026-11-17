@@ -5,6 +5,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <vector>
+#include <thread>
 using namespace aste::grain;
 void require(bool ok, const char* text) {
   if (!ok) throw std::runtime_error(text);
@@ -38,6 +39,51 @@ std::vector<float> render(double rate, std::size_t block) {
 }
 int main() {
   try {
+    {
+      Engine engine;
+      require(engine.prepare(48000, .1), "snapshot engine prepared");
+      Controls c;
+      c.live = {1, 1, 1};
+      c.routes = {};
+      for (auto& n : c.node) {
+        n.captureSeconds = .02F;
+        n.density = 0;
+      }
+      std::array<float, 127> input, left{}, right{};
+      input.fill(.3F);
+      for (int i = 0; i < 10; ++i)
+        engine.process(input.data(), input.data(), left.data(), right.data(),
+                       127, c);
+      const auto original = engine.memoryState();
+      Engine restored;
+      require(restored.prepare(48000, .1), "restore engine prepared");
+      restored.restoreMemory(original);
+      require(restored.memoryState().audio == original.audio,
+              "same-rate recall preserves every captured sample");
+      std::atomic<bool> done{};
+      std::thread audio([&] {
+        for (int i = 0; i < 3000; ++i) {
+          input.fill(.1F + .03F * static_cast<float>(i % 7));
+          if (i % 31 == 0) engine.clear(0);
+          engine.process(input.data(), input.data(), left.data(), right.data(),
+                         127, c);
+        }
+        done.store(true);
+      });
+      bool coherent = true;
+      do {
+        const auto saved = engine.memoryState();
+        for (const auto& samples : saved.audio) {
+          coherent &= samples.size() <= 4800 * 2;
+          for (std::size_t i = 0; i < samples.size(); i += 2)
+            coherent &=
+                std::isfinite(samples[i]) && samples[i] == samples[i + 1];
+        }
+      } while (!done.load());
+      audio.join();
+      require(coherent,
+              "concurrent save and clear preserve coherent stereo banks");
+    }
     for (double rate : {44100., 48000., 88200., 96000., 176400., 192000.}) {
       auto reference = render(rate, 127);
       for (std::size_t block : {1U, 511U})

@@ -5,7 +5,9 @@
 #include <cstdint>
 #include <span>
 #include <vector>
+#include <atomic>
 namespace aste::grain {
+static_assert(std::atomic<int>::is_always_lock_free);
 constexpr std::size_t nodes = 3, maxGrains = 48;
 using Stereo = std::array<float, 2>;
 enum class TimeMode { Independent, Varispeed };
@@ -62,6 +64,10 @@ struct Snapshot {
   std::uint64_t sanitized{}, rejected{};
   float peak{};
 };
+struct MemoryState {
+  double rate{48000};
+  std::array<std::vector<float>, nodes> audio;  // Interleaved stereo.
+};
 class Engine {
  public:
   bool prepare(double rate, double memorySeconds = 4);
@@ -81,6 +87,9 @@ class Engine {
   }
   Snapshot snapshot() const noexcept { return meter_; }
   std::size_t heapBytes() const noexcept;
+  // Non-audio only. Readers pin immutable published banks; audio never waits.
+  MemoryState memoryState() const;
+  void restoreMemory(const MemoryState&);
 
  private:
   struct Bank {
@@ -88,6 +97,7 @@ class Engine {
     std::size_t length{}, refs{};
     double power{};
     std::uint64_t generation{};
+    mutable std::atomic<int> access{};  // -1 writer, 0 available, 1 reader.
   };
   struct Grain {
     bool active{};
@@ -103,6 +113,7 @@ class Engine {
     std::array<Bank, 3> bank;
     std::array<Grain, maxGrains> grains;
     int published{-1};
+    std::atomic<int> savedBank{-1};
     unsigned recording{};
     std::size_t written{};
     double writePower{}, phase{1}, cursor{}, drift{};

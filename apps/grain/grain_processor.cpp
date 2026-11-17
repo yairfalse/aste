@@ -84,8 +84,14 @@ bool Engine::prepare(double rate, double seconds) {
   voiceLimit_ = rate <= 48000 ? 48 : rate <= 96000 ? 24 : 16;
   capacity_ = static_cast<std::size_t>(std::ceil(rate * seconds));
   for (auto& n : node_)
-    for (auto& b : n.bank)
+    for (auto& b : n.bank) {
       for (auto& channel : b.data) channel.assign(capacity_, 0);
+      b.access.store(0);
+    }
+  for (auto& n : node_) {
+    n.recording = 0;
+    n.bank[0].access.store(-1);
+  }
   for (std::size_t i = 0; i < hann_.size(); ++i)
     hann_[i] = static_cast<float>(.5 - .5 * std::cos(2 * pi * i / 2048));
   for (unsigned f = 0; f < 6; ++f)
@@ -110,14 +116,11 @@ bool Engine::prepare(double rate, double seconds) {
 void Engine::clear(std::size_t index) noexcept {
   if (index >= nodes) return;
   auto& n = node_[index];
+  n.savedBank.store(-1);
   for (auto& g : n.grains) g = {};
-  for (auto& b : n.bank) {
-    b.length = b.refs = 0;
-    b.power = 0;
-    b.generation = 0;
-  }
+  for (auto& b : n.bank) b.refs = 0;
   n.published = -1;
-  n.recording = 0;
+  n.bank[n.recording].length = 0;
   n.written = 0;
   n.writePower = 0;
   n.cursor = 0;
@@ -169,8 +172,11 @@ bool Engine::commit(std::size_t index) noexcept {
   int free = -1;
   for (unsigned i = 0; i < 3; ++i)
     if (i != n.recording && n.bank[i].refs == 0) {
-      free = static_cast<int>(i);
-      if (static_cast<int>(i) != n.published) break;
+      int expected = 0;
+      if (n.bank[i].access.compare_exchange_strong(expected, -1)) {
+        free = static_cast<int>(i);
+        break;
+      }
     }
   if (free < 0) {
     ++n.meter.captureStalls;
@@ -181,12 +187,72 @@ bool Engine::commit(std::size_t index) noexcept {
   b.power = n.writePower / (n.written * 2);
   b.generation = ++n.meter.commits;
   n.published = static_cast<int>(n.recording);
+  b.access.store(0);
+  n.savedBank.store(n.published);
   n.recording = static_cast<unsigned>(free);
   n.written = 0;
   n.writePower = 0;
   n.bank[n.recording].length = 0;
   n.meter.generation = b.generation;
   return true;
+}
+
+MemoryState Engine::memoryState() const {
+  MemoryState result;
+  result.rate = rate_;
+  for (std::size_t index = 0; index < nodes; ++index) {
+    const auto& n = node_[index];
+    for (;;) {
+      const int selected = n.savedBank.load();
+      if (selected < 0) break;
+      const auto& b = n.bank[static_cast<std::size_t>(selected)];
+      int expected = 0;
+      if (!b.access.compare_exchange_strong(expected, 1)) continue;
+      struct Release {
+        std::atomic<int>& access;
+        ~Release() { access.store(0); }
+      } release{b.access};
+      if (n.savedBank.load() != selected) continue;
+      auto& audio = result.audio[index];
+      audio.resize(b.length * 2);
+      for (std::size_t i = 0; i < b.length; ++i) {
+        audio[i * 2] = b.data[0][i];
+        audio[i * 2 + 1] = b.data[1][i];
+      }
+      break;
+    }
+  }
+  return result;
+}
+
+void Engine::restoreMemory(const MemoryState& state) {
+  reset();
+  if (!prepared_ || !std::isfinite(state.rate) || state.rate < 44100 ||
+      state.rate > 192000)
+    return;
+  for (std::size_t index = 0; index < nodes; ++index) {
+    const auto& audio = state.audio[index];
+    const auto frames = audio.size() / 2;
+    if (frames == 0) continue;
+    auto& n = node_[index];
+    auto& b = n.bank[n.recording];
+    n.written = std::min(
+        capacity_,
+        static_cast<std::size_t>(std::round(frames * rate_ / state.rate)));
+    for (std::size_t i = 0; i < n.written; ++i) {
+      const double position =
+          std::min(static_cast<double>(frames - 1), i * state.rate / rate_);
+      const auto a = static_cast<std::size_t>(position);
+      const auto next = std::min(a + 1, frames - 1);
+      for (std::size_t ch = 0; ch < 2; ++ch) {
+        const float x = std::lerp(audio[a * 2 + ch], audio[next * 2 + ch],
+                                  static_cast<float>(position - a));
+        b.data[ch][i] = std::isfinite(x) ? std::clamp(x, -8.F, 8.F) : 0;
+        n.writePower += static_cast<double>(b.data[ch][i]) * b.data[ch][i];
+      }
+    }
+    commit(index);
+  }
 }
 float Engine::read(const Bank& b, unsigned channel, double pos,
                    Interpolation mode, unsigned filter) const noexcept {

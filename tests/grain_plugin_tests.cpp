@@ -41,6 +41,70 @@ void require(bool b, const char* text) {
 }
 int main(int argc, char** argv) {
   juce::ScopedJuceInitialiser_GUI juce;
+  {
+    Processor source;
+    source.set("mix", 1);
+    source.set("n1_capture_seconds", .02F);
+    source.prepareToPlay(48000, 1024);
+    juce::AudioBuffer<float> captured(2, 1024);
+    juce::MidiBuffer midi;
+    for (int ch = 0; ch < 2; ++ch)
+      for (int i = 0; i < 1024; ++i)
+        captured.setSample(ch, i, .3F * std::sin(i * .13F));
+    source.processBlock(captured, midi);
+    source.set("freeze_all", 1);
+    source.processBlock(captured, midi);
+    const auto storedFrames = source.nodeMeter(0, 6);
+    require(storedFrames > 0, "source has captured audio before save");
+    juce::MemoryBlock state;
+    source.getStateInformation(state);
+    auto xml = juce::AudioProcessor::getXmlFromBinary(
+        state.getData(), static_cast<int>(state.getSize()));
+    auto malformed = juce::ValueTree::fromXml(*xml);
+    malformed.getChildWithName("MEMORY").getChild(0).setProperty(
+        "audio", "invalid", nullptr);
+    juce::MemoryBlock bad;
+    juce::AudioProcessor::copyXmlToBinary(*malformed.createXml(), bad);
+    source.setStateInformation(bad.getData(), static_cast<int>(bad.getSize()));
+    juce::MemoryBlock unchanged;
+    source.getStateInformation(unchanged);
+    require(state == unchanged,
+            "malformed audio leaves parameters and memory unchanged");
+    for (double rate : {48000., 96000.}) {
+      Processor restored;
+      restored.setStateInformation(state.getData(),
+                                   static_cast<int>(state.getSize()));
+      restored.prepareToPlay(rate, 1024);
+      float peak = 0;
+      for (int block = 0; block < 20; ++block) {
+        captured.clear();
+        restored.processBlock(captured, midi);
+        peak = std::max(peak, captured.getMagnitude(0, 1024));
+      }
+      require(peak > .01F,
+              "Frozen captured audio survives state-before-prepare recall");
+      require(
+          restored.nodeMeter(0, 6) == std::round(storedFrames * rate / 48000),
+          "Recall preserves captured duration across sample rates");
+      restored.releaseResources();
+      restored.prepareToPlay(rate, 1024);
+      captured.clear();
+      restored.processBlock(captured, midi);
+      require(restored.nodeMeter(0, 6) > 0,
+              "host reprepare retains frozen audio");
+      allocations = 0;
+      restored.setStateInformation(state.getData(),
+                                   static_cast<int>(state.getSize()));
+      allocations = 0;
+      audit = true;
+      restored.processBlock(captured, midi);
+      audit = false;
+      require(allocations == 0,
+              "restored engine handoff never allocates or frees on audio");
+      require(restored.nodeMeter(0, 6) > 0,
+              "state-after-prepare restores captured audio");
+    }
+  }
 #ifdef GRAIN_MAC_AUDIT
   pthread_mutex_t lock;
   pthread_mutex_init(&lock, nullptr);

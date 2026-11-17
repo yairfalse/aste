@@ -1,5 +1,6 @@
 #include "grain_plugin.hpp"
 #include "workflow_guide.hpp"
+#include "audio_state.hpp"
 namespace aste::grain::plugin {
 using namespace aste::experimental;
 const std::array<const char*, GrainAudioProcessor::nodeFields>
@@ -140,8 +141,100 @@ void GrainAudioProcessor::mutate(std::size_t n) {
         std::fmod(value(nodeBase + n * nodeFields + 4) + .38196601125F, 1.F));
 }
 bool GrainAudioProcessor::prepareEngine(double rate, int) {
+  const std::lock_guard lock{lifecycle_};
+  adoptPending();
+  auto memory = engine_.load()->dsp.memoryState();
+  auto ready = std::make_unique<OwnedEngine>();
+  if (!ready->dsp.prepare(rate)) return false;
+  ready->dsp.restoreMemory(memory);
+  delete engine_.exchange(ready.release());
+  collectRetired();
+  hostRate_ = rate;
+  prepared_ = true;
   for (auto& m : meters_) m.store(0);
-  return engine_.prepare(rate);
+  return true;
+}
+GrainAudioProcessor::~GrainAudioProcessor() {
+  delete pending_.exchange(nullptr);
+  delete engine_.exchange(nullptr);
+  collectRetired();
+}
+void GrainAudioProcessor::adoptPending() noexcept {
+  if (auto* ready = pending_.exchange(nullptr)) {
+    auto* old = engine_.exchange(ready);
+    auto* head = retired_.load();
+    do {
+      old->next = head;
+    } while (!retired_.compare_exchange_weak(head, old));
+  }
+}
+void GrainAudioProcessor::collectRetired() {
+  auto* old = retired_.exchange(nullptr);
+  while (old) {
+    auto* next = old->next;
+    delete old;
+    old = next;
+  }
+}
+void GrainAudioProcessor::writeProductMetadata(juce::ValueTree& tree) const {
+  const std::lock_guard lock{lifecycle_};
+  auto* source = pending_.load();
+  if (!source) source = engine_.load();
+  const auto memory = source->dsp.memoryState();
+  juce::ValueTree saved{"MEMORY"};
+  saved.setProperty("format", 1, nullptr);
+  for (std::size_t i = 0; i < nodes; ++i)
+    saved.appendChild(
+        aste::parameters::encodeAudio(
+            juce::Identifier{"NODE" + juce::String(static_cast<int>(i))},
+            memory.rate, memory.audio[i]),
+        nullptr);
+  tree.removeChild(tree.getChildWithName("MEMORY"), nullptr);
+  tree.appendChild(saved, nullptr);
+}
+bool GrainAudioProcessor::validateProductMetadata(
+    const juce::ValueTree& tree) const {
+  int roots = 0;
+  for (auto child : tree)
+    if (child.hasType("MEMORY")) ++roots;
+  if (roots == 0) return true;  // Original controls-only sessions.
+  const auto saved = tree.getChildWithName("MEMORY");
+  if (roots != 1 || saved.getNumChildren() != 3 ||
+      saved.getProperty("format").toString() != "1")
+    return false;
+  double rate = 0;
+  for (int i = 0; i < 3; ++i) {
+    const auto audio = aste::parameters::decodeAudio(
+        saved.getChildWithName("NODE" + juce::String(i)), 192000 * 4, 44100);
+    if (!audio || audio->stereo.size() / 2 > audio->rate * 4 ||
+        (i > 0 && rate != audio->rate))
+      return false;
+    rate = audio->rate;
+  }
+  return true;
+}
+void GrainAudioProcessor::restoreProductMetadata(const juce::ValueTree& tree) {
+  const std::lock_guard lock{lifecycle_};
+  MemoryState memory;
+  const auto saved = tree.getChildWithName("MEMORY");
+  if (saved.isValid())
+    for (int i = 0; i < 3; ++i) {
+      auto audio = aste::parameters::decodeAudio(
+          saved.getChildWithName("NODE" + juce::String(i)), 192000 * 4, 44100);
+      memory.rate = audio->rate;
+      memory.audio[static_cast<std::size_t>(i)] = std::move(audio->stereo);
+    }
+  auto ready = std::make_unique<OwnedEngine>();
+  if (!ready->dsp.prepare(prepared_ ? hostRate_ : memory.rate)) return;
+  ready->dsp.restoreMemory(memory);
+  clearRequested_.store(false);
+  clearMask_.store(0);
+  delete pending_.exchange(ready.release());
+  collectRetired();
+}
+void GrainAudioProcessor::setStateInformation(const void* data, int size) {
+  if (!data || size <= 0 || size > 64 * 1024 * 1024) return;
+  Instrument::setStateInformation(data, size);
 }
 void GrainAudioProcessor::scene(int index) {
   const auto c =
@@ -155,13 +248,15 @@ void GrainAudioProcessor::scene(int index) {
 }
 void GrainAudioProcessor::render(juce::AudioBuffer<float>& b,
                                  const juce::MidiBuffer&) noexcept {
-  if (clearRequested_.exchange(false)) engine_.reset();
+  adoptPending();
+  auto& engine = engine_.load()->dsp;
+  if (clearRequested_.exchange(false)) engine.reset();
   const auto mask = clearMask_.exchange(0);
   if (mask & 8U)
-    engine_.reset();
+    engine.reset();
   else
     for (std::size_t n = 0; n < 3; ++n)
-      if (mask & (1U << n)) engine_.clear(n);
+      if (mask & (1U << n)) engine.clear(n);
   Transport t;
   if (auto* host = getPlayHead())
     if (auto p = host->getPosition()) {
@@ -177,8 +272,8 @@ void GrainAudioProcessor::render(juce::AudioBuffer<float>& b,
   auto* l = b.getWritePointer(0);
   if (b.getNumChannels() > 1) {
     auto* r = b.getWritePointer(1);
-    engine_.process(l, r, l, r, static_cast<std::size_t>(b.getNumSamples()),
-                    currentControls(), t, std::span<const Event>{});
+    engine.process(l, r, l, r, static_cast<std::size_t>(b.getNumSamples()),
+                   currentControls(), t, std::span<const Event>{});
   } else {
     std::array<float, 256> right{};
     const auto c = currentControls();
@@ -189,13 +284,13 @@ void GrainAudioProcessor::render(juce::AudioBuffer<float>& b,
       auto clock = t;
       if (clock.valid && clock.playing)
         clock.ppq += at * clock.bpm / (60 * rate_);
-      engine_.process(l + at, nullptr, l + at, right.data(), frames, c, clock,
-                      std::span<const Event>{});
+      engine.process(l + at, nullptr, l + at, right.data(), frames, c, clock,
+                     std::span<const Event>{});
       for (std::size_t i = 0; i < frames; ++i)
         l[at + i] = (l[at + i] + right[i]) * .5F;
     }
   }
-  const auto s = engine_.snapshot();
+  const auto s = engine.snapshot();
   for (std::size_t n = 0; n < 3; ++n) {
     const auto& m = s.node[n];
     meters_[n * 8].store(m.storedRms);
@@ -340,9 +435,8 @@ class Editor final : public juce::AudioProcessorEditor, private juce::Timer {
         "INPUT > CAPTURE > CONNECT > FRAGMENT > FREEZE / TRANSFORM > MASTER",
         "Feed audio; select A/B/C to edit its sound. Freeze retains that node. "
         "Output is monitor level: routes keep feeding. Clear Network forgets "
-        "all material. Render frozen results before closing the project; "
-        "captured "
-        "audio is live memory.");
+        "all material. Captured source banks save with the project. Render "
+        "to audio when you need to preserve the exact running performance.");
     addAndMakeVisible(workflow_);
     setResizable(true, true);
     setResizeLimits(1100, 880, 1800, 1300);
