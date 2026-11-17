@@ -58,3 +58,12 @@ All controls support host automation, numeric entry, fine drag, reset, and
 portable state. Direct parameters are deliberately playable and can produce
 hard event or timbre changes; Output alone is smoothed because it has no event
 semantic.
+
+## Final master level (0.5.0)
+
+`master` is appended after the existing host parameters, with -36..+18 dB
+range and 20 ms smoothing. It acts after sound shaping and the existing Output
+control. Output meters report this final level. Its header control is always
+visible, with exact text entry and Shift-drag fine changes. Old sessions without
+this parameter restore 0 dB. Fresh Impulse instances start at +6 dB.
+The original parameter indices, ranges and existing Output behavior remain.

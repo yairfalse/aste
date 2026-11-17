@@ -2,728 +2,200 @@
 
 [![CI](https://github.com/yairfalse/aste/actions/workflows/ci.yml/badge.svg)](https://github.com/yairfalse/aste/actions/workflows/ci.yml)
 
-`Aste` is the working name for a family of open-source audio instruments, not
-a registered company. Development packaging uses this provisional name while
-preserving existing plugin identifiers for session compatibility.
+Aste is a family of open-source electronic instruments and audio effects built
+around sound as physical material: mass, harmonic matter, electricity, memory,
+impact and space. These are original instruments, informed by electronic-music
+history rather than intended as hardware emulations.
 
-The project combines original DSP, restrained industrial interfaces, historical
-engineering research, deterministic measurement, and unusually strict
-real-time testing. It is not a hardware-cloning exercise and does not use
-“analog” as a substitute for describing measurable behaviour.
+Read [The Musical Intent](docs/MUSICAL_INTENT.md) for the artistic context.
+Engineering, interfaces and measurement serve that musical purpose; passing a
+test does not establish that an instrument sounds good.
 
-> **Project status:** Density D-01, Harmonic H-01, Sequence S-01, Loop L-01,
-> Impulse I-01, and Field F-01 are complete working internal VST3 prototypes.
-> All six have
-> product-owned DSP, state, tests and industrial UIs.
-> The repository includes a compatibility-preserving musical-control revision;
-> see the [playability fixes and remaining musical questions](docs/research/playability/README.md).
-> The complete local plugin run passes 68/68 checks. The dependency-security
-> review was renewed from fresh public evidence on 2026-11-15. Current artifacts are
-> native arm64 test builds, not a newly validated universal release. None
-> is a supported release: Developer ID
-> signing, notarization, final company identity, and DAW compatibility remain open.
+## Current status
 
-## The instrument family
+The latest validated local development build is **0.12.0** (Field). The build
+version is defined in [CMakeLists.txt](CMakeLists.txt). The local VST3 build
+includes **ten products**. This documentation describes local development work;
+the accompanying code changes and binaries are not published by this
+documentation-only update.
+Some CMake targets retain the name “experimental”; these are playable plugins,
+with their original offline laboratories preserved separately.
 
-The [Non-Machine temporal study](docs/research/n01/README.md) and
-[Resonator harmonic-memory laboratory](research/r01/README.md) are also included
-as offline research, not additional released plugins. Their original reports
-retain their measured source revisions and open musical-evaluation questions.
-The [combined verification contract](research/integration/README.md) checks the
-six-instrument revision and both laboratories together.
+The latest production change is **Field F-01's diffused reverb foundation**.
+Its universal Release VST3 was installed and verified locally at 0.12.0. This
+was a Field-only update; it does not mean every installed Aste plugin was
+rebuilt or replaced. See the [Field installation and validation report](docs/products/field/RELEASE_012.md)
+and [changelog](CHANGELOG.md).
 
-| Product | Purpose | Status |
-|---|---|---|
-| **Density D-01** | Parallel hard mastering compressor | Complete internal prototype; DAW validation next |
-| **Harmonic H-01** | Equalizer with nonlinear band behaviour | Complete internal prototype; musical/DAW validation next |
-| **Sequence S-01** | Monophonic programmed-current synthesizer | Complete internal prototype; musical/DAW validation next |
-| **Loop L-01** | Tape-inspired playable memory instrument | Internal prototype with captured-memory recall; DAW validation next |
-| **Impulse I-01** | Generative rhythm and transient instrument | Complete internal prototype; musical/DAW validation next |
-| **Field F-01** | Playable reverb and stored-spatial-energy instrument | Complete internal prototype; musical/DAW validation next |
+These are development builds, not supported 1.0 releases. Local macOS bundles
+are ad-hoc signed, without Developer ID signing or notarization. Published
+downloads may lag the working tree; use each download's own version and notes.
+Aste remains a provisional project name, with existing plugin identifiers kept
+for session compatibility.
 
-All six products remain independent. Shared code is extracted only when two
-products genuinely need identical behavior or when correctness requires one
-implementation; no product processor links to another product.
+## The family
 
-## Density D-01
+| Product | Type | Musical purpose | Documentation |
+|---|---|---|---|
+| **Density D-01** | Audio effect | Pressure, weight and breathing nonlinear dynamics | [Parameter model](docs/PARAMETER_MODEL.md) |
+| **Harmonic H-01** | Audio effect | Spectral shaping and nonlinear harmonic matter | [Parameters](docs/products/harmonic/PARAMETERS.md) |
+| **Sequence S-01** | MIDI instrument | Polyphonic chords, electrical articulation and optional patterns | [Specification](docs/products/sequence/SPECIFICATION.md) |
+| **Loop L-01** | Audio effect / memory instrument | Captured sound transformed through repeated generations | [Specification](docs/products/loop/SPECIFICATION.md) |
+| **Impulse I-01** | MIDI percussion instrument | Eight synthetic impact objects and editable track cycles | [Parameters](docs/products/impulse/PARAMETERS.md) |
+| **Field F-01** | Audio effect with MIDI excitation | Diffused reverberation and evolving stored spatial energy | [Release guide](docs/products/field/RELEASE_012.md) |
+| **Non-Machine N-01** | MIDI percussion instrument | Three sound objects, explicit event patterns and nested rhythmic time | [Guide](docs/products/non-machine/README.md) |
+| **Resonator R-01** | MIDI instrument | Excited harmonic structures and retained resonant energy | [Guide](docs/products/resonator/README.md) |
+| **Grain G-01** | Audio effect | Three independently timed granular memories and recursive routing | [Guide](docs/products/grain/README.md) |
+| **Contamination C-01** | MIDI instrument | Dense chord excitation, nonlinear resonance and interacting dirty feedback | [Guide](docs/products/contamination/README.md) |
 
-Density is a mastering-oriented parallel dynamics instrument built around one
-musical idea: increase weight, continuity, proximity, and controlled loudness
-without erasing the dry signal's transient life and dimensionality.
+DSP is framework-independent C++20. JUCE is used at the plugin boundary.
+Products own their sound engines, parameters, state and interfaces; they do not
+link to one another's processors. Shared utilities cover genuinely common needs.
 
-It is not a generic compressor with a wet/dry knob. The architecture is
-parallel from the start:
+## Using Field 0.12.0
 
-```text
-input --+------------------------------ dry -------------------+
-        |                                                       |
-        + drive -> detector HPF -> continuous stereo link       |
-                -> per-channel peak envelopes                   |
-                -> hard gain computers -> saturation -> clip ---+-> blend
-                                                                 -> output
-                                                                 -> protection
-```
+Load **Field F-01** as an effect in Cubase. New instances start on **Clean room**.
+The six new starting points are:
 
-The production graph currently has zero algorithmic latency. The dry and crush
-branches are therefore sample-aligned without a delay line, and the VST3 reports
-zero samples to the host. A measured 4× oversampling design remains isolated in
-the DSP lab because the complete graph misses the default CPU budget and has not
-passed musical selection. There is no hidden quality mode or silent topology
-change.
+- **Clean room** — short conventional space.
+- **Deep hall** — a larger diffused tail.
+- **Dark dub** — darker absorption and transformed material.
+- **Enormous space** — long spatial decay.
+- **Evolving field** — moving fragments and pitched wet sound.
+- **FOREVER** — hold existing spatial energy; feed sound before engaging hold.
 
-### Controls
+MASS sets decay; DISTANCE darkens the space. TRANSFORM enables the fragment and
+pitch readouts without the previous feedback-decay loss. Set TRANSFORM to zero
+for the conventional foundation. On a send, set BLEND to 100%. MASTER OUTPUT
+adjusts final level independently of the sound controls.
 
-| Control | Range | Default | Role |
-|---|---:|---:|---|
-| Drive | -12 to +24 dB | 0 dB | Pushes crush audio and saturation; legacy behavior also drives the detector |
-| Crush | 0–100% | 65% | Sets the hard-compression contribution |
-| Attack | 0.02–30 ms | 1 ms | Shapes transient entry |
-| Release | 20–1200 ms | 180 ms | Sets recovery time |
-| Density | 0–100% | 50% | Coordinates threshold, ratio, saturation, release curvature, and crush make-up |
-| Blend | 0–100% | 90% | Mixes the aligned dry and crush paths |
-| Stereo | 0–100% | 100% | Moves continuously from independent to fully linked detection |
-| Output | -24 to +12 dB | -7 dB | Final level trim |
-| Detector HPF | 20–300 Hz | 90 Hz | Reduces low-frequency detector dominance |
-| Protection | Off/on | On | Sample-peak output protection |
+**Existing projects retain the original engine.** Choose **USE UPDATED SOUND**
+to adopt the new engine with current control values, or select a new factory
+preset. The nine older snapshots remain available with their original engine.
+Live reverb and phrase audio are not serialized into the session.
 
-Host bypass is the eleventh stable parameter. Every continuous control supports
-host automation, exact text entry, reset, normalization, documented smoothing,
-and deterministic state recall. Parameter IDs are treated as release contracts;
-see [PARAMETER_MODEL.md](docs/PARAMETER_MODEL.md).
+The installed build passed DSP regression, real-time audits, sanitizers, state
+and preset recall, native/Intel VST3 loading, parameter automation, sample-rate
+changes and simulated transport tests in a separate host. Cubase 14 was launched,
+but macOS blocked Accessibility control: actual plugin insertion and playback
+were **not verified in Cubase**. See the [complete validation limits](docs/products/field/RELEASE_012.md).
 
-### Sound and interface
+## Compatibility and workflow
 
-At restrained settings Density is intended to increase presence and continuity
-while keeping the transient-bearing dry path intact. Crush now also controls
-nonlinear participation, while positive Drive pushes saturation by up to 75%.
-At stronger settings the expanded -46 dB / 60:1 macro range becomes
-deliberately hard, close, and physical. The output stage is protective
-sample-peak clipping, **not** a true-peak mastering limiter.
+Parameter IDs and plugin identities are compatibility contracts. Updated sound
+engines use explicit revision metadata so older projects can keep their sound.
+An absent revision is not permission to reinterpret an existing session.
 
-The current 980×540 editor scales from 760×420 to 1520×840. It uses a near-black
-surface, off-white technical typography, a muted burgundy accent, explicit
-keyboard order, editable values, and signal-driven meters. There are no tabs,
-fake materials, rack decorations, or hidden essential controls. The full family
-language is documented in [UI_SYSTEM.md](docs/UI_SYSTEM.md).
+Editors expose exact values, fine adjustment, automation feedback and final
+Master Output. In Cubase, MIDI instruments appear in the instrument list; audio
+effects appear in insert/send lists. Consult each product's guide for MIDI,
+clock, captured-audio recall and transport behavior.
 
-## Harmonic H-01
-
-Harmonic is a four-band broad equalizer whose boost behavior includes a bounded
-dynamic nonlinear component. Cuts stay clean; boosts progressively add a
-stateful harmonic contribution without switching topology. Its revised
-square-root boost participation makes even modest positive boosts respond,
-while the full Harmonic range reaches an intentionally obvious nonlinear
-region. The serial graph is:
-
-```text
-input -> Foundation -> Body -> Presence -> Air -> output
-           clean cuts / nonlinear-participating boosts
-```
-
-Foundation is a low shelf for the whole bass end; Air is a high shelf for the
-top end. Their frequency controls mark the half-gain transition. Body and
-Presence remain broad bells. Zero gain stays neutral; no extra mode is needed.
-
-Foundation, Body, Presence, and Air each expose gain and a constrained frequency
-range. Input, Harmonic, and Output are global. The Harmonic macro continuously
-coordinates the bounded-stage drive and contribution; it does not add noise,
-drift, or a generic post-EQ saturator. The graph is minimum-phase, uses no
-lookahead or oversampling, and reports zero latency.
-
-Candidate 3 is deliberately provisional. It passed the laboratory contour,
-harmonic, IMD, recovery, finite-output, and CPU gates needed to justify a real
-plugin, but the music-machine test decides whether its four-band interaction is
-actually useful. The stable internal-beta contract is in
-[docs/products/harmonic/PARAMETERS.md](docs/products/harmonic/PARAMETERS.md), and
-the topology decision is [ADR 0007](docs/adr/0007-harmonic-internal-beta-topology.md).
-
-## Sequence S-01
-
-Sequence is a monophonic programmed-current synthesizer with a directly visible
-16-step host-synchronised program. Each step owns note offset, gate, accent, and
-slide. MIDI plays the voice while stopped and transposes the pattern while the
-host runs.
-
-Its original voice combines two anti-aliased oscillators and a sub oscillator,
-a saw–pulse–sine wave path, pulse-width control, a bounded driven mixer, and one
-nonlinear four-stage filter whose Weight control moves continuously between its
-two- and four-pole outputs. This shared-state topology avoids the level and
-phase hollowing of parallel-filter crossfades. Pressure coordinates mixer
-drive, filter-envelope depth, accent gain, and filter loading. It is
-topology-informed, not an emulation of a named synthesizer.
-
-The full internal-beta contract is
-[docs/products/sequence/SPECIFICATION.md](docs/products/sequence/SPECIFICATION.md).
-
-## Loop L-01
-
-Loop catches mono or stereo audio on three preallocated tape decks. RELOOP
-prints the currently transformed playback through a record/reproduce stage onto
-the next deck, allowing pitch, reverse, splice, transport motion, loading, and
-loss to accumulate across generations. The latest three generations remain
-navigable while the generation counter continues. Host-synced beat length and
-free seconds remain separate stable parameters; MIDI performance actions are
-sample-offset accurate.
-
-The prototype reports zero latency and never allocates or locks while
-processing. Schema 3 saves captured audio and retained generations using
-immutable snapshots; schemas 1 and 2 remain readable with empty audio memory.
-Recall restarts playback at the beginning of the active tape and resamples
-recorded audio if the host sample rate changes. See
-[docs/products/loop/SPECIFICATION.md](docs/products/loop/SPECIFICATION.md).
-
-## Impulse I-01
-
-Impulse synthesizes eight objects—Kick, Click, Burst, Body, Low, Crack, Metal,
-and Cut—from exciters, resonant bodies, and bounded amplifier stages. Every
-track owns an always-visible 32-step Off/Hit/Accent row with an independent
-1–32-step cycle, probability, ratchets, timing, condition, and accent. Pulses
-and Rotation are an explicit pattern generator, never a hidden playback source.
-Stored seeds make probability, variation, and mutation reproducible from host
-PPQ across block partitions and project recall. MIDI pitch classes C through G
-trigger the eight objects directly.
-
-New instances start with `Clicks / sub`: three tiny clicks, two low-frequency
-events and eleven empty positions in a shared 16-step cycle. Probability is
-100%, with variation/mutation off. Track selection is silent; AUDITION plays
-the selected object. RHYTHM DETAILS reveals the cycle controls. The
-[click/sub study](docs/research/click-sub/README.md) includes measured renders.
-Polymetric and mutation-based starting points remain explicitly labelled
-experimental choices. No drum samples, genre kits, named circuit clone, or nondeterministic
-“analog” behavior defines the product. See
-[docs/products/impulse/SPECIFICATION.md](docs/products/impulse/SPECIFICATION.md).
-
-## Field F-01
-
-Field is a heavy reverb conceived as stored spatial energy rather than a room
-simulation. Its eight moving feedback lines, deterministic grain motion, and
-two internal dual-head pitch voices form one recirculating instrument. Audio or
-sample-offset MIDI notes can excite the field. The large **FOREVER** control
-smoothly holds and animates its memory; press it again to release back into the
-Mass-controlled decay.
-
-Mass, Grain, Pitch, Motion, Distance, Blend, and Output remain on one panel.
-There is no IR, named room, hidden quality page, decorative animation,
-nondeterministic drift, or hardware-emulation claim. Field reports zero latency
-and its live audio memory intentionally starts empty after session reload. See
-[docs/products/field/SPECIFICATION.md](docs/products/field/SPECIFICATION.md).
-
-## Requirements
-
-The tested development environment is macOS on Apple Silicon, with x86_64
-builds executed under Rosetta. You need:
-
-- CMake 3.25 or newer;
-- a C++20 compiler;
-- Git;
-- Python 3 for documentation and build-metadata checks;
-- internet access when configuring the optional VST3 build, which fetches the
-  pinned JUCE source.
-
-The framework-independent DSP and lab build without JUCE or network access.
-The VST3 build uses JUCE 8.0.13 at the product boundary; the DSP core contains
-no JUCE headers.
+Contamination's 0.10.1 host-restart fix is retained: it reports a fixed **16 samples
+of latency** without repeatedly requesting host reconfiguration. Its revised
+0.11.0 circuit preserves older sessions through explicit adoption. Details and
+listening comparisons are in the [C-01 redesign report](research/c01-redesign/README.md).
 
 ## Build and test
 
-### DSP core and laboratory
+Requirements: CMake 3.25+, a C++20 compiler, Python 3 for repository checks, and
+Xcode Command Line Tools on macOS. Optional VST3 builds fetch pinned JUCE 8.0.13
+unless a local source path is supplied. The framework-independent core build
+does not require JUCE or network access.
 
-This is the fastest build and the right starting point for algorithm work:
+Build the core DSP, laboratories and tests:
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --parallel
+cmake --build build --parallel 4
 ctest --test-dir build --output-on-failure
 ```
 
-It builds:
-
-- `density_dsp` — framework-independent production DSP;
-- `density_tests` — core correctness and property checks;
-- `density_lab` — offline rendering, measurement, comparison, and listening-pack
-  generator;
-- `harmonic_dsp` and `harmonic_tests` — independent four-band production DSP and
-  its correctness/property checks;
-- `harmonic_lab` — candidate research, six-rate product reports, and the
-  production-graph benchmark.
-- `sequence_dsp` and `sequence_tests` — independent MIDI voice, host-clocked
-  step program, filters, and correctness properties.
-- `sequence_lab` — deterministic host-clocked render and worst-case voice
-  benchmark.
-- `loop_dsp`, `loop_tests`, and `loop_lab` — capture/playback memory engine,
-  property tests, deterministic render, and worst-case benchmark.
-- `impulse_dsp`, `impulse_tests`, and `impulse_lab` — physical-event voices,
-  deterministic polymetric scheduling, render, and benchmark.
-- `field_dsp`, `field_tests`, and `field_lab` — stored-energy field, grain and
-  pitch feedback, six-rate report, and worst-case benchmark.
-
-### VST3, adapter tests, and standalone host
-
-The VST3 build is opt-in because it fetches licensed JUCE source:
-
-```sh
-cmake -S . -B build-plugin \
-  -DASTE_BUILD_VST3=ON \
-  -DCMAKE_BUILD_TYPE=Release
-cmake --build build-plugin --parallel
-ctest --test-dir build-plugin --output-on-failure
-```
-
-The plugin bundles are produced at:
-
-```text
-build-plugin/DensityD01_artefacts/Release/VST3/Density D-01.vst3
-build-plugin/HarmonicH01_artefacts/Release/VST3/Harmonic H-01.vst3
-build-plugin/SequenceS01_artefacts/Release/VST3/Sequence S-01.vst3
-build-plugin/LoopL01_artefacts/Release/VST3/Loop L-01.vst3
-build-plugin/ImpulseI01_artefacts/Release/VST3/Impulse I-01.vst3
-build-plugin/FieldF01_artefacts/Release/VST3/Field F-01.vst3
-```
-
-Each product has direct JUCE-adapter tests. The separate `vst3_smoke_host`
-links no product adapter or DSP; it discovers and loads each built bundle
-through the actual VST3 ABI, restores state, and processes irregular blocks.
-
-To run that smoke host directly:
-
-```sh
-"build-plugin/vst3_smoke_host_artefacts/Release/vst3_smoke_host" \
-  "build-plugin/HarmonicH01_artefacts/Release/VST3/Harmonic H-01.vst3" \
-  "Harmonic H-01" "Harmonic" 12
-```
-
-### Sanitizers
-
-AddressSanitizer and UndefinedBehaviorSanitizer are intended for tests, not a
-distributable plugin:
-
-```sh
-cmake -S . -B build-sanitize \
-  -DASTE_BUILD_VST3=ON \
-  -DASTE_SANITIZERS=ON \
-  -DCMAKE_BUILD_TYPE=Debug
-cmake --build build-sanitize --parallel
-ctest --test-dir build-sanitize --output-on-failure
-```
-
-### Universal macOS bundle
+Build universal macOS VST3 plugins and their adapter/host checks:
 
 ```sh
 cmake -S . -B build-plugin-universal \
-  -DASTE_BUILD_VST3=ON \
+  -DASTE_BUILD_VST3=ON -DASTE_BUILD_AU=OFF \
+  -DASTE_BUILD_EXPERIMENTAL_INSTRUMENTS=ON \
   -DCMAKE_BUILD_TYPE=Release \
   '-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64'
-cmake --build build-plugin-universal --parallel
+cmake --build build-plugin-universal --parallel 4
 ctest --test-dir build-plugin-universal --output-on-failure
 ```
 
-The internal bundle receives an ad-hoc signature so its completed manifest and
-binary can be validated locally. It is not Developer ID signed or notarized.
+Bundles are under `<target>_artefacts/Release/VST3/`, for example
+`build-plugin-universal/FieldF01_artefacts/Release/VST3/Field F-01.vst3`.
+Building does not install or publish plugins. To enable AddressSanitizer and
+UndefinedBehaviorSanitizer for a separate test build, configure with
+`-DASTE_SANITIZERS=ON -DCMAKE_BUILD_TYPE=Debug`.
 
-### Build and install all instruments on a music Mac
-
-Clone the repository on the music machine, quit Cubase and Ableton, then run:
-
-```sh
-./tools/build_and_install_macos.sh
-```
-
-The script builds and tests universal arm64+x86_64 bundles, verifies both
-architectures and signatures, and installs the complete six-product line under
-`~/Library/Audio/Plug-Ins/VST3`. Existing copies are preserved as timestamped
-backups, and no `sudo` is used. Reopen the DAW and rescan VST3 plugins.
-
-These are ad-hoc-signed, unnotarized internal builds with deliberately invalid
-placeholder bundle identifiers. macOS may require locally allowing the bundle;
-they are for private host and musical validation, not distribution.
-
-For the plain transfer-folder workflow, see
-[INSTALL_MACOS.md](docs/INSTALL_MACOS.md).
-
-When all six bundles and `INSTALL_ALL.command` are in one transfer folder,
-quit every audio host and double-click the command, or run:
+The additional production-Field compatibility and FOREVER tests can be run with:
 
 ```sh
-./INSTALL_ALL.command
+cmake -S tests/field_shipping -B build-field-shipping -DCMAKE_BUILD_TYPE=Release
+cmake --build build-field-shipping --parallel 4
+ctest --test-dir build-field-shipping --output-on-failure
 ```
 
-It installs and locally allows every bundle without `sudo`, preserving any
-previous versions as timestamped backups.
+## Local macOS installation
 
-An explicit bundle path may be supplied when testing another build:
+Quit Cubase before replacing plugins. Verify the selected build without writing:
 
 ```sh
-./tools/install_density_macos.sh \
-  "build-plugin-universal/DensityD01_artefacts/Release/VST3/Density D-01.vst3"
-./tools/install_harmonic_macos.sh \
-  "build-plugin-universal/HarmonicH01_artefacts/Release/VST3/Harmonic H-01.vst3"
-./tools/install_sequence_macos.sh \
-  "build-plugin-universal/SequenceS01_artefacts/Release/VST3/Sequence S-01.vst3"
-./tools/install_loop_macos.sh \
-  "build-plugin-universal/LoopL01_artefacts/Release/VST3/Loop L-01.vst3"
-./tools/install_impulse_macos.sh \
-  "build-plugin-universal/ImpulseI01_artefacts/Release/VST3/Impulse I-01.vst3"
-./tools/install_field_macos.sh \
-  "build-plugin-universal/FieldF01_artefacts/Release/VST3/Field F-01.vst3"
+python3 tools/install_development_vst3.py \
+  --build-root build-plugin-universal --only field-f01 --check-only
 ```
 
-### Internal packaging rehearsal
+To install that verified selection, run the same command without `--check-only`
+with macOS administrator privileges. It installs to `/Library/Audio/Plug-Ins/VST3`,
+stages and verifies replacements, backs up prior bundles outside DAW scan paths,
+rolls back on failure and writes a receipt. It does not edit projects or Cubase
+preferences. `--only` accepts the product identifiers listed by `--help`.
 
-After building the universal tree, create and inspect the deterministic internal
-archive with:
+Omitting `--only` selects all ten products, which must all be built at the current
+source version. A selective build does not refresh the other bundles; the
+installer rejects version mismatches. Avoid duplicate per-user and system copies.
 
-```sh
-cmake --build build-plugin-universal --target density_package
-python3 tools/package_density.py verify \
-  --archive build-plugin-universal/packages/Density-D01-0.1.0-internal-macos-universal.zip
-```
+[Published downloads](https://github.com/yairfalse/aste/releases), when available,
+include their own source, checksums and validation notes. The existing native
+AU/VST3 package workflow covers the original six products; the ten-product local
+VST3 installer is separate. See [macOS installation](docs/MACOS_INSTALL.txt)
+and [versioning](docs/VERSIONING.md).
 
-The archive is explicitly marked `internal-development-only`. It is ad-hoc
-signed, uses the placeholder bundle identity, is not notarized, and must not be
-distributed. It includes a deterministic SPDX 2.3 SBOM for Density, pinned JUCE,
-JUCE's bundled VST3 SDK, and the exact reviewed dependency-security ledger.
-`PACKAGE.json` binds the ledger's SHA-256, review date, expiry, and disposition;
-normal inspection rejects expired or altered evidence. The format decisions are
-[ADR 0004](docs/adr/0004-internal-package-format.md) and
-[ADR 0005](docs/adr/0005-spdx-sbom.md).
+## Engineering and evidence
 
-The packaged dependency pins also have a dated, expiring advisory review:
+Audio callbacks must not allocate, lock, wait, log or access files. Processing
+uses bounded storage and deterministic scheduling/randomness where specified.
+Tests cover state validation, numerical behavior, buffer partitions and host
+boundaries; measurement and musical listening remain separate evidence.
 
-```sh
-python3 tools/check_dependency_security.py \
-  docs/security/dependency-audit.json .
-```
+Offline laboratories and listening-pack generators live under `research/` and
+`apps/dsp-lab/`. Historical reports describe their measured source revisions,
+not necessarily today's plugin. Generated local artifacts live under
+`build-evidence/`; they are not all committed or part of a published download.
 
-The check is offline and runs under CTest. Its evidence sources and limits are
-defined by
-[ADR 0006](docs/adr/0006-expiring-dependency-security-review.md).
-
-## DSP laboratory
-
-`density_lab` generates its own deterministic signals, renders WAV/CSV output,
-benchmarks production code, compares detector and oversampling candidates, and
-creates blinded listening packs without opening a DAW.
-
-Common entry points:
-
-| Area | Commands |
+| Documentation | Purpose |
 |---|---|
-| Basic render and CPU | `./build/density_lab [output.csv]`, `--benchmark` |
-| Production regression | `--golden`, `--production-consistency` |
-| Detector research | `--detector-compare`, `--detector-auditions`, `--detector-blind` |
-| Nonlinear behaviour | `--alias-report` |
-| Oversampling research | `--oversampling-report`, `--oversampling-prototype`, `--halfband-prototype`, `--kaiser-prototype`, `--kaiser-sweep`, `--kaiser-rate-sweep`, `--kaiser-linear-report`, `--kaiser-length-report`, `--kaiser-finalist-report`, `--oversampled-chain-report` |
-| Automation and smoothing | `--automation-report`, `--output-smoothing-report`, `--drive-smoothing-report`, `--attack-smoothing-report`, `--blend-smoothing-report` |
-| Musical evaluation | `--oversampling-auditions`, `--automation-auditions`, `--stereo-stability-auditions`, `--density-macro-auditions` |
-| Stereo analysis | `--stereo-stability-report` |
+| [Architecture](docs/ARCHITECTURE.md) | Product boundaries and ownership |
+| [Parameter model](docs/PARAMETER_MODEL.md) | Stable IDs, ranges and smoothing |
+| [State format](docs/STATE_FORMAT.md) | Validation and compatibility |
+| [Real-time safety](docs/REALTIME_SAFETY.md) | Callback rules and runtime audits |
+| [Testing](docs/TESTING.md) | Test layers and measurement protocols |
+| [Host compatibility](docs/HOST_COMPATIBILITY.md) | Host evidence and its limits |
+| [UI system](docs/UI_SYSTEM.md) | Family design and interaction conventions |
+| [DSP research](docs/DSP_RESEARCH.md) | Experimental methods and claims |
+| [Release checklist](docs/RELEASE_CHECKLIST.md) | Distribution gates |
+| [Changelog](CHANGELOG.md) | Versioned changes |
 
-Most report modes accept an optional output file or directory after the flag.
-CTest invokes every deterministic report with known paths. Measurement methods,
-tolerances, and the meaning of each output column live in
-[TESTING.md](docs/TESTING.md); algorithm decisions and rejected candidates live in
-[docs/products/density/DSP_RESEARCH.md](docs/products/density/DSP_RESEARCH.md).
+## Contributing and licensing
 
-## Engineering guarantees and evidence
+Read [CONTRIBUTING.md](docs/CONTRIBUTING.md) before changing DSP, interfaces or
+state contracts, and [SECURITY.md](docs/SECURITY.md) for security reporting.
+Preserve unrelated work and existing sessions; document what was actually built,
+measured and tested.
 
-The repository treats testing as part of the DSP architecture rather than a
-release-week activity.
-
-Current automated coverage includes:
-
-- finite output under silence, non-finite/extreme input, abrupt automation, and
-  malformed state;
-- 44.1, 48, 88.2, 96, 176.4, and 192 kHz;
-- zero-length blocks plus block sizes 1, 2, 7, 16, 32, 64, 127, 128, 256, 511,
-  512, 1024, and 2048;
-- mono and stereo layouts, linked/independent detection, bypass, repeated
-  prepare/process/release, and variable block partitioning;
-- exact dry-path preservation and measured/reported zero latency;
-- 3,072 deterministic malformed-state cases;
-- deterministic golden renders with metric tolerances rather than brittle audio
-  hashes alone;
-- global allocation counting across the core and JUCE adapter;
-- calibrated macOS interposition checks for callback locks, file access, and
-  direct writes;
-- arm64 Release, arm64 ASan/UBSan, and x86_64 Release test trees;
-- semantic state exchange between arm64 and x86_64 hosts.
-
-The plugin test tree runs the complete deterministic CTest suite. Independent local
-validation has passed pluginval 1.0.4 at strictness 10 and the Steinberg VST3 SDK
-3.8.0 extensive suite at 537/537. Density has arm64 and Rosetta x86_64 validator
-history; Harmonic's current universal beta has arm64 validator evidence and
-separate two-slice/ABI verification. Sequence has direct core, adapter, and
-repository ABI-host evidence; independent validator and DAW runs remain next.
-The exact run history is in [HOST_COMPATIBILITY.md](docs/HOST_COMPATIBILITY.md).
-
-GitHub Actions builds the core on arm64 and Intel runners, builds a universal
-VST3, verifies its architectures and ad-hoc signature, and runs an arm64
-sanitizer tree. It also builds the pinned official Steinberg validator from
-source and requires its extensive suite to pass the signed bundle. The workflow
-is [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
-
-### Real-time rules
-
-All production processors expose `noexcept` processing. Processing may not allocate, free,
-lock, wait, log, access files or networks, resize containers, trigger lazy
-initialization, call blocking OS services, or throw through the callback.
-Buffers and mutable DSP state are prepared in advance. Non-finite input is
-sanitized and output must remain finite. Thread ownership and the limits of the
-runtime audit are documented in [REALTIME_SAFETY.md](docs/REALTIME_SAFETY.md).
-
-### State
-
-Each product uses its own portable, versioned XML state document containing
-stable parameter IDs and scalar values. Unknown parameters are ignored, missing
-parameters receive defaults, duplicate IDs are rejected, and malformed state
-leaves the current configuration unchanged. See [STATE_FORMAT.md](docs/STATE_FORMAT.md).
-
-### Performance
-
-The current production graph measured a 0.283874% median of one M4 Pro
-performance core at 48 kHz / 128 samples under worst-case block-rate automation.
-This is comfortably below the provisional 1% target on that machine, but it is
-not evidence for the oldest supported Apple Silicon or a native Intel Mac. Full
-measurements and rejected oversampling budgets are in
-[PERFORMANCE_BUDGETS.md](docs/PERFORMANCE_BUDGETS.md).
-
-Harmonic measured 0.718134% on the same class of machine at 48 kHz / 128
-samples while every band and its macro changed each block. This passes the
-local provisional 1% budget, but still requires older Apple Silicon and native
-Intel evidence.
-
-Sequence measured 0.292424% on the same machine at 48 kHz / 127 samples with
-Pressure at 100%, resonance at 85%, the shared-state character filter active,
-and stereo output. It passes the local provisional 1% budget; native Intel,
-older Apple Silicon, and DAW/UI-open measurements remain external gates.
-
-Loop's generational topology measured a 0.526622% five-run median on the same
-machine at 48 kHz / 127 samples while continuously printing through pitch,
-transport modulation, Record, and Loss at worst case. It passes the local
-provisional 1% budget for the original graph without snapshot publication;
-the new `loop_lab --benchmark-snapshots` mode measures recall overhead. Native Intel, older Apple
-Silicon, and DAW/UI-open measurements remain open.
-
-Impulse measured a 1.26032% five-run median on the same machine at 48 kHz /
-127 samples with all eight objects and every visible pattern cell active, 4×
-ratchets, 180 BPM, maximum Energy, Variation, Mutation, and Drive. It passes
-its 2% eight-object stress budget; native Intel, older Apple Silicon, DAW, and
-open-UI evidence remain external.
-
-Field's five-run worst-case Release benchmark measured a 0.320727% median of
-one M4 Pro performance core at 48 kHz / 127 samples with FOREVER, Mass, Grain,
-Pitch, Motion, Distance, and Blend at maximum. Its fixed processing state is
-1,180,056 bytes, below the product-specific 1.5 MiB budget. Native Intel,
-oldest-supported Apple Silicon, loaded-DAW, long-held-energy, and open-UI
-measurements remain external.
-
-## Current release status
-
-The six-product line consists of internal prototypes, not releases. Density
-has repository evidence for 16 of its 25 release gates. Harmonic has the
-engineering boundary needed for first external tests; all six still require
-people, DAWs, and target hardware for:
-
-- Cubase 14, Ableton Live 13/beta, and one additional real-host matrix;
-- real-time versus offline bounce, freeze, reopen, suspend, and crash-recovery
-  checks;
-- native Intel and oldest-supported Apple Silicon performance;
-- Retina host rendering, VoiceOver, keyboard navigation, and independent
-  first-use observation;
-- completed blind automation, Density, stereo-link, detector, and oversampling
-  listening sheets;
-- ten real musical projects across mastering, ambient, percussion, bass-heavy,
-  and sparse material;
-- final signing, notarization, packaging, identity, and licensing review.
-
-The authoritative ledger is [RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md), and
-the next permitted work is in [ROADMAP.md](docs/ROADMAP.md). Do not turn a green build
-into a compatibility or fidelity claim.
-
-## Architecture
-
-```text
-density_dsp  <- density_tests  <- density_lab
-      ^
-      +------ Density JUCE adapter/UI <- density_plugin_tests
-
-harmonic_dsp <- harmonic_tests <- harmonic_lab
-      ^
-      +------ Harmonic JUCE adapter/UI <- harmonic_plugin_tests
-
-sequence_dsp <- sequence_tests
-      ^
-      +------ Sequence JUCE instrument/UI <- sequence_plugin_tests
-
-loop_dsp     <- loop_tests <- loop_lab
-      ^
-      +------ Loop JUCE effect/UI <- loop_plugin_tests
-
-impulse_dsp  <- impulse_tests <- impulse_lab
-      ^
-      +------ Impulse JUCE instrument/UI <- impulse_plugin_tests
-
-field_dsp    <- field_tests <- field_lab
-      ^
-      +------ Field JUCE effect/UI <- field_plugin_tests
-
-all VST3 bundles <- vst3_smoke_host (dynamic ABI load only)
-```
-
-The production DSP is ordinary C++20. JUCE is restricted to the VST3, host,
-state-adapter, and UI boundary. Product DSP does not depend on widgets, and
-serialized state does not depend on widget layouts. The accepted framework
-decision is [ADR 0001](docs/adr/0001-plugin-framework.md); the fixed zero-latency
-quality decision is [ADR 0002](docs/adr/0002-density-quality-latency.md); and the
-independent validation boundary is
-[ADR 0003](docs/adr/0003-independent-vst3-validator.md); and the internal-only
-package boundary is [ADR 0004](docs/adr/0004-internal-package-format.md).
-The package dependency boundary is [ADR 0005](docs/adr/0005-spdx-sbom.md).
-The expiring dependency-security review is
-[ADR 0006](docs/adr/0006-expiring-dependency-security-review.md).
-Field's fixed stored-energy topology and memory exception are
-[ADR 0015](docs/adr/0015-field-stored-energy-topology.md).
-
-## Repository map
-
-```text
-apps/
-  density/             production DSP, JUCE adapter, and editor
-  harmonic/            independent four-band DSP, adapter, and editor
-  sequence/            monophonic voice, host sequencer, adapter, and editor
-  loop/                capture memory, adapter, and editor
-  impulse/             rhythmic objects, polymetric clock, adapter, and editor
-  field/               moving feedback field, pitch memory, adapter, and editor
-  dsp-lab/             offline renderer and measurement laboratory
-  standalone-host/     minimal headless VST3 smoke host
-docs/
-  adr/                 accepted engineering decisions
-  products/density/    cycle reports and Density research evidence
-  products/harmonic/   Harmonic contract, research, and test handoff
-  products/field/      Field contract, state, cycle evidence, and test handoff
-  research/            lawful historical-reference metadata
-  testing/             listening protocols
-tests/
-  golden/              reviewed production metrics
-  density_tests.cpp    framework-independent tests
-  density_plugin_tests.cpp
-  harmonic_tests.cpp
-  harmonic_plugin_tests.cpp
-  sequence_tests.cpp / sequence_plugin_tests.cpp
-  loop_tests.cpp / loop_plugin_tests.cpp
-  impulse_tests.cpp / impulse_plugin_tests.cpp
-  field_tests.cpp / field_plugin_tests.cpp
-  realtime_audit_mac.cpp
-tools/                  repository-policy and provenance checks
-```
-
-The repo deliberately does **not** contain a speculative universal audio
-framework, empty libraries for future products, or direct product-to-product
-dependencies.
-
-## Research and claims
-
-Historical compressor, limiter, amplifier, and clipping circuits are studied
-for engineering ideas such as headroom, loading, time constants, feedback,
-recovery, and overload behaviour. The project does not redistribute service
-manuals with unclear rights, copy proprietary firmware, or present schematic
-study as measured hardware emulation.
-
-Research metadata and access status are recorded in
-[docs/research/schematics/catalog.yaml](docs/research/schematics/catalog.yaml).
-The policy is in [SCHEMATIC_RESEARCH.md](docs/SCHEMATIC_RESEARCH.md), and the broader
-measurement standard is in [DSP_RESEARCH.md](docs/DSP_RESEARCH.md).
-
-## Documentation index
-
-| Document | Purpose |
-|---|---|
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Product boundaries, signal graph, and ownership |
-| [docs/PRODUCT_PHILOSOPHY.md](docs/PRODUCT_PHILOSOPHY.md) | Family character and design principles |
-| [PARAMETER_MODEL.md](docs/PARAMETER_MODEL.md) | Stable IDs, ranges, defaults, mappings, and smoothing |
-| [STATE_FORMAT.md](docs/STATE_FORMAT.md) | Schema, validation, and state guarantees |
-| [REALTIME_SAFETY.md](docs/REALTIME_SAFETY.md) | Audio-thread policy and runtime audits |
-| [TESTING.md](docs/TESTING.md) | Test layers, lab protocols, and measurement tolerances |
-| [HOST_COMPATIBILITY.md](docs/HOST_COMPATIBILITY.md) | Validator and host evidence |
-| [PERFORMANCE_BUDGETS.md](docs/PERFORMANCE_BUDGETS.md) | CPU, memory, latency, and UI budgets |
-| [UI_SYSTEM.md](docs/UI_SYSTEM.md) | Shared visual and interaction language |
-| [RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) | All 25 Density release gates |
-| [SPECIFICATION_STATUS.md](docs/SPECIFICATION_STATUS.md) | Master-brief requirements mapped to evidence, decisions, and external gates |
-| [ROADMAP.md](docs/ROADMAP.md) | Current sequencing and explicit deferrals |
-| [RESEARCH_LOG.md](docs/RESEARCH_LOG.md) | Research chronology |
-| [CONTRIBUTING.md](docs/CONTRIBUTING.md) | Change requirements |
-| [SECURITY.md](docs/SECURITY.md) | Prototype security reporting policy |
-
-Each substantial engineering cycle records what changed, why, evidence, risks,
-and the smallest next action in its product documentation directory.
-
-## Contributing
-
-Changes should identify a concrete musical or engineering failure, preserve the
-DSP/UI/state boundaries, add the smallest deterministic regression check, and
-include before/after measurements for DSP work. Golden data is never updated
-automatically. Read [CONTRIBUTING.md](docs/CONTRIBUTING.md) before opening a change.
-
-## Licensing and distribution
-
-Aste's original code is licensed under **AGPL-3.0-only**; see [LICENSE](LICENSE).
-Use, modification and redistribution are subject to that license, including
-its corresponding-source obligations.
-
-The opt-in VST3 build fetches JUCE 8.0.13. JUCE is available under its EULA or
-AGPLv3; this open-source distribution uses its AGPLv3 option. Third-party
-components retain their own licenses. No third-party manuals, firmware, impulse responses, samples,
-or commercial plugin code are included. See
-[THIRD_PARTY_NOTICES.md](docs/THIRD_PARTY_NOTICES.md) and
-[LICENSES/README.md](LICENSES/README.md).
-
-Development downloads include matching source and license notices. They are
-not Apple-notarized or supported stable releases; see their release notes and
-the [release checklist](docs/RELEASE_CHECKLIST.md) for validation limits.
-## Free, open-source macOS development builds
-
-Download the installer, matching source, checksums and validation evidence from
-[GitHub Releases](https://github.com/yairfalse/aste/releases).
-
-The six instruments share development version **0.3.0**; the original **0.1.0**
-download remains preserved. See the [changelog](CHANGELOG.md) and
-[versioning policy](docs/VERSIONING.md).
-
-Aste's original code is licensed under **AGPL-3.0-only**; see [LICENSE](LICENSE).
-JUCE is used under its AGPLv3 option. Third-party code retains its own licenses;
-see [notices](docs/THIRD_PARTY_NOTICES.md). No Apple subscription is required to
-build or use Aste. These development downloads are not Apple-notarized.
-
-Build all six instruments as universal Intel/Apple Silicon AU and VST3 plugins,
-then create a native installer and disk image with matching source:
-
-```sh
-rustup target add aarch64-apple-darwin x86_64-apple-darwin
-cmake -S . -B build-macos -DASTE_BUILD_VST3=ON -DASTE_BUILD_AU=ON \
-  -DASTE_BUILD_MACOS_INSTALLER=ON -DCMAKE_BUILD_TYPE=Release \
-  '-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64' -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
-cmake --build build-macos --parallel 4
-ctest --test-dir build-macos --output-on-failure --output-junit "$PWD/build-macos/test-results.xml"
-cmake --build build-macos --target aste_macos_package
-```
-
-The download is in `build-macos/packages/`. It includes an unsigned `.pkg`,
-installation instructions, provenance, and a corresponding-source archive
-containing sibling `Aste/` and `JUCE/` source directories. For an offline rebuild,
-enter `Aste/` and add `-DFETCHCONTENT_SOURCE_DIR_JUCE="$PWD/../JUCE"` to configuration.
-Build requirements are Xcode Command Line Tools, CMake 3.25+, a C++20 compiler,
-and Rust (for the cleanup utility and packaging checks);
-the existing verification scripts also use Python 3. macOS 11 is the compilation
-target, not yet a verified minimum-host claim. If the current SDK reports errors
-in the pinned JUCE version, select an installed compatible SDK explicitly; the
-local development build uses `-DCMAKE_OSX_SYSROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk`.
-
-See [installation instructions](docs/MACOS_INSTALL.txt) for format selection,
-security limitations, upgrades, and removal. Building does not install or publish
-anything. Existing plugin identifiers are preserved for session compatibility.
-
-After installation, **Aste Plugin Cleanup.app** can preview and move older
-per-user plugin copies to a dated backup outside DAW scan folders. It never
-deletes them or touches other users' files. Script users can run its executable
-with `--preview` (read-only) or `--apply` (move eligible copies); running the app
-normally presents a confirmation dialog. See the installation instructions for
-the eligibility checks and restore location.
+Aste's original code is **AGPL-3.0-only**; see [LICENSE](LICENSE). This open-source
+JUCE build uses its AGPLv3 option. Third-party components retain their licenses;
+see [third-party notices](docs/THIRD_PARTY_NOTICES.md) and
+[license inventory](LICENSES/README.md). No proprietary plugin code, commercial
+recordings or hardware firmware are included.

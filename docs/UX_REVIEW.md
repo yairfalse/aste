@@ -84,3 +84,60 @@ Sequence controls while stopped and playing, compare Density/Harmonic at matched
 levels, and arm/fill/clear Field. Confirm whether these actions feel immediate
 and understandable. No listening-quality, VoiceOver, universal-binary or DAW
 compatibility claim is made by this cycle.
+
+## 2026-11-15 — 0.5.0 music-machine follow-up
+
+User feedback: Impulse hard to find in Cubase, family levels too low, master
+level hard to locate, Field too mellow, Sequence sounds thin and lacks fine
+control. Local inspection found Impulse present in Cubase's native cache,
+available and loadable through the actual VST3 ABI; no blocklist entry was
+found. Category is now Instrument/Drum. This does not establish visibility in
+the user's current Cubase selector; that still requires an instrument-track
+check with the Default collection.
+
+All six now expose a final header Master Output (-36..+18 dB), independently
+smoothed after sound shaping. Older states missing the added parameter restore
+unity. Fresh Sequence starts at +3 dB and Impulse at +6 dB. Existing Output
+parameters and automation indices are unchanged. Shared slider interaction adds
+500-pixel normal / 5000-pixel Shift-drag sensitivity and exact typed values.
+
+Sequence's new voice aligns the saw/pulse/sine fundamental polarity to avoid
+a hollow midpoint. Its original mono DSP stays available. Independent filter
+attack, decay and sustain are appended after Master; attack/decay zero follow
+the amp. The editor displays oscillator detune in cents while keeping the
+semitone host parameter stable. This changes 0.4.0 Poly/Mono renders; keep that
+binary for exact prior new-voice sound. No OB-8 fidelity claim is made.
+
+Field exposes overlapping windowed grains and a direct stereo fifth/octave
+layer via Texture. Higher pitch return reduces direct feedback; Texture adds
+wet makeup up to 2.8x. Fresh Open Field uses active controls; old states select
+Texture 0. Two timing/behavior variants at Texture 0 matched the previous DSP
+for 508,000 samples with automated Grain/Pitch.
+
+Local validation: 68/68 CTest checks passed, including six actual VST3 host
+loads, six independent final-gain scaling/meter/old-state checks, parameter and
+preset recall, and minimum editor artifacts. Field and Sequence core ASan/UBSan
+checks passed. Minimum editor images were inspected for Density, Loop, Impulse,
+Field and Sequence. Sequence examples through actual presets peaked 0.488–0.780
+at the fresh +3 dB Master. Field's matched phrase produced peaks 0.127 with
+Texture off, 0.150 with moving pitch and 0.089 for Grain Cloud. These level and
+stability checks are not listening approval. WAV examples are ignored local
+build artifacts in field-listening-050 and sequence-listening-050.
+
+Family VST3 parameter counts: Density 12, Harmonic 13, Loop 21, Impulse 369,
+Field 11, Sequence 90. Existing AU build support is unchanged; only universal
+VST3 builds are prepared for this Cubase session. Installation needs Cubase
+closed, preserves previous bundles outside scan paths, and leaves presets,
+projects and DAW preferences in place.
+
+## 2026-11-16 — 0.7.1 family workflow pass
+
+Feedback identifies hidden capabilities and disconnected workflow across all
+eight products. The [task audit](research/workflow/README.md) records concrete
+obstacles and implemented interface changes. Impulse opens with all objects and
+selected rhythm controls visible; Field promotes capture and separates spatial
+hold; Resonator uses task groups; Non-Machine exposes sound-edit scope and a
+whole-object apply action; Loop uses print/take language. Family control help is
+visible in the panel and follows focus/pointer, with correct product-specific
+meanings and current inactive reasons. This is implemented interface behavior,
+not a completed human usability review.

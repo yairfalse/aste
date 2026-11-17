@@ -103,3 +103,41 @@ Distance, Blend, Output, and Bypass. The single hero button changes retention
 continuously; it is serialized like any other automatable parameter. Complete
 ranges, defaults, smoothing, and internal coordinated mappings are in
 [docs/products/field/PARAMETERS.md](products/field/PARAMETERS.md).
+
+## Final master level (0.5.0)
+
+`master` is appended after the existing host parameters, with -36..+18 dB
+range and 20 ms smoothing. It acts after sound shaping and the existing Output
+control. Output meters report this final level. Its header control is always
+visible, with exact text entry and Shift-drag fine changes. Old sessions without
+this parameter restore 0 dB. Fresh instances start at 0 dB.
+The original parameter indices, ranges and existing Output behavior remain.
+
+Density 0.6.2 appends `character` after Master: 0..100%, reset default 0,
+new Bite / breathing preset 80. It blends a DC-filtered asymmetric saturating
+branch and changes level-dependent release recovery. Field appends `focus`
+after Texture (0..100%, reset 0; Moving glass 75). Both missing IDs migrate to
+zero in schema 1/2 states, independently of the receiving instance's preset.
+Existing host parameter ordering and identities remain intact.
+
+0.7.0: Non-Machine appends fifteen voice material parameters after its previous
+409 host slots. Field appends seven nested-memory parameters after its previous
+12 slots. See their product documents for IDs and units. Original sources /
+no captured-memory mix are the missing-parameter migration defaults. No existing
+parameter identity is changed; no live audio buffer is serialized.
+
+## Material response (0.8.0)
+
+Density, Harmonic, Sequence, Impulse, Field, Non-Machine and Resonator save a
+root `material` attribute: absent/0 retains the pre-0.8.0 response; 1 selects
+updated material behavior. Malformed values reject the restore transaction.
+Fresh instances use 1. USE UPDATED SOUND adopts it without changing parameter
+values; this is session response metadata, not an automatable parameter.
+Loop's revision adds a factory preset only. Existing schema numbers remain.
+
+N-01 appends `v1_e2_sound_lock` through `v3_e8_sound_lock` (event-major within
+each voice, skipping base event 1), 21 boolean controls at indices 424–444.
+All default off. Updated unlocked hits derive Level/Pitch/Decay/Color from
+the object's first event; articulation and timing remain per-event. GUI lock
+enabling copies the current object sound before setting the lock. Automation
+uses the stored hit values directly. Older-response sessions ignore these locks.

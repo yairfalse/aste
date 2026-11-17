@@ -177,3 +177,15 @@ Sources: [Aste UI system](../../UI_SYSTEM.md),
 [Loop contract](../../products/loop/PARAMETERS.md),
 [listening protocol](../../testing/LISTENING.md). These wireframes are derived
 from repository evidence and the brief, not from reproduced hardware panels.
+
+## Cycle-2 articulation inspector study
+
+The selected-event detail region can compare Restart, Carry and Crossfade as
+three provisional alternatives. Describe their audible job rather than hiding
+it behind a generic Smooth control. The lab Crossfade has a fixed 2 ms duration
+and one outgoing tail; overlapping shorter repeats can replace that tail. Do
+not display an unqualified click-free guarantee. Carry preserves source phase
+and age but renews amplitude and locks, so it is not simply a legato envelope.
+Keep the repeat-onset marks fixed when changing articulation. Exact numerical
+entry and keyboard selection must remain available. This is an inspector study,
+not a new stable parameter set or implemented native widget.

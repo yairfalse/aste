@@ -35,3 +35,12 @@ or latency topology is hidden. RELOOP, Previous, Next, and Clear are
 non-parameter performance actions delivered to the audio thread through
 lock-free bounded requests; they do not pretend to be continuously automatable
 values.
+
+## Final master level (0.5.0)
+
+`master` is appended after the existing host parameters, with -36..+18 dB
+range and 20 ms smoothing. It acts after sound shaping and the existing Output
+control. Output meters report this final level. Its header control is always
+visible, with exact text entry and Shift-drag fine changes. Old sessions without
+this parameter restore 0 dB. Fresh instances start at 0 dB.
+The original parameter indices, ranges and existing Output behavior remain.

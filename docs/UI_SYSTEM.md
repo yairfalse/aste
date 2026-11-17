@@ -1,5 +1,9 @@
 # UI system
 
+Artistic context: [The Musical Intent](MUSICAL_INTENT.md). Usability must expose the instrument’s defining musical behavior; more visible controls alone do not establish it.
+
+Current family workflow revision: [0.7.1 audit and interaction decisions](research/workflow/README.md).
+
 ## Family language
 
 Panels use a near-black matte surface, off-white technical typography, strong
@@ -29,10 +33,10 @@ state cues, not decoration.
   This reports parameter identity, not a promise about session behavior mode.
 - Input/output bars use a -60 to 0 dBFS scale with numeric readings where space
   permits, rather than linear-amplitude fill.
-- Density, Sequence, Loop, Impulse and Field expose an explicit USE CURRENT
-  RESPONSE action for recalled historical behavior. It preserves controls,
+- Density, Sequence, Loop, Impulse and Field expose an explicit USE UPDATED
+  SOUND action for recalled historical behavior. It preserves controls,
   patterns and Loop tapes, marks the session changed, and becomes disabled
-  CURRENT RESPONSE after adoption. Opening an editor never upgrades a session.
+  UPDATED SOUND after adoption. Opening an editor never upgrades a session.
 - Harmonic PUSH/PULL shows the actual available paired gain change, including
   partial steps, and disables an action at its limit.
 
@@ -80,15 +84,13 @@ to signal levels and memory travel. All essential controls remain on one panel.
 
 ## Impulse I-01
 
-The 1480×900 editor scales from 1120×700 to 1800×1120. Energy leads the global
+The 1480×900 editor scales from 1120×780 to 1800×1120. Energy leads the global
 row; Variation, Mutation, Seed, Output, Division, Sequence, and Snapshots remain
-visible. The initial focused view shows programmed rows and the selected object;
-SHOW ALL OBJECTS exposes all eight 32-step rows for adding another sound.
-Mutation, MIDI-only mode and empty programs show all objects automatically.
-External programming reveals a row; focus changes no parameter or audio state.
-Track names select silently;
-AUDITION plays the selected sound. Five sound controls are visible by default;
-RHYTHM DETAILS reveals the eight cycle controls. LOW / SUB identifies the
+visible. All eight objects are visible on open; FOCUS ACTIVE OBJECTS is an optional
+compact view. Mutation, MIDI-only mode and empty programs always show all objects.
+Track names select silently; AUDITION hears the selected object. All five sound
+and eight rhythm controls, plus GENERATE FROM PULSES, remain visible together.
+LOW / SUB identifies the
 low-frequency object without changing its stable parameter IDs. The two new
 click/sub snapshots open their active Click or Cut controls when selected.
 Steps outside the track length are dimmed but can be programmed for later.
@@ -115,3 +117,18 @@ sequence versus MIDI-keyboard modes. Loop distinguishes empty, recording, and
 playing memory and disables the inactive duration control. Overdub's capture-only
 help explains both endpoints; the memory panel explicitly warns that 100% writes
 no new input, including into empty tape.
+
+## 0.7.1 first actions and control help
+
+Every editor has an always-visible musical task path and contextual control-help
+strip. Pointer and keyboard focus explain the current target without requiring
+a tooltip. Changing a selection or opening the guide must not change musical
+state. Important inactive dependencies explain their cause in the strip.
+
+Density places Character alongside Density. Field places captured memory above
+spatial shaping and labels the separate tail hold. Resonator groups Excitation,
+Harmonic Structure, and Energy + Memory. Non-Machine distinguishes whole-object
+material from selected-hit locks, with an explicit apply-sound action. Loop's
+RELOOP operation reads PRINT NEW TAKE; previous/next generations read OLDER/NEWER
+TAKE. Sequence labels the host-owned toggle DAW PATTERN. Existing host IDs and
+parameter counts stay intact. Product-specific meaning overrides generic help.

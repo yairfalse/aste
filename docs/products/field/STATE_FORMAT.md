@@ -1,5 +1,24 @@
 # Field F-01 state format
 
+## 0.12.0 engine revision
+
+The schema remains 2. Optional root `engine="1"` selects the original DSP;
+`engine="2"` selects the new diffused space. Absence selects 1. Schema 1 always
+restores the old engine. Any unknown/non-integer revision rejects the entire
+state before parameters or metadata change. `behavior` and `material` retain
+their existing meanings and cannot identify the new reverb.
+
+New instances write engine 2; recalled old sessions keep engine 1. Explicit
+adoption preserves all 19 parameter values. Original nine snapshots select the
+old engine; six appended starting points select engine 2. New state and preset
+recall are byte-stable. The old stereo DSP path has sample-exact regression
+comparison with the frozen pre-update source. Live delay/capture audio remains
+unsaved, as before, so reopen begins with empty memory. Releasing and preparing
+for a sample-rate change also clears live audio. Host stop/seek does not
+implicitly erase a reverb tail.
+
+## Historical behavior metadata
+
 Current schema 2 adds required root `behavior="0"` (legacy coupled hold) or
 `behavior="1"` (independent hold). Schema 1 restores behavior 0; it survives
 save/reopen. Invalid/missing behavior rejects the complete schema-2 state.
@@ -29,3 +48,8 @@ Live reverb memory is not part of schema 1. Session recall restores FOREVER and
 all sound controls deterministically, then starts with an empty spatial field.
 Adding portable memory recall would require a new schema, bounded storage,
 cross-rate behavior, and a non-audio-thread snapshot design.
+
+Version 0.5.0 appends `master` and `texture` after the original nine parameters
+without changing schema 2. Missing Master restores unity, and missing Texture
+restores zero, preserving the old field. Texture and final gain are serialized
+as ordinary scalar controls. Held audio is still not saved.

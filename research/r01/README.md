@@ -48,3 +48,13 @@ musical-control revision. Historical measurements retain their recorded source
 commit; regenerating the comparison pack uses the checked-out Sequence and Field
 implementations. Integration is not musical acceptance or authorization for a
 finished R-01 plugin.
+
+## Cycle 2: memory without re-excitation and current-family controls
+
+The [combined follow-up](../../reports/N01-R01%20research%20cycle%202.md)
+adds retuning with exactly zero later excitation, with/without coupling, plus
+current polyphonic Sequence into textured Field and the same-noise Field
+control. The previous family references remain separately named. The new pack
+contains 32 variants / 64 WAVs. Exact source, repeated-pack checks, sanitizers,
+mutations and measurements live in the [cycle-2 evidence](../../docs/research/cycle2/README.md).
+This remains modal-led musical research; no working plugin or native UI is implied.

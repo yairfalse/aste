@@ -34,3 +34,12 @@ positive contours use `Q = 0.7 / (1 + 0.7 * gain / 12)`, and cuts use
 centre-frequency dB with Harmonic at zero, not scaled intensity values.
 Default stays neutral. Existing saved values recall unchanged but outer bands
 now render as shelves. See [ADR 0019](../../adr/0019-tone-shelves-and-direct-blend.md).
+
+## Final master level (0.5.0)
+
+`master` is appended after the existing host parameters, with -36..+18 dB
+range and 20 ms smoothing. It acts after sound shaping and the existing Output
+control. Output meters report this final level. Its header control is always
+visible, with exact text entry and Shift-drag fine changes. Old sessions without
+this parameter restore 0 dB. Fresh instances start at 0 dB.
+The original parameter indices, ranges and existing Output behavior remain.

@@ -189,3 +189,14 @@ energy display. Compare both sound creation and editing effort against four
 independent Sequence voices feeding Field. Stop if the memory policy cannot be
 predicted, the gestures are confusing, or the sound advantage does not survive
 matched-level comparison.
+
+## Cycle-2 no-excitation retune study
+
+The new memory fixtures make the Retune / Excite distinction inspectable:
+after one initial burst, the input stays exactly zero while later Retune events
+move retained energy. A future interface should show that ended excitation
+separately from nonzero modal energy; do not invent another burst animation at
+a chord edit. Compare this gesture against both the old and current
+Sequence→Field references. Their numerical state counters are not comparable
+and remain unknown in the lab. These are rendered fixtures and interaction
+requirements, not an implemented live gesture control.

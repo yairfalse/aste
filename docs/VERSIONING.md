@@ -1,8 +1,8 @@
 # Versioning
 
-All six instruments share one release number while developed and distributed
+All ten products (including Grain G-01, Contamination C-01 and the two experimental instruments) share one release number while developed and distributed
 together. The existing development download is the **0.1.0** baseline.
-`D-01`, `H-01`, `S-01`, `L-01`, `I-01` and `F-01` are model names, not versions.
+`D-01`, `H-01`, `S-01`, `L-01`, `I-01`, `F-01`, `N-01`, `R-01`, `G-01` and `C-01` are model names, not versions.
 
 The sole build-version source is `project(... VERSION ...)` in the root
 `CMakeLists.txt`. JUCE bundle versions, AU's numeric version, installer receipt

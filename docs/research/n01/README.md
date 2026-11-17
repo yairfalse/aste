@@ -72,3 +72,13 @@ should resume offset or offer a quantized rejoin; how short fragments should be
 windowed without erasing their attacks; and whether the small source set is
 sufficiently different from Impulse. Current choices are experiments, not new
 family-wide contracts.
+
+## Cycle 2: articulation comparison
+
+The [combined follow-up](../../../reports/N01-R01%20research%20cycle%202.md)
+reproduces the original baseline and adds Restart, Carry and bounded 2 ms
+Crossfade on the same accelerating impact train. The expanded pack contains
+20 variants / 40 raw and matched WAVs; action-edge measurements, sanitizer
+results, mutation tests and exact source fingerprints are retained in the
+[cycle-2 evidence](../cycle2/README.md). Use the isolated runner there for a
+new, complete listening pack rather than overwriting historical responses.
