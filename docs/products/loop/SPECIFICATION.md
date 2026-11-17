@@ -22,6 +22,12 @@ next; events are applied at their sample offsets. Host sync uses current BPM
 and a dedicated beat length. Free operation uses seconds. Varispeed and the
 duration-preserving pitch mechanism remain separate concepts.
 
+Play, Stop and Release give the tape its own transport, independent of the DAW.
+Stop pauses without erasing; Play resumes; Release prevents recording/printing
+and fades the repeats while retaining the original tape for later playback.
+The always-visible buttons share one host-automatable choice. See
+[the transport contract](PARAMETERS.md#tape-transport) for decay and recall rules.
+
 Three preallocated 16-second stereo decks retain the current generation and up
 to two earlier prints. The generation number can continue indefinitely because
 the oldest retained deck is reused. No memory is allocated or freed while

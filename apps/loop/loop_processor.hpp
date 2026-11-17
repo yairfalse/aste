@@ -8,6 +8,8 @@
 
 namespace aste::loop {
 
+enum class Transport { Play, Stop, Release };
+
 struct Parameters {
   bool capture{};
   bool reloop{};
@@ -29,6 +31,7 @@ struct Parameters {
   float outputDb{-3.0F};
   bool bypass{};
   bool legacyBehavior{};  // Saved with the tape engine, not automated.
+  Transport transport{Transport::Play};
 };
 
 struct MeterSnapshot {
@@ -111,6 +114,9 @@ class Processor {
   bool smoothingInitialized_{};
   bool wasCapturing_{};
   bool printing_{};
+  Transport transport_{Transport::Play};
+  float transportGain_{1.0F};
+  float lastWetLeft_{}, lastWetRight_{};
   MeterSnapshot meters_{};
 };
 

@@ -9,6 +9,11 @@ nor tape data. Missing/invalid schema-4 behavior rejects the complete state.
 Older binaries reject schema 4; keep the original session when moving between
 binary revisions. No product release version is selected by this change.
 
+The appended `transport` choice saves Play/Stop/Release without reinterpreting
+any old parameter. Missing transport restores Play. A stopped session reopens
+silent with tape retained. Live head position and release-envelope progress
+remain transient; recalling Release starts a new release from the tape start.
+
 Loop uses a product-owned portable XML schema:
 
 ```xml

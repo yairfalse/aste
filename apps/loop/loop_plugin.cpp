@@ -199,10 +199,36 @@ class MemoryPanel final : public juce::Component, private juce::Timer {
     addAndMakeVisible(previous_);
     addAndMakeVisible(next_);
     addAndMakeVisible(clear_);
+    const std::array<const char*, 3> names{"PLAY", "STOP", "RELEASE"};
+    const std::array<const char*, 3> hints{
+        "Resume retained tape from its paused position.",
+        "Pause playback and recording without erasing the tape.",
+        "Stop recording and printing; let repeats decay. Feedback sets the "
+        "tail length."};
+    for (std::size_t i = 0; i < transport_.size(); ++i) {
+      auto& button = transport_[i];
+      button.setButtonText(names[i]);
+      button.setTitle(names[i]);
+      button.setTooltip(hints[i]);
+      button.setColour(juce::TextButton::buttonColourId,
+                       juce::Colour{kSurface});
+      button.setColour(juce::TextButton::buttonOnColourId,
+                       juce::Colour{kAccent});
+      button.setColour(juce::TextButton::textColourOffId, juce::Colour{kInk});
+      button.setWantsKeyboardFocus(true);
+      button.onClick = [this, i] {
+        processor_.setTapeTransport(static_cast<Transport>(i));
+      };
+      addAndMakeVisible(button);
+    }
     timerCallback();
     startTimerHz(30);
   }
   void resized() override {
+    const int width = (getWidth() - 44) / 3;
+    for (int i = 0; i < 3; ++i)
+      transport_[static_cast<std::size_t>(i)].setBounds(
+          16 + i * (width + 6), getHeight() - 140, width, 28);
     reloop_.setBounds(16, getHeight() - 106, getWidth() - 32, 32);
     previous_.setBounds(16, getHeight() - 68, (getWidth() - 38) / 2, 26);
     next_.setBounds(previous_.getRight() + 6, getHeight() - 68,
@@ -216,9 +242,10 @@ class MemoryPanel final : public juce::Component, private juce::Timer {
     g.setFont(juce::FontOptions{11.0F, juce::Font::bold});
     g.drawText("THREE-DECK MEMORY", area.removeFromTop(20),
                juce::Justification::centredLeft);
-    area.removeFromTop(10);
+    const bool compact = getHeight() < 420;
+    area.removeFromTop(compact ? 4 : 10);
     for (int deck = 0; deck < 3; ++deck) {
-      auto lane = area.removeFromTop(30).reduced(2, 3);
+      auto lane = area.removeFromTop(compact ? 22 : 30).reduced(2, 3);
       g.setColour(deck == activeDeck_ ? juce::Colour{kAccent}
                                       : juce::Colour{kMuted}.withAlpha(0.55F));
       g.setFont(juce::FontOptions{10.0F, juce::Font::bold});
@@ -232,12 +259,16 @@ class MemoryPanel final : public juce::Component, private juce::Timer {
         g.fillRect(head - 2.0F, path.getY(), 4.0F, path.getHeight());
       }
     }
-    area.removeFromTop(8);
+    area.removeFromTop(compact ? 4 : 8);
     g.setColour(juce::Colour{kInk});
     g.setFont(juce::FontOptions{14.0F, juce::Font::bold});
     const bool noNewInput =
         processor_.state().getRawParameterValue("overdub")->load() >= 100;
-    g.drawText(processor_.isBypassed()    ? "BYPASSED / MEMORY RETAINED"
+    g.drawText(processor_.isBypassed() ? "BYPASSED / MEMORY RETAINED"
+               : processor_.tapeTransport() == Transport::Stop
+                   ? "STOPPED / TAPE RETAINED"
+               : processor_.tapeTransport() == Transport::Release
+                   ? "RELEASING / TAPE RETAINED"
                : printing_ > 0            ? "PRINTING NEXT TAPE"
                : noNewInput               ? "OVERDUB 100% / NO NEW INPUT"
                : processor_.isCapturing() ? "RECORDING INPUT"
@@ -286,7 +317,12 @@ class MemoryPanel final : public juce::Component, private juce::Timer {
     retained_ = processor_.retainedGenerations();
     activeDeck_ = processor_.activeDeck();
     const bool available = printing_ == 0 && !processor_.isBypassed();
-    reloop_.setEnabled(captured_ > 0 && available);
+    reloop_.setEnabled(captured_ > 0 && available &&
+                       processor_.tapeTransport() == Transport::Play);
+    for (std::size_t i = 0; i < transport_.size(); ++i)
+      transport_[i].setToggleState(
+          processor_.tapeTransport() == static_cast<Transport>(i),
+          juce::dontSendNotification);
     reloop_.setDescription(
         captured_ <= 0 ? "Capture audio first. Printing makes a new take from "
                          "the transformed loop."
@@ -302,6 +338,7 @@ class MemoryPanel final : public juce::Component, private juce::Timer {
   }
   LoopAudioProcessor& processor_;
   juce::TextButton reloop_, previous_, next_, clear_;
+  std::array<juce::TextButton, 3> transport_;
   float input_{};
   float output_{};
   float position_{};
@@ -341,11 +378,11 @@ class LoopEditor final : public juce::AudioProcessorEditor,
         output_{processor.state(), "output", "OUTPUT", " dB", -3, 18} {
     setLookAndFeel(&lookAndFeel_);
     addAndMakeVisible(master_);
-    workflow_.bind(*this,
-                   "CAPTURE > PLAY > TRANSFORM > PRINT TAKE > COMPARE TAKES",
-                   "Feed audio, press Capture, then stop Capture to play it. "
-                   "Transform the loop; PRINT NEW TAKE records the result. "
-                   "Older/Newer compares takes.");
+    workflow_.bind(
+        *this, "CAPTURE > PLAY > TRANSFORM > PRINT TAKE > COMPARE TAKES",
+        "Capture audio, then turn Capture off. STOP pauses; PLAY "
+        "resumes; RELEASE fades repeats without erasing the tape. "
+        "PRINT NEW TAKE records a transformation; Older/Newer compares takes.");
     addAndMakeVisible(workflow_);
     capture_.setButtonText("CAPTURE INPUT");
     capture_.setColour(juce::TextButton::buttonColourId, juce::Colour{kAccent});
@@ -521,17 +558,20 @@ LoopAudioProcessor::createParameterLayout() {
   layout.add(std::make_unique<juce::AudioParameterBool>(
       juce::ParameterID{"bypass", 1}, "Bypass", false));
   aste::ui::MasterGain::addParameter(layout, 0.F);
+  layout.add(std::make_unique<juce::AudioParameterChoice>(
+      juce::ParameterID{"transport", 1}, "Tape Transport",
+      juce::StringArray{"Play", "Stop", "Release"}, 0));
   return layout;
 }
 
 LoopAudioProcessor::LoopAudioProcessor()
-    : AudioProcessor{BusesProperties{}
-                         .withInput("Input", juce::AudioChannelSet::stereo(),
-                                    true)
-                         .withOutput("Output", juce::AudioChannelSet::stereo(),
-                                     true)},
+    : AudioProcessor{
+          BusesProperties{}
+              .withInput("Input", juce::AudioChannelSet::stereo(), true)
+              .withOutput("Output", juce::AudioChannelSet::stereo(), true)},
       state_{*this, nullptr, kStateType, createParameterLayout()} {
   masterGain_.bind(state_);
+  transportValue_ = state_.getRawParameterValue("transport");
   for (std::size_t index = 0; index < kParameterIds.size(); ++index) {
     parameterValues_[index] = state_.getRawParameterValue(kParameterIds[index]);
     jassert(parameterValues_[index] != nullptr);
@@ -572,7 +612,8 @@ Parameters LoopAudioProcessor::currentParameters() const noexcept {
           .mix = value(mix) * 0.01F,
           .outputDb = value(output),
           .bypass = value(bypass) >= 0.5F,
-          .legacyBehavior = engine_.load()->legacyBehavior};
+          .legacyBehavior = engine_.load()->legacyBehavior,
+          .transport = tapeTransport()};
 }
 
 LoopAudioProcessor::~LoopAudioProcessor() {
@@ -685,7 +726,8 @@ void LoopAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
   }
   processRange(buffer, processed, buffer.getNumSamples() - processed,
                parameters);
-  captureActive_.store(parameters.capture);
+  captureActive_.store(parameters.capture &&
+                       parameters.transport == Transport::Play);
   engine_.load()->processor.publishTape();
   publishMeters(engine_.load()->processor.meters());
   outputPeak_.store(masterGain_.process(buffer), std::memory_order_relaxed);
@@ -756,6 +798,15 @@ int LoopAudioProcessor::activeDeck() const noexcept {
 }
 void LoopAudioProcessor::clearLoop() noexcept {
   clearRequested_.store(true, std::memory_order_release);
+}
+
+void LoopAudioProcessor::setTapeTransport(Transport transport) {
+  if (auto* parameter = state_.getParameter("transport")) {
+    parameter->beginChangeGesture();
+    parameter->setValueNotifyingHost(
+        parameter->convertTo0to1(static_cast<float>(transport)));
+    parameter->endChangeGesture();
+  }
 }
 void LoopAudioProcessor::reloop() noexcept {
   reloopRequested_.store(true, std::memory_order_release);

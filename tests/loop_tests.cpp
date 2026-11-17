@@ -264,7 +264,48 @@ void testCompleteMotionCycles() {
   }
 }
 
+void testTapeTransport() {
+  aste::loop::Processor processor;
+  processor.prepare(8000, 1, true);
+  aste::loop::Parameters p;
+  p.capture = true;
+  p.overdub = 0;
+  p.loopLengthSeconds = .1F;
+  std::array<float, 800> audio;
+  audio.fill(.25F);
+  processor.process(audio.data(), nullptr, audio.size(), p);
+  const auto saved = processor.tapeState();
+  const float position = processor.meters().position;
+  p.transport = aste::loop::Transport::Stop;
+  audio.fill(.9F);
+  processor.process(audio.data(), nullptr, audio.size(), p);
+  require(processor.meters().position == position,
+          "Stop freezes tape position");
+  require(processor.tapeState().audio == saved.audio,
+          "Stop inhibits capture without erasing tape");
+  require(std::abs(audio.back()) < .0001F, "Stop fades wet output to silence");
+  p.capture = false;
+  p.transport = aste::loop::Transport::Play;
+  audio.fill(0);
+  processor.process(audio.data(), nullptr, audio.size(), p);
+  require(audio.back() > .01F, "Play resumes the retained recording");
+  p.transport = aste::loop::Transport::Release;
+  p.feedback = 0;
+  p.capture = p.reloop = true;
+  audio.fill(.9F);
+  processor.process(audio.data(), nullptr, audio.size(), p);
+  require(std::abs(audio.back()) < .0001F, "Release decays despite live input");
+  require(processor.tapeState().audio == saved.audio,
+          "Release inhibits capture and printing, preserving the original");
+  p.transport = aste::loop::Transport::Play;
+  p.capture = p.reloop = false;
+  audio.fill(0);
+  processor.process(audio.data(), nullptr, audio.size(), p);
+  require(audio.back() > .01F, "Play recovers tape after release");
+}
+
 int main() {
+  testTapeTransport();
   testCompleteMotionCycles();
   testConcurrentTapeSnapshots();
   testCapturePlaybackAndReset();

@@ -121,6 +121,9 @@ void Processor::reset() noexcept {
   smoothingInitialized_ = false;
   wasCapturing_ = false;
   printing_ = false;
+  transport_ = Transport::Play;
+  transportGain_ = 1;
+  lastWetLeft_ = lastWetRight_ = 0;
   meters_ = {};
   publishTape();
 }
@@ -298,10 +301,19 @@ void Processor::process(float* left, float* right, std::size_t frames,
                  64.0, static_cast<double>(decks_[0].left.size())));
   const std::size_t length = std::max<std::size_t>(64U, requested);
   const auto playbackLength = std::min(length, decks_[activeDeck_].length);
-  if (parameters.reloop) beginReloop(playbackLength);
+  const bool playing = parameters.transport == Transport::Play;
+  const bool stopped = parameters.transport == Transport::Stop;
+  if (parameters.transport == Transport::Release &&
+      transport_ != Transport::Release)
+    printing_ = false;
+  transport_ = parameters.transport;
+  if (parameters.reloop && playing) beginReloop(playbackLength);
   const bool stereo = right != nullptr;
   const float overdub = bounded(parameters.overdub, 0.0F, 1.0F, 0.5F);
   const float feedback = bounded(parameters.feedback, 0.0F, 1.0F, 0.85F);
+  // Feedback controls a bounded release time (T60), even at 100%.
+  const float release = static_cast<float>(std::exp(
+      -std::log(1000.0) / (sampleRate_ * (0.05 + 7.95 * feedback * feedback))));
   const float targetMix = bounded(parameters.mix, 0.0F, 1.0F, 1.0F);
   const float targetAmplifier =
       bounded(parameters.amplifier, 0.0F, 1.0F, 0.25F);
@@ -317,7 +329,7 @@ void Processor::process(float* left, float* right, std::size_t frames,
     smoothedSpeed_ = targetSpeed;
     smoothingInitialized_ = true;
   }
-  if (parameters.capture && !wasCapturing_ &&
+  if (playing && parameters.capture && !wasCapturing_ &&
       decks_[activeDeck_].length == 0U) {
     writePosition_ = 0U;
     readPosition_ = 0.0;
@@ -349,7 +361,7 @@ void Processor::process(float* left, float* right, std::size_t frames,
       wetLeft = inputLeft;
       wetRight = inputRight;
     }
-    if (parameters.capture && !printing_) {
+    if (playing && parameters.capture && !printing_) {
       if (active.generation == 0U) {
         active.generation = ++generationCounter_;
       }
@@ -374,7 +386,7 @@ void Processor::process(float* left, float* right, std::size_t frames,
     const float quantization = 32768.0F / (1.0F + 63.0F * smoothedDegradation_);
     wetLeft = std::round(wetLeft * quantization) / quantization;
     wetRight = std::round(wetRight * quantization) / quantization;
-    if (printing_ && printPosition_ < printLength_) {
+    if (playing && printing_ && printPosition_ < printLength_) {
       auto& destination = decks_[printingDeck_];
       destination.left[printPosition_] =
           printSample(wetLeft, printStateLeft_, parameters);
@@ -394,6 +406,22 @@ void Processor::process(float* left, float* right, std::size_t frames,
         printing_ = false;
       }
     }
+    if (stopped) {
+      wetLeft = lastWetLeft_;
+      wetRight = lastWetRight_;
+      smooth(transportGain_, 0);
+    } else {
+      lastWetLeft_ = wetLeft;
+      lastWetRight_ = wetRight;
+      if (playing)
+        smooth(transportGain_, 1);
+      else
+        transportGain_ *= release;
+    }
+    if (transportGain_ < 1.e-8F) transportGain_ = 0;
+    if (!playing && currentLength < 2U) wetLeft = wetRight = 0;
+    wetLeft *= transportGain_;
+    wetRight *= transportGain_;
     float outputLeft = inputLeft + smoothedMix_ * (wetLeft - inputLeft);
     float outputRight = inputRight + smoothedMix_ * (wetRight - inputRight);
     outputLeft = clean(outputLeft * smoothedOutputGain_);
@@ -409,6 +437,7 @@ void Processor::process(float* left, float* right, std::size_t frames,
     measured.outputPeak =
         std::max(measured.outputPeak,
                  std::max(std::abs(outputLeft), std::abs(outputRight)));
+    if (stopped) continue;
     modulationPhase_ += 1.0 / sampleRate_;
     const double period = parameters.legacyBehavior ? 1.0 : 1000.0;
     modulationPhase_ -= period * std::floor(modulationPhase_ / period);
@@ -436,7 +465,7 @@ void Processor::process(float* left, float* right, std::size_t frames,
         bounded(parameters.pitchSemitones, -12.0F, 12.0F, 0.0F) / 12.0F);
     pitchPhase_ = wrap(pitchPhase_ + std::abs(pitchRatio - 1.0) / 1024.0, 1U);
   }
-  wasCapturing_ = parameters.capture;
+  wasCapturing_ = playing && parameters.capture;
   const auto& active = decks_[activeDeck_];
   const auto activeLength = std::min(length, active.length);
   measured.position = activeLength > 0U

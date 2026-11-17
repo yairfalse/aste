@@ -91,8 +91,13 @@ juce::Component* findTitled(juce::Component& component,
 
 void testContractAndState() {
   Loop source;
-  require(source.getParameters().size() == 21,
-          "Loop exposes 20 stable parameters");
+  require(source.getParameters().size() == 22,
+          "Loop appends transport after the original parameters and master");
+  require(dynamic_cast<juce::AudioProcessorParameterWithID*>(
+              source.getParameters()[20])
+                  ->paramID == "master",
+          "Master retains its existing host index");
+  source.setTapeTransport(aste::loop::Transport::Stop);
   setValue(source, "feedback", 73.25F);
   setValue(source, "pitch", -7.0F);
   setValue(source, "reverse", 1.0F);
@@ -108,6 +113,8 @@ void testContractAndState() {
   juce::MemoryBlock repeated;
   restored.getStateInformation(repeated);
   require(state == repeated, "Loop control state bytes are deterministic");
+  require(restored.tapeTransport() == aste::loop::Transport::Stop,
+          "Tape transport recalls with the controls");
   auto currentXml = juce::AudioProcessor::getXmlFromBinary(
       state.getData(), static_cast<int>(state.getSize()));
   require(currentXml && currentXml->getStringAttribute("behavior") == "1",
@@ -129,6 +136,8 @@ void testContractAndState() {
   require(std::abs(value(restored, "feedback") - 61.0F) < 0.02F &&
               std::abs(value(restored, "tape_speed") - 1.0F) < 0.02F,
           "Loop schema 1 migrates with the new tape speed default");
+  require(restored.tapeTransport() == aste::loop::Transport::Play,
+          "Old sessions without transport retain automatic playback");
   restored.getStateInformation(repeated);
   auto legacyXml = juce::AudioProcessor::getXmlFromBinary(
       repeated.getData(), static_cast<int>(repeated.getSize()));
@@ -214,10 +223,10 @@ void testEditor(const char* artifactDirectory) {
               editor->isResizable(),
           "Loop editor uses its intended scalable panel");
   if (!editor) return;
-  for (const char* title : std::array<const char*, 11>{
+  for (const char* title : std::array<const char*, 14>{
            "CAPTURE", "RELOOP", "PREVIOUS GENERATION", "NEXT GENERATION",
            "HOST SYNC", "REVERSE", "TAPE SPEED", "OVERDUB", "PITCH", "OUTPUT",
-           "CLEAR MEMORY"})
+           "CLEAR MEMORY", "PLAY", "STOP", "RELEASE"})
     require(findTitled(*editor, title),
             "Essential Loop control remains visible");
   juce::Image image{juce::Image::RGB, editor->getWidth(), editor->getHeight(),

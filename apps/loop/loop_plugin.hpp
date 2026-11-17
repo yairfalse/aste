@@ -74,6 +74,10 @@ class LoopAudioProcessor final : public juce::AudioProcessor {
     return captureActive_.load();
   }
   void clearLoop() noexcept;
+  void setTapeTransport(Transport);
+  [[nodiscard]] Transport tapeTransport() const noexcept {
+    return static_cast<Transport>(static_cast<int>(transportValue_->load()));
+  }
   void reloop() noexcept;
   void previousGeneration() noexcept;
   void nextGeneration() noexcept;
@@ -131,6 +135,7 @@ class LoopAudioProcessor final : public juce::AudioProcessor {
   juce::AudioProcessorValueTreeState state_;
   aste::ui::MasterGain masterGain_;
   std::array<std::atomic<float>*, parameterCount> parameterValues_{};
+  std::atomic<float>* transportValue_{};
   bool midiCapture_{};
   std::atomic<bool> captureActive_{};
   std::atomic<bool> clearRequested_{};

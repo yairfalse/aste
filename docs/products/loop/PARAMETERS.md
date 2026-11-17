@@ -44,3 +44,22 @@ control. Output meters report this final level. Its header control is always
 visible, with exact text entry and Shift-drag fine changes. Old sessions without
 this parameter restore 0 dB. Fresh instances start at 0 dB.
 The original parameter indices, ranges and existing Output behavior remain.
+
+## Tape transport
+
+`transport` is appended after `master` (host index 21): Play=0, Stop=1,
+Release=2; default Play. Existing sessions missing it retain their old playback
+behavior. The three always-visible buttons operate this same automatable choice.
+
+Stop freezes tape position, modulation, recording and an unfinished print. A
+5 ms smoothing time fades the wet signal; the dry side of Mix is unaffected.
+Play resumes at that position and fades the retained tape back in. Capture's
+latch is preserved but cannot write while stopped or releasing.
+
+Release prevents new capture/printing, abandons an unfinished print, and lets
+the existing playback decay without modifying retained audio. Feedback sets
+the -60 dB decay time: `0.05 + 7.95 * (Feedback / 100)^2` seconds (50 ms–8 s).
+Even 100% Feedback releases. Play can recover the original tape afterwards.
+Clear remains the separate destructive action. Transport is independent of the
+DAW transport; saving recalls the selected mode, with the existing tape-recall
+rule that playback starts at the beginning rather than restoring a live head.
