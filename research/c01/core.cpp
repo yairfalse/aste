@@ -80,9 +80,14 @@ void Engine::event(const Event& e) noexcept {
       if(e.value<=0) { event({0,Kind::Off,e.note,0}); break; }
       start(e.note,bound(e.value,0,1)); break;
     case Kind::Off:
-      for(auto& v:voice_) if(v.note==e.note && v.down) {
-        v.down=false; v.pedal=pedal_; if(!pedal_) v.stage=4;
-      } break;
+      for (auto& v : voice_) {
+        if (v.note == e.note && v.down) {
+          v.down = false;
+          v.pedal = pedal_;
+          if (!pedal_) v.stage = 4;
+        }
+      }
+      break;
     case Kind::Pedal:
       pedal_=e.value>=.5;
       if(!pedal_) for(auto& v:voice_) if(v.pedal) {v.pedal=false; v.stage=4;}
