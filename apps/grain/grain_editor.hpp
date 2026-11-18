@@ -156,10 +156,11 @@ class Editor final : public juce::AudioProcessorEditor, private juce::Timer {
     addAndMakeVisible(master_);
     addAndMakeVisible(map_);
     addAndMakeVisible(hold_);
+    hold_.setExplicitFocusOrder(20);
     for (std::size_t i = 0; i < p.specs().size(); ++i) {
       controls_.push_back(std::make_unique<Control>(p, p.specs()[i], true));
       controls_.back()->setComponentID(p.specs()[i].id);
-      controls_.back()->setExplicitFocusOrder(static_cast<int>(i + 20));
+      controls_.back()->setExplicitFocusOrder(static_cast<int>(i + 100));
       addChildComponent(*controls_.back());
     }
     for (std::size_t n = 0; n < 3; ++n) {
@@ -242,6 +243,7 @@ class Editor final : public juce::AudioProcessorEditor, private juce::Timer {
     scene_.addItemList(
         {"Single A", "Cascade A > B > C", "Parallel", "Feedback cycle"}, 1);
     scene_.setTitle("Routing starting points");
+    scene_.setExplicitFocusOrder(21);
     scene_.onChange = [this] {
       hold_.release();
       p_.scene(scene_.getSelectedId() - 1);
@@ -411,6 +413,7 @@ class Editor final : public juce::AudioProcessorEditor, private juce::Timer {
     button.setTitle(text);
     button.setComponentID(id);
     button.setWantsKeyboardFocus(true);
+    button.setExplicitFocusOrder(nextFocus_++);
     button.onClick = std::move(action);
     addAndMakeVisible(button);
   }
@@ -442,6 +445,7 @@ class Editor final : public juce::AudioProcessorEditor, private juce::Timer {
         p_, p_.specs()[GrainAudioProcessor::routeBase + n * 3 + source_], true);
     amount_->setCaption("SEND AMOUNT x");
     amount_->setComponentID("send-amount");
+    amount_->setExplicitFocusOrder(22);
     amount_->setHelp(
         "Continuous gain into the destination capture input. Incoming route "
         "totals are bounded at 0.995 for safe feedback. The map shows the "
@@ -568,6 +572,7 @@ class Editor final : public juce::AudioProcessorEditor, private juce::Timer {
   std::size_t source_{}, destination_{1};
   bool detail_{}, matrixVisible_{};
   int clearArmed_{-1};
+  int nextFocus_{1};
   double clearDeadline_{};
   juce::String message_;
   static constexpr std::array<std::size_t, 7> primary_{0, 1, 2, 3, 7, 13, 14};
