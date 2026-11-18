@@ -33,16 +33,14 @@ class Instrument : public juce::AudioProcessor {
  public:
   Instrument(juce::String name, juce::String type,
              std::vector<ControlSpec> specs, bool effect = false)
-      : AudioProcessor{effect ? BusesProperties{}
-                                    .withInput("Input",
-                                               juce::AudioChannelSet::stereo(),
-                                               true)
-                                    .withOutput("Output",
-                                                juce::AudioChannelSet::stereo(),
-                                                true)
-                              : BusesProperties{}.withOutput(
-                                    "Output", juce::AudioChannelSet::stereo(),
-                                    true)},
+      : AudioProcessor{
+            effect
+                ? BusesProperties{}
+                      .withInput("Input", juce::AudioChannelSet::stereo(), true)
+                      .withOutput("Output", juce::AudioChannelSet::stereo(),
+                                  true)
+                : BusesProperties{}.withOutput(
+                      "Output", juce::AudioChannelSet::stereo(), true)},
         effect_{effect},
         name_{name},
         type_{type},
