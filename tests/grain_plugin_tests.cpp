@@ -402,12 +402,12 @@ int main(int argc, char** argv) {
     process(false, 60);
     ui.set("freeze_all", 1);
     process(false, 1);
-    ui.set("cycle_morph", .6F);
+    ui.set("cycle_morph", .63F);
     const auto morphed = ui.currentControls().routes;
     if (auto* edit = button("edit-routing")) edit->onClick();
     require(ui.value(6) == 0, "edit current routing resets cycle morph");
-    // Gains travel through JUCE's float normalized [0,1] representation.
-    // Compare to that exact round trip, not a broad audio tolerance.
+    // Gains round to the existing 0.01 steps and travel through JUCE's float
+    // normalized representation. Compare to that exact contract round trip.
     for (std::size_t d = 0; d < 3; ++d)
       for (std::size_t s = 0; s < 3; ++s) {
         const auto* parameter =

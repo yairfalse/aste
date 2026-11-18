@@ -66,8 +66,9 @@ REC's display floor is -100 dB; it is not a claim of measured signal below that.
 
 When **MORPH TO CYCLE** is nonzero, direct SEND editing pauses explicitly:
 **EDIT CURRENT ROUTES** writes the current morph target into the existing base
-parameters and resets morph to zero (subject to host float normalization).
-It preserves the resulting target routing, not a separate copy of audio. The
+parameters and resets morph to zero, rounding to the existing **0.01 gain steps**
+and host float representation. The visible notice explains this small change;
+it does not create a separate copy of audio. The
 matrix remains available for deliberate base-level editing while morphing.
 If Cubase is automating Cycle Morph, stop writing that automation before taking
 manual ownership. Routing starting points also reset morph, as before.

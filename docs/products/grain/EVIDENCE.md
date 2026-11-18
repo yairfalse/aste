@@ -12,7 +12,8 @@ Verified during implementation:
   the SEND implementation. It exercises source/destination actions, actual audio
   capture through A > B > C, self/cyclic feedback, matrix/inspector synchronization,
   momentary keyboard press/release, nonzero restoration, automation takeover,
-  editor-close release, morph handoff and two-click clear protection.
+  editor-close release, morph handoff (including the existing 0.01 gain-step
+  quantization) and two-click clear protection.
 - Route removal leaves frozen A/B PCM unchanged. Performed recursive memories
   round-trip sample-for-sample through serialized plugin state. Host playhead
   simulation covers loop restarts, negative and distant seeks, tempo change and

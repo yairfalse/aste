@@ -8,8 +8,7 @@ bool feedbackRoute(const Controls& c, std::size_t destination,
   if (destination == source) return true;
   bool reachable[3][3]{};
   for (std::size_t d = 0; d < 3; ++d)
-    for (std::size_t s = 0; s < 3; ++s)
-      reachable[s][d] = c.routes[d][s] > .0001F;
+    for (std::size_t s = 0; s < 3; ++s) reachable[s][d] = c.routes[d][s] > 0.F;
   for (std::size_t k = 0; k < 3; ++k)
     for (std::size_t s = 0; s < 3; ++s)
       for (std::size_t d = 0; d < 3; ++d)
@@ -73,7 +72,7 @@ class HoldSend final : public juce::TextButton {
 
  private:
   void engage() {
-    if (parameter_ || !isEnabled() || p_.value(6) > .0001F) return;
+    if (parameter_ || !isEnabled() || p_.value(6) > 0.F) return;
     parameter_ = p_.state().getParameter(id_);
     if (!parameter_) return;
     previous_ = parameter_->getValue();
@@ -124,15 +123,15 @@ class RoutingMap final : public juce::Component {
         const float amount = c.routes[d][s] * scale;
         const int y = 28 + static_cast<int>(s) * 32;
         const bool feedback = feedbackRoute(c, d, s);
-        g.setColour(amount > .0001F
+        g.setColour(amount > 0.F
                         ? juce::Colour{feedback ? 0xffd4b075 : 0xff83a99a}
                         : juce::Colour{0xff72807c});
         g.drawText(nodeName(s) + " > " + nodeName(d) + "  " +
-                       (amount > .0001F
+                       (amount > 0.F
                             ? juce::String(amount, amount < .01F ? 4 : 2) + "x"
                             : "OFF"),
                    x, y, w, 16, juce::Justification::centredLeft);
-        if (amount > .0001F) {
+        if (amount > 0.F) {
           g.drawArrow({static_cast<float>(x), static_cast<float>(y + 21),
                        static_cast<float>(x + w), static_cast<float>(y + 21)},
                       1, 4, 4);
@@ -223,7 +222,7 @@ class Editor final : public juce::AudioProcessorEditor, private juce::Timer {
       refresh();
     });
     commit_.setTooltip(
-        "Keep the current routing target, put its levels into the matrix, and "
+        "Round the current routing to the existing 0.01 matrix steps and "
         "reset Cycle Morph. No audio is copied or erased.");
     setup(details_, "DETAILS", "details", [this] {
       detail_ = !detail_;
@@ -374,8 +373,8 @@ class Editor final : public juce::AudioProcessorEditor, private juce::Timer {
                  juce::Justification::centredLeft);
       juce::String incoming, outgoing;
       for (std::size_t other = 0; other < 3; ++other) {
-        if (c.routes[n][other] > .0001F) incoming += nodeName(other);
-        if (c.routes[other][n] > .0001F) outgoing += nodeName(other);
+        if (c.routes[n][other] > 0.F) incoming += nodeName(other);
+        if (c.routes[other][n] > 0.F) outgoing += nodeName(other);
       }
       g.setColour(juce::Colour{0xffaebdb5});
       g.drawText(
@@ -424,7 +423,7 @@ class Editor final : public juce::AudioProcessorEditor, private juce::Timer {
     return p_.value(GrainAudioProcessor::routeBase + destination_ * 3 +
                     source_);
   }
-  bool editable() const { return p_.value(6) <= .0001F; }
+  bool editable() const { return p_.value(6) <= 0.F; }
   void select(std::size_t n) {
     hold_.release();
     source_ = n;
@@ -439,8 +438,7 @@ class Editor final : public juce::AudioProcessorEditor, private juce::Timer {
     hold_.release();
     destination_ = n;
     hold_.route(n, source_);
-    if (connect && editable() && baseAmount() <= .0001F)
-      p_.set(routeId(), .65F);
+    if (connect && editable() && baseAmount() <= 0.F) p_.set(routeId(), .65F);
     amount_ = std::make_unique<Control>(
         p_, p_.specs()[GrainAudioProcessor::routeBase + n * 3 + source_], true);
     amount_->setCaption("SEND AMOUNT x");
@@ -507,8 +505,9 @@ class Editor final : public juce::AudioProcessorEditor, private juce::Timer {
     const auto c = p_.currentControls();
     if (!canEdit)
       message_ =
-          "Cycle Morph is shaping the routes. EDIT CURRENT ROUTES keeps this "
-          "sound and enables direct SEND editing.";
+          "Cycle Morph is shaping the routes. EDIT CURRENT ROUTES rounds to "
+          "0.01 "
+          "gain steps and enables direct SEND editing.";
     else if (c.freeze || c.node[destination_].freeze)
       message_ = "Destination " + nodeName(destination_) +
                  " is FROZEN: incoming sends do not replace held memory. "
