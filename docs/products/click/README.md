@@ -16,6 +16,7 @@ A real VST3 instrument in the main Aste build; there is no separate research app
 4. **RESAMPLE** prints one processed cycle into a new audio generation. Wait for
    PRINTING to complete. Adjust the new generation and repeat. ORIGINAL,
    PREVIOUS, NEXT, UNDO and REDO keep the earlier material available.
+   ORIGINAL selects generation one with neutral controls; this reset is undoable.
 5. Raise **SKEW** to bend the rows differently without editing the source pattern.
    Zero restores straight timing. **VOICE** repeats just one row; its adjacent
    number sets the local fragment length. Release resumes that running cycle.

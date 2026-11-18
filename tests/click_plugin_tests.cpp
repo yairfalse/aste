@@ -307,6 +307,18 @@ void performanceWorkflows(const juce::File& folder) {
   require(writeMinimumEditorArtifact(*editor,
                                      folder.getChildFile("instant_roll.png")),
           "roll extent feedback");
+  auto* originalButton = button(*editor, "ORIGINAL");
+  require(originalButton && originalButton->onClick,
+          "original material action connected");
+  originalButton->onClick();
+  require(p->memoryControls().generation[0].pitch == 0 &&
+              p->memoryControls().generation[0].cutoff == 20000 &&
+              p->memoryControls().generation[0].playback == 0,
+          "Original restores unprocessed material in one action");
+  p->undoEdit();
+  require(p->memoryControls().generation[0].pitch == -12 &&
+              p->memoryControls().generation[0].playback == 1,
+          "original-material reset is undoable");
   editor.reset();
   p->clearMemory();
   p->scene(1);

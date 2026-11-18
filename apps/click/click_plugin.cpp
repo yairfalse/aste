@@ -256,7 +256,7 @@ std::vector<ControlSpec> Processor::controls() {
     field(knob(memoryId(n, "end"), "END", .000001F, 1, 1, 0, 0));
     field(knob(memoryId(n, "loop_start"), "LOOP START", 0, .999999F, 0, 0, 0));
     field(knob(memoryId(n, "loop_end"), "LOOP END", .000001F, 1, 1, 0, 0));
-    field(knob(memoryId(n, "pitch"), "PITCH st", -48, 48, 0));
+    field(knob(memoryId(n, "pitch"), "PITCH st", -48, 48, 0, 0, 1.F / 128));
     field(knob(memoryId(n, "speed"), "SPEED", .125F, 4, 1, 1, 1.F / 8192));
     field(knob(memoryId(n, "cutoff"), "FILTER Hz", 30, 20000, 20000, 2000));
     field(knob(memoryId(n, "resonance"), "RESONANCE", 0, .95F, 0));
@@ -1073,6 +1073,14 @@ MemoryControls Processor::memoryControls() const noexcept {
   return c;
 }
 void Processor::memoryAction(MasterMemory::Command command) {
+  if (command == MasterMemory::Original) {
+    beginEdit("Return to original material");
+    for (const char* field : memoryIds) {
+      auto* parameter = state().getParameter(memoryId(0, field));
+      parameter->setValueNotifyingHost(parameter->getDefaultValue());
+    }
+    set("memory_generation", 0);
+  }
   memoryCommand_.store(static_cast<int>(command));
 }
 void Processor::clearMemory() {

@@ -62,7 +62,8 @@ std::unique_ptr<Control> control(Processor& p, const juce::String& id) {
           slider->textFromValueFunction = [slider](double value) {
             return aste::ui::formattedValue(*slider, value);
           };
-          if (id.endsWith("_speed") || id == "repeat_free")
+          if (id.endsWith("_speed") || id == "repeat_free" ||
+              (id.startsWith("m") && id.endsWith("_pitch")))
             slider->textFromValueFunction = [](double value) {
               return juce::String(value, 4);
             };

@@ -102,6 +102,17 @@ int main() {
   restored.process(l.data(), r.data(), 750, repeat, 240, MasterMemory::None,
                    true);
   require(restored.position() == 0, "tempo change keeps exact repeat division");
+  MasterMemory gesture;
+  gesture.prepare(48000);
+  gesture.restore(printed);
+  MemoryControls gestureControls;
+  gestureControls.selected = 1;
+  gesture.process(l.data(), r.data(), 173, gestureControls, 120);
+  gestureControls.repeat = true;
+  gestureControls.division = 4;
+  gesture.process(l.data(), r.data(), 1500, gestureControls, 120);
+  require(gesture.position() == 0,
+          "repeat gesture starts at the selected fragment boundary");
   MasterMemory shortRegion;
   shortRegion.prepare(48000);
   shortRegion.restore(printed);

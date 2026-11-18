@@ -162,6 +162,10 @@ void MasterMemory::process(float* l, float* r, std::size_t frames,
     cursor_ = 0;
     transition_ = 1;
   }
+  if (c.repeat && !wasRepeat_) {
+    cursor_ = 0;
+    transition_ = 1;
+  }
   if (command == Capture || (c.capture && !wasCapture_) ||
       (c.repeat && !wasRepeat_ && count_.load() == 0)) {
     if (!printing_) capture(c, bpm);

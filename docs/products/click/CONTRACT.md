@@ -29,8 +29,9 @@ The extension adds `skew`, `compressor_mode`, `memory_play`, `memory_repeat`,
 `resample_audio`, then `o{1..4}_speed` and `o{1..4}_playback` in object order.
 Finally eight generations `m{0..7}_{field}` each have Start, End, Loop Start,
 Loop End, Pitch, Speed, Cutoff, Resonance, Morph, Playback and Reverse, in that
-order. Exact IDs are `memoryIds`. Speed uses a binary 1/8192 grid so neutral 1×
-survives host normalization exactly. Pitch and speed are varispeed, not time
+order. Exact IDs are `memoryIds`. Speed uses a binary 1/8192 grid and captured
+pitch a 1/128-semitone grid so neutral 1× / zero survive host normalization
+exactly. Pitch and speed are varispeed, not time
 stretching. Missing extensions restore neutral playback, zero SKEW and Original
 dynamics. Fresh factory starting points select Impact dynamics explicitly.
 
