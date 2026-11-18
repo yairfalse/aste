@@ -32,6 +32,11 @@ struct Parameters {
   bool bypass{};
   bool legacyBehavior{};  // Saved with the tape engine, not automated.
   Transport transport{Transport::Play};
+  bool safeWorkflow{};
+  float end{1};
+  bool repeat{};
+  float repeatSeconds{};  // Zero: use the selected region.
+  bool monitor{};
 };
 
 struct MeterSnapshot {
@@ -45,6 +50,7 @@ struct MeterSnapshot {
   std::size_t activeDeck{};
   std::uint32_t oldestGeneration{};
   std::uint32_t newestGeneration{};
+  bool recording{}, busy{}, historyFull{};
 };
 
 class Processor {
@@ -56,10 +62,13 @@ class Processor {
   void discard() noexcept;
   void previousGeneration() noexcept;
   void nextGeneration() noexcept;
+  void selectGeneration(std::uint32_t generation) noexcept;
+  void removeGeneration(std::uint32_t generation) noexcept;
   [[nodiscard]] TapeState tapeState() const { return snapshots_.read(); }
   void publishTape() noexcept;
   // Non-audio setup only: restore into a freshly prepared processor.
   void restoreTape(const TapeState&);
+  void continuePlaybackFrom(const Processor&) noexcept;
   void process(float* left, float* right, std::size_t frames,
                const Parameters& parameters, bool publish = true) noexcept;
 
@@ -86,7 +95,7 @@ class Processor {
   [[nodiscard]] float playback(const std::vector<float>& channel,
                                const Parameters& parameters,
                                std::size_t length) const noexcept;
-  void beginReloop(std::size_t length) noexcept;
+  void beginReloop(std::size_t length, bool preserveHistory = false) noexcept;
   [[nodiscard]] float printSample(float input, float& state,
                                   const Parameters& parameters) const noexcept;
   [[nodiscard]] std::size_t retainedGenerations() const noexcept;
@@ -114,6 +123,14 @@ class Processor {
   bool smoothingInitialized_{};
   bool wasCapturing_{};
   bool printing_{};
+  bool recording_{}, captureLatched_{}, wasRepeating_{};
+  std::size_t captureLength_{};
+  double repeatPosition_{};
+  float toneLeft_{}, toneRight_{};
+  Parameters previousParameters_{};
+  Parameters repeatTimeline_{};
+  float transitionLeft_{}, transitionRight_{};
+  std::size_t transitionRemaining_{};
   Transport transport_{Transport::Play};
   float transportGain_{1.0F};
   float lastWetLeft_{}, lastWetRight_{};

@@ -90,15 +90,51 @@ void Processor::restoreTape(const TapeState& state) {
       const auto next = std::min(first + 1, frames - 1);
       const float mix = static_cast<float>(position - first);
       target.left[frame] =
-          clean(audio[first * 2] + mix * (audio[next * 2] - audio[first * 2]));
+          mix == 0 ? audio[first * 2]
+                   : clean(audio[first * 2] +
+                           mix * (audio[next * 2] - audio[first * 2]));
       target.right[frame] =
-          clean(audio[first * 2 + 1] +
-                mix * (audio[next * 2 + 1] - audio[first * 2 + 1]));
+          mix == 0 ? audio[first * 2 + 1]
+                   : clean(audio[first * 2 + 1] +
+                           mix * (audio[next * 2 + 1] - audio[first * 2 + 1]));
       snapshots_.write(deck, frame, target.left[frame], target.right[frame]);
     }
   }
   activeDeck_ = std::min(state.active, decks_.size() - 1);
   publishTape();
+}
+
+void Processor::continuePlaybackFrom(const Processor& source) noexcept {
+  if (decks_[activeDeck_].generation == 0 ||
+      decks_[activeDeck_].generation !=
+          source.decks_[source.activeDeck_].generation) {
+    transportGain_ = 0;
+    return;
+  }
+  readPosition_ = source.readPosition_;
+  repeatPosition_ = source.repeatPosition_;
+  pitchPhase_ = source.pitchPhase_;
+  modulationPhase_ = source.modulationPhase_;
+  driftState_ = source.driftState_;
+  smoothedMix_ = source.smoothedMix_;
+  smoothedOutputGain_ = source.smoothedOutputGain_;
+  smoothedSpeed_ = source.smoothedSpeed_;
+  smoothedAmplifier_ = source.smoothedAmplifier_;
+  smoothedDegradation_ = source.smoothedDegradation_;
+  smoothingInitialized_ = source.smoothingInitialized_;
+  previousParameters_ = source.previousParameters_;
+  repeatTimeline_ = source.repeatTimeline_;
+  wasRepeating_ = source.wasRepeating_;
+  captureLatched_ = source.captureLatched_;
+  transport_ = source.transport_;
+  transportGain_ = source.transportGain_;
+  lastWetLeft_ = source.lastWetLeft_;
+  lastWetRight_ = source.lastWetRight_;
+  toneLeft_ = source.toneLeft_;
+  toneRight_ = source.toneRight_;
+  transitionLeft_ = source.transitionLeft_;
+  transitionRight_ = source.transitionRight_;
+  transitionRemaining_ = source.transitionRemaining_;
 }
 
 void Processor::reset() noexcept {
@@ -121,6 +157,11 @@ void Processor::reset() noexcept {
   smoothingInitialized_ = false;
   wasCapturing_ = false;
   printing_ = false;
+  recording_ = captureLatched_ = wasRepeating_ = false;
+  repeatPosition_ = 0;
+  toneLeft_ = toneRight_ = 0;
+  previousParameters_ = {};
+  transitionRemaining_ = 0;
   transport_ = Transport::Play;
   transportGain_ = 1;
   lastWetLeft_ = lastWetRight_ = 0;
@@ -178,6 +219,27 @@ void Processor::nextGeneration() noexcept {
   }
 }
 
+void Processor::selectGeneration(std::uint32_t generation) noexcept {
+  if (printing_ || recording_) return;
+  for (std::size_t i = 0; i < decks_.size(); ++i)
+    if (generation != 0 && decks_[i].generation == generation) {
+      activeDeck_ = i;
+      readPosition_ = repeatPosition_ = pitchPhase_ = 0;
+      toneLeft_ = toneRight_ = 0;
+      transportGain_ = 0;
+      return;
+    }
+}
+
+void Processor::removeGeneration(std::uint32_t generation) noexcept {
+  if (printing_ || recording_) return;
+  for (std::size_t i = 0; i < decks_.size(); ++i)
+    if (i != activeDeck_ && decks_[i].generation == generation) {
+      decks_[i].generation = 0;
+      decks_[i].length = 0;
+    }
+}
+
 float Processor::read(const std::vector<float>& channel, double position,
                       std::size_t length) const noexcept {
   if (length == 0U || channel.size() < length) {
@@ -194,10 +256,35 @@ float Processor::playback(const std::vector<float>& channel,
                           const Parameters& parameters,
                           std::size_t length) const noexcept {
   const double start = bounded(parameters.start, 0.0F, 1.0F, 0.0F) * length;
+  const double regionStart = std::min(start, static_cast<double>(length - 1));
+  const double regionEnd =
+      std::clamp(static_cast<double>(bounded(parameters.end, 0, 1, 1)) * length,
+                 regionStart + 1, static_cast<double>(length));
+  const double regionLength = parameters.safeWorkflow
+                                  ? regionEnd - regionStart
+                                  : static_cast<double>(length);
+  const double fragment =
+      parameters.safeWorkflow && parameters.repeat &&
+              parameters.repeatSeconds > 0
+          ? std::min(regionLength, parameters.repeatSeconds * sampleRate_)
+          : regionLength;
   const double spliceSamples = std::max(
       1.0, static_cast<double>(bounded(parameters.splice, 0.0F, 0.25F, 0.03F)) *
                static_cast<double>(length));
   const auto spliced = [&](double position) {
+    if (parameters.safeWorkflow) {
+      const double size = parameters.repeat ? fragment : regionLength;
+      double local = std::fmod(position, size);
+      if (local < 0) local += size;
+      const float primary = read(channel, regionStart + local, length);
+      const double fadeLength = std::min(spliceSamples, size * .25);
+      if (parameters.splice <= 0 || local < size - fadeLength) return primary;
+      const float fade =
+          static_cast<float>((local - size + fadeLength) / fadeLength);
+      return std::lerp(
+          primary,
+          read(channel, regionStart + local - size + fadeLength, length), fade);
+    }
     const double wrapped = wrap(position + start, length);
     const float primary = read(channel, wrapped, length);
     if (wrapped < static_cast<double>(length) - spliceSamples) {
@@ -212,8 +299,11 @@ float Processor::playback(const std::vector<float>& channel,
     return primary + fade * (beginning - primary);
   };
   const float pitch = bounded(parameters.pitchSemitones, -12.0F, 12.0F, 0.0F);
+  const double position = parameters.safeWorkflow && parameters.repeat
+                              ? repeatPosition_
+                              : readPosition_;
   if (std::abs(pitch) < 0.001F) {
-    return spliced(readPosition_);
+    return spliced(position);
   }
   const double ratio = std::exp2(static_cast<double>(pitch) / 12.0);
   const double grain = std::min(1024.0, static_cast<double>(length) * 0.5);
@@ -222,7 +312,7 @@ float Processor::playback(const std::vector<float>& channel,
     phase -= std::floor(phase);
     const double window = 0.5 - 0.5 * std::cos(2.0 * std::numbers::pi * phase);
     const double offset = direction * phase * grain;
-    return static_cast<float>(window) * spliced(readPosition_ + offset);
+    return static_cast<float>(window) * spliced(position + offset);
   };
   const float first = head(pitchPhase_);
   const float second = head(pitchPhase_ + 0.5);
@@ -235,11 +325,14 @@ std::size_t Processor::retainedGenerations() const noexcept {
                     [](const Deck& deck) { return deck.generation != 0U; }));
 }
 
-void Processor::beginReloop(std::size_t length) noexcept {
-  if (printing_ || length < 2U || decks_[activeDeck_].generation == 0U) return;
+void Processor::beginReloop(std::size_t length, bool preserveHistory) noexcept {
+  if (printing_ || recording_ || length < 2U ||
+      decks_[activeDeck_].generation == 0U)
+    return;
   const auto sourceGeneration = decks_[activeDeck_].generation;
   for (std::size_t deck = 0; deck < decks_.size(); ++deck) {
-    if (deck != activeDeck_ && decks_[deck].generation > sourceGeneration) {
+    if (!preserveHistory && deck != activeDeck_ &&
+        decks_[deck].generation > sourceGeneration) {
       decks_[deck].length = 0U;
       decks_[deck].generation = 0U;
     }
@@ -251,7 +344,7 @@ void Processor::beginReloop(std::size_t length) noexcept {
       break;
     }
   }
-  if (destination == decks_.size()) {
+  if (destination == decks_.size() && !preserveHistory) {
     auto oldest = std::numeric_limits<std::uint32_t>::max();
     for (std::size_t deck = 0; deck < decks_.size(); ++deck) {
       if (deck != activeDeck_ && decks_[deck].generation < oldest) {
@@ -300,14 +393,70 @@ void Processor::process(float* left, float* right, std::size_t frames,
                      sampleRate_,
                  64.0, static_cast<double>(decks_[0].left.size())));
   const std::size_t length = std::max<std::size_t>(64U, requested);
-  const auto playbackLength = std::min(length, decks_[activeDeck_].length);
+  const auto playbackLength =
+      parameters.safeWorkflow ? decks_[activeDeck_].length
+                              : std::min(length, decks_[activeDeck_].length);
   const bool playing = parameters.transport == Transport::Play;
   const bool stopped = parameters.transport == Transport::Stop;
   if (parameters.transport == Transport::Release &&
-      transport_ != Transport::Release)
+      transport_ != Transport::Release) {
     printing_ = false;
+    recording_ = false;
+  }
   transport_ = parameters.transport;
-  if (parameters.reloop && playing) beginReloop(playbackLength);
+  if (parameters.safeWorkflow) {
+    if (parameters.start != previousParameters_.start ||
+        parameters.end != previousParameters_.end ||
+        parameters.reverse != previousParameters_.reverse ||
+        parameters.repeat != previousParameters_.repeat ||
+        parameters.repeatSeconds != previousParameters_.repeatSeconds) {
+      transitionLeft_ = lastWetLeft_;
+      transitionRight_ = lastWetRight_;
+      transitionRemaining_ = static_cast<std::size_t>(sampleRate_ * .005);
+    }
+    previousParameters_ = parameters;
+    if (!parameters.capture) {
+      captureLatched_ = false;
+      recording_ = false;
+    }
+    if (parameters.capture && !captureLatched_ && playing && !printing_) {
+      captureLatched_ = true;
+      for (std::size_t deck = 0; deck < decks_.size(); ++deck)
+        if (decks_[deck].generation == 0) {
+          activeDeck_ = deck;
+          decks_[deck].length = 0;
+          captureLength_ = length;
+          writePosition_ = 0;
+          recording_ = true;
+          break;
+        }
+    }
+    if (parameters.repeat != wasRepeating_) {
+      repeatPosition_ = 0;
+      if (parameters.repeat)
+        repeatTimeline_ = parameters;
+      else if (parameters.speed == repeatTimeline_.speed)
+        smoothedSpeed_ = bounded(repeatTimeline_.speed, .125F, 4, 1);
+    }
+    wasRepeating_ = parameters.repeat;
+  }
+  if (parameters.reloop && playing) {
+    auto printFrames = playbackLength;
+    if (parameters.safeWorkflow) {
+      const double region =
+          std::max(0.0F, bounded(parameters.end, 0, 1, 1) -
+                             bounded(parameters.start, 0, 1, 0));
+      double framesToPrint = playbackLength * region;
+      if (parameters.repeat && parameters.repeatSeconds > 0)
+        framesToPrint =
+            std::min(framesToPrint, parameters.repeatSeconds * sampleRate_);
+      framesToPrint /= bounded(parameters.speed, .125F, 4, 1);
+      printFrames = static_cast<std::size_t>(
+          std::clamp(std::ceil(framesToPrint), 0.0,
+                     static_cast<double>(decks_[0].left.size())));
+    }
+    beginReloop(printFrames, parameters.safeWorkflow);
+  }
   const bool stereo = right != nullptr;
   const float overdub = bounded(parameters.overdub, 0.0F, 1.0F, 0.5F);
   const float feedback = bounded(parameters.feedback, 0.0F, 1.0F, 0.85F);
@@ -350,7 +499,11 @@ void Processor::process(float* left, float* right, std::size_t frames,
         std::max(measured.inputPeak,
                  std::max(std::abs(inputLeft), std::abs(inputRight)));
     auto& active = decks_[activeDeck_];
-    const auto currentLength = std::min(length, active.length);
+    const bool recordThisSample = playing && parameters.capture && !printing_ &&
+                                  (!parameters.safeWorkflow || recording_);
+    const auto currentLength = parameters.safeWorkflow
+                                   ? active.length
+                                   : std::min(length, active.length);
     float wetLeft = currentLength > 1U
                         ? playback(active.left, parameters, currentLength)
                         : 0.0F;
@@ -361,37 +514,77 @@ void Processor::process(float* left, float* right, std::size_t frames,
       wetLeft = inputLeft;
       wetRight = inputRight;
     }
-    if (playing && parameters.capture && !printing_) {
+    if (recordThisSample) {
       if (active.generation == 0U) {
         active.generation = ++generationCounter_;
       }
-      writePosition_ %= length;
+      const auto recordLength =
+          parameters.safeWorkflow ? captureLength_ : length;
+      writePosition_ %= recordLength;
       const bool hasRecordedSample = writePosition_ < active.length;
       const float existingLeft =
           hasRecordedSample ? active.left[writePosition_] : 0.0F;
       const float existingRight =
           hasRecordedSample ? active.right[writePosition_] : 0.0F;
-      active.left[writePosition_] = clean(inputLeft * (1.0F - overdub) +
+      active.left[writePosition_] =
+          parameters.safeWorkflow ? inputLeft
+                                  : clean(inputLeft * (1.0F - overdub) +
                                           existingLeft * feedback * overdub);
-      active.right[writePosition_] = clean(inputRight * (1.0F - overdub) +
-                                           existingRight * feedback * overdub);
+      active.right[writePosition_] =
+          parameters.safeWorkflow ? inputRight
+                                  : clean(inputRight * (1.0F - overdub) +
+                                          existingRight * feedback * overdub);
       snapshots_.write(activeDeck_, writePosition_, active.left[writePosition_],
                        active.right[writePosition_]);
-      writePosition_ = (writePosition_ + 1U) % length;
-      active.length = std::min(length, active.length + 1U);
+      writePosition_ = (writePosition_ + 1U) % recordLength;
+      active.length = std::min(recordLength, active.length + 1U);
+      if (parameters.safeWorkflow) {
+        wetLeft = inputLeft;
+        wetRight = inputRight;
+        if (writePosition_ == 0) {
+          recording_ = false;
+          readPosition_ = 0;
+          transportGain_ = 0;
+        }
+      }
     }
-    const float drive = 1.0F + 4.0F * smoothedAmplifier_;
-    wetLeft = std::tanh(drive * wetLeft) / drive;
-    wetRight = std::tanh(drive * wetRight) / drive;
-    const float quantization = 32768.0F / (1.0F + 63.0F * smoothedDegradation_);
-    wetLeft = std::round(wetLeft * quantization) / quantization;
-    wetRight = std::round(wetRight * quantization) / quantization;
+    if (parameters.safeWorkflow) {
+      Parameters tone = parameters;
+      tone.amplifier = smoothedAmplifier_;
+      tone.degradation = smoothedDegradation_;
+      if (tone.amplifier > .00001F || tone.degradation > .00001F) {
+        wetLeft = printSample(wetLeft, toneLeft_, tone);
+        wetRight = printSample(wetRight, toneRight_, tone);
+      } else {
+        toneLeft_ = wetLeft;
+        toneRight_ = wetRight;
+      }
+    } else {
+      const float drive = 1.0F + 4.0F * smoothedAmplifier_;
+      wetLeft = std::tanh(drive * wetLeft) / drive;
+      wetRight = std::tanh(drive * wetRight) / drive;
+      const float quantization =
+          32768.0F / (1.0F + 63.0F * smoothedDegradation_);
+      wetLeft = std::round(wetLeft * quantization) / quantization;
+      wetRight = std::round(wetRight * quantization) / quantization;
+    }
+    if (parameters.safeWorkflow && transitionRemaining_ > 0) {
+      const float fade = static_cast<float>(transitionRemaining_) /
+                         static_cast<float>(std::max(1.0, sampleRate_ * .005));
+      wetLeft = std::lerp(wetLeft, transitionLeft_, fade);
+      wetRight = std::lerp(wetRight, transitionRight_, fade);
+      --transitionRemaining_;
+    }
     if (playing && printing_ && printPosition_ < printLength_) {
       auto& destination = decks_[printingDeck_];
       destination.left[printPosition_] =
-          printSample(wetLeft, printStateLeft_, parameters);
+          parameters.safeWorkflow
+              ? wetLeft
+              : printSample(wetLeft, printStateLeft_, parameters);
       destination.right[printPosition_] =
-          printSample(wetRight, printStateRight_, parameters);
+          parameters.safeWorkflow
+              ? wetRight
+              : printSample(wetRight, printStateRight_, parameters);
       snapshots_.write(printingDeck_, printPosition_,
                        destination.left[printPosition_],
                        destination.right[printPosition_]);
@@ -399,10 +592,12 @@ void Processor::process(float* left, float* right, std::size_t frames,
       destination.length = printPosition_;
       if (printPosition_ >= printLength_) {
         destination.generation = ++generationCounter_;
-        activeDeck_ = printingDeck_;
-        readPosition_ = 0.0;
-        pitchPhase_ = 0.0;
-        writePosition_ = 0U;
+        if (!parameters.safeWorkflow) {
+          activeDeck_ = printingDeck_;
+          readPosition_ = 0.0;
+          pitchPhase_ = 0.0;
+          writePosition_ = 0U;
+        }
         printing_ = false;
       }
     }
@@ -424,6 +619,11 @@ void Processor::process(float* left, float* right, std::size_t frames,
     wetRight *= transportGain_;
     float outputLeft = inputLeft + smoothedMix_ * (wetLeft - inputLeft);
     float outputRight = inputRight + smoothedMix_ * (wetRight - inputRight);
+    if (parameters.safeWorkflow && parameters.monitor && currentLength > 1 &&
+        !recordThisSample) {
+      outputLeft += inputLeft * smoothedMix_;
+      outputRight += inputRight * smoothedMix_;
+    }
     outputLeft = clean(outputLeft * smoothedOutputGain_);
     outputRight = clean(outputRight * smoothedOutputGain_);
     if (parameters.bypass) {
@@ -459,20 +659,78 @@ void Processor::process(float* left, float* right, std::size_t frames,
     if (parameters.reverse) {
       speed = -speed;
     }
-    const auto advancingLength = std::min(length, decks_[activeDeck_].length);
-    readPosition_ = wrap(readPosition_ + speed * modulation, advancingLength);
+    const auto advancingLength =
+        parameters.safeWorkflow ? decks_[activeDeck_].length
+                                : std::min(length, decks_[activeDeck_].length);
+    if (parameters.safeWorkflow && advancingLength > 0) {
+      const double first =
+          std::min(static_cast<double>(advancingLength - 1),
+                   static_cast<double>(bounded(parameters.start, 0, 1, 0)) *
+                       advancingLength);
+      const double region =
+          std::clamp(static_cast<double>(bounded(parameters.end, 0, 1, 1)) *
+                         advancingLength,
+                     first + 1, static_cast<double>(advancingLength)) -
+          first;
+      const double fragment =
+          parameters.repeatSeconds > 0
+              ? std::min(region, parameters.repeatSeconds * sampleRate_)
+              : region;
+      const auto advance = [speed, modulation](double position, double size) {
+        position = std::fmod(position + speed * modulation, size);
+        return position < 0 ? position + size : position;
+      };
+      if (parameters.repeat) {
+        const double baseFirst = std::min(
+            static_cast<double>(advancingLength - 1),
+            static_cast<double>(bounded(repeatTimeline_.start, 0, 1, 0)) *
+                advancingLength);
+        const double baseLength =
+            std::clamp(
+                static_cast<double>(bounded(repeatTimeline_.end, 0, 1, 1)) *
+                    advancingLength,
+                baseFirst + 1, static_cast<double>(advancingLength)) -
+            baseFirst;
+        const double baseSpeed = bounded(repeatTimeline_.speed, .125F, 4, 1) *
+                                 (repeatTimeline_.reverse ? -1 : 1);
+        readPosition_ =
+            std::fmod(readPosition_ + baseSpeed * modulation, baseLength);
+        if (readPosition_ < 0) readPosition_ += baseLength;
+      } else {
+        readPosition_ = advance(readPosition_, region);
+      }
+      repeatPosition_ = advance(repeatPosition_, fragment);
+    } else {
+      readPosition_ = wrap(readPosition_ + speed * modulation, advancingLength);
+    }
     const double pitchRatio = std::exp2(
         bounded(parameters.pitchSemitones, -12.0F, 12.0F, 0.0F) / 12.0F);
     pitchPhase_ = wrap(pitchPhase_ + std::abs(pitchRatio - 1.0) / 1024.0, 1U);
   }
   wasCapturing_ = playing && parameters.capture;
   const auto& active = decks_[activeDeck_];
-  const auto activeLength = std::min(length, active.length);
+  const auto activeLength =
+      parameters.safeWorkflow ? active.length : std::min(length, active.length);
   measured.position = activeLength > 0U
                           ? static_cast<float>(readPosition_ / activeLength)
                           : 0.0F;
+  if (parameters.safeWorkflow && activeLength > 0) {
+    const double first = std::min(
+        static_cast<double>(activeLength - 1),
+        static_cast<double>(bounded(parameters.start, 0, 1, 0)) * activeLength);
+    measured.position = static_cast<float>(
+        (first + (parameters.repeat ? repeatPosition_ : readPosition_)) /
+        activeLength);
+  }
   measured.captured = static_cast<float>(activeLength) /
                       static_cast<float>(std::max<std::size_t>(1U, length));
+  if (parameters.safeWorkflow)
+    measured.captured =
+        recording_
+            ? static_cast<float>(activeLength) /
+                  static_cast<float>(std::max<std::size_t>(1, captureLength_))
+        : activeLength > 0 ? 1.F
+                           : 0.F;
   measured.printing = printing_ && printLength_ > 0U
                           ? static_cast<float>(printPosition_) /
                                 static_cast<float>(printLength_)
@@ -481,6 +739,11 @@ void Processor::process(float* left, float* right, std::size_t frames,
   measured.retainedGenerations =
       static_cast<std::uint32_t>(retainedGenerations());
   measured.activeDeck = activeDeck_;
+  measured.recording =
+      parameters.safeWorkflow ? recording_ : playing && parameters.capture;
+  measured.busy = printing_;
+  measured.historyFull =
+      parameters.safeWorkflow && retainedGenerations() == decks_.size();
   for (const auto& deck : decks_) {
     if (deck.generation == 0) continue;
     if (measured.oldestGeneration == 0 ||

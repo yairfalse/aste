@@ -128,34 +128,37 @@ void testGenerationalReloop() {
 
 void testModesAndRealtimeSafety() {
   for (double rate : {44100.0, 48000.0, 88200.0, 96000.0, 176400.0, 192000.0}) {
-    aste::loop::Processor processor;
-    processor.prepare(rate, 1.0);
-    require(processor.capacitySamples() >= static_cast<std::size_t>(rate),
-            "Loop preallocates its requested maximum duration");
-    aste::loop::Parameters parameters;
-    parameters.capture = true;
-    parameters.loopLengthSeconds = 0.05F;
-    parameters.pitchSemitones = 7.0F;
-    parameters.reverse = true;
-    parameters.speed = 0.5F;
-    parameters.amplifier = 1.0F;
-    parameters.degradation = 1.0F;
-    std::array<float, 127> left{};
-    std::array<float, 127> right{};
-    for (std::size_t sample = 0; sample < left.size(); ++sample) {
-      left[sample] = right[sample] =
-          0.4F * std::sin(static_cast<float>(sample) * 0.13F);
+    for (bool safe : {false, true}) {
+      aste::loop::Processor processor;
+      processor.prepare(rate, 1.0);
+      require(processor.capacitySamples() >= static_cast<std::size_t>(rate),
+              "Loop preallocates its requested maximum duration");
+      aste::loop::Parameters parameters;
+      parameters.safeWorkflow = safe;
+      parameters.capture = true;
+      parameters.loopLengthSeconds = 0.05F;
+      parameters.pitchSemitones = 7.0F;
+      parameters.reverse = true;
+      parameters.speed = 0.5F;
+      parameters.amplifier = 1.0F;
+      parameters.degradation = 1.0F;
+      std::array<float, 127> left{};
+      std::array<float, 127> right{};
+      for (std::size_t sample = 0; sample < left.size(); ++sample) {
+        left[sample] = right[sample] =
+            0.4F * std::sin(static_cast<float>(sample) * 0.13F);
+      }
+      const auto before = allocations.load(std::memory_order_relaxed);
+      processor.process(left.data(), right.data(), left.size(), parameters);
+      const auto after = allocations.load(std::memory_order_relaxed);
+      require(after == before, "Loop process performs no allocation");
+      for (std::size_t sample = 0; sample < left.size(); ++sample) {
+        require(std::isfinite(left[sample]) && left[sample] == right[sample],
+                "Loop modes remain finite and stereo-identical");
+      }
+      require(processor.latencySamples() == 0U,
+              "Loop reports no algorithmic latency");
     }
-    const auto before = allocations.load(std::memory_order_relaxed);
-    processor.process(left.data(), right.data(), left.size(), parameters);
-    const auto after = allocations.load(std::memory_order_relaxed);
-    require(after == before, "Loop process performs no allocation");
-    for (std::size_t sample = 0; sample < left.size(); ++sample) {
-      require(std::isfinite(left[sample]) && left[sample] == right[sample],
-              "Loop modes remain finite and stereo-identical");
-    }
-    require(processor.latencySamples() == 0U,
-            "Loop reports no algorithmic latency");
   }
 }
 
@@ -304,7 +307,127 @@ void testTapeTransport() {
   require(audio.back() > .01F, "Play recovers tape after release");
 }
 
+void testSafeWorkflow() {
+  aste::loop::Processor processor;
+  processor.prepare(8000, 1, true);
+  aste::loop::Parameters p;
+  p.safeWorkflow = true;
+  p.capture = true;
+  p.loopLengthSeconds = .05F;
+  p.overdub = 1;
+  p.wow = p.flutter = p.drift = p.splice = p.amplifier = p.degradation = 0;
+  p.outputDb = 0;
+  std::array<float, 800> audio;
+  audio.fill(.25F);
+  processor.process(audio.data(), nullptr, audio.size(), p);
+  auto original = processor.tapeState();
+  require(
+      original.audio[original.active].size() == 800 &&
+          original.audio[original.active][0] == .25F,
+      "Safe capture records full input once, regardless of old overdub knob");
+  audio.fill(.75F);
+  processor.process(audio.data(), nullptr, audio.size(), p);
+  require(processor.tapeState().audio == original.audio,
+          "A completed capture cannot silently overwrite its take");
+  p.capture = false;
+  p.reloop = true;
+  processor.process(audio.data(), nullptr, 400, p);
+  require(processor.meters().retainedGenerations == 2,
+          "Safe RELOOP creates actual second audio generation");
+  processor.process(audio.data(), nullptr, 400, p);
+  require(processor.meters().retainedGenerations == 3,
+          "Branching preserves both earlier and later takes");
+  const auto full = processor.tapeState();
+  processor.process(audio.data(), nullptr, 400, p);
+  require(processor.tapeState().audio == full.audio &&
+              processor.meters().historyFull,
+          "Full history refuses a print instead of silently evicting audio");
+}
+
+void testRegionPerformance() {
+  aste::loop::TapeState tape;
+  tape.sampleRate = 8000;
+  tape.generations[0] = 1;
+  tape.audio[0].resize(1600);
+  for (std::size_t i = 0; i < 800; ++i) {
+    tape.audio[0][i * 2] = .4F * std::sin(static_cast<float>(i) * .17F);
+    tape.audio[0][i * 2 + 1] = -.2F * std::cos(static_cast<float>(i) * .13F);
+  }
+  aste::loop::Processor full, split, baseline;
+  for (auto* p : {&full, &split, &baseline}) {
+    p->prepare(8000, 1, true);
+    p->restoreTape(tape);
+  }
+  aste::loop::Parameters p;
+  p.safeWorkflow = true;
+  p.wow = p.flutter = p.drift = p.splice = p.amplifier = p.degradation = 0;
+  p.outputDb = 0;
+  p.start = .2F;
+  p.end = .7F;
+  p.repeatSeconds = .0125F;
+  p.repeat = true;
+  std::array<float, 1200> a{}, b{}, c{};
+  const auto before = allocations.load();
+  full.process(a.data(), nullptr, a.size(), p);
+  for (std::size_t i = 0; i < b.size(); ++i)
+    split.process(b.data() + i, nullptr, 1, p);
+  require(allocations.load() == before,
+          "Safe region and repeat paths allocate nothing");
+  require(a == b,
+          "Repeat and transition fades are independent of buffer partition");
+  float periodicError{};
+  for (std::size_t i = 200; i < 1000; ++i)
+    periodicError = std::max(periodicError, std::abs(a[i] - a[i + 100]));
+  require(periodicError < .0001F,
+          "A selected fragment repeats at its requested sample interval");
+  p.speed = 4;
+  p.end = .3F;
+  a.fill(0);
+  full.process(a.data(), nullptr, a.size() - 63, p);
+  p.speed = 1;
+  p.end = .7F;
+  p.repeat = false;
+  baseline.process(c.data(), nullptr, c.size(), p);
+  c.fill(0);
+  baseline.process(c.data(), nullptr, c.size() - 63, p);
+  a.fill(0);
+  c.fill(0);
+  full.process(a.data(), nullptr, a.size(), p);
+  baseline.process(c.data(), nullptr, c.size(), p);
+  require(std::equal(a.begin() + 100, a.end(), c.begin() + 100),
+          "Release returns to the continuing underlying phase after its "
+          "five-ms fade");
+  require(full.tapeState().audio == tape.audio,
+          "Region performance never rewrites stored audio");
+  p.reloop = true;
+  p.speed = .5F;
+  full.process(a.data(), nullptr, 800, p);
+  const auto printed = full.tapeState();
+  require(
+      printed.generations[1] == 2 && printed.audio[1].size() == 1600,
+      "Half-speed half-region print lasts exactly one source-loop duration");
+  require(
+      printed.audio[0] == tape.audio[0] && printed.audio[1] != tape.audio[0],
+      "RELOOP commits transformed samples while preserving source PCM");
+  p.speed = 1;
+  p.amplifier = .7F;
+  p.degradation = .8F;
+  a.fill(0);
+  full.process(a.data(), nullptr, 400, p);
+  const auto third = full.tapeState();
+  require(third.audio[2].size() == 800,
+          "Third print contains the selected region's real audio");
+  bool matches = third.audio[2].size() == 800;
+  for (std::size_t i = 0; matches && i < 400; ++i)
+    matches = third.audio[2][i * 2] == a[i];
+  require(matches,
+          "Printed wet PCM exactly matches the auditioned transform, not a "
+          "second saturation pass");
+}
+
 int main() {
+  testRegionPerformance();
+  testSafeWorkflow();
   testTapeTransport();
   testCompleteMotionCycles();
   testConcurrentTapeSnapshots();
