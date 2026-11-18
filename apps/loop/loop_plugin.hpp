@@ -94,6 +94,7 @@ class LoopAudioProcessor final : public juce::AudioProcessor {
                       const juce::MemoryBlock& replacement);
   void neutralTransforms();
   juce::UndoManager& undoManager() noexcept { return undo_; }
+  bool undoEdit(bool redo = false);
   [[nodiscard]] bool isPrinting() const noexcept { return printActive_.load(); }
   [[nodiscard]] bool historyFull() const noexcept {
     return historyFull_.load();
@@ -154,6 +155,7 @@ class LoopAudioProcessor final : public juce::AudioProcessor {
   std::array<std::atomic<float>*, 5> performanceValues_{};
   bool midiCapture_{};
   std::atomic<bool> captureActive_{};
+  std::atomic<bool> editingHistory_{};
   std::atomic<bool> printActive_{}, historyFull_{};
   std::atomic<int> selectedTake_{};
   std::atomic<bool> clearRequested_{};

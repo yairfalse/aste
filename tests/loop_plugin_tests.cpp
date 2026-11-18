@@ -251,6 +251,37 @@ void testPartialCaptureRecall() {
           "unintended new take");
 }
 
+void testCaptureUndoCannotRecord() {
+  Loop processor;
+  processor.prepareToPlay(8000, 512);
+  setValue(processor, "sync", 0);
+  setValue(processor, "free_length", .05F);
+  setValue(processor, "capture", 1);
+  juce::AudioBuffer<float> audio{2, 512};
+  audio.clear();
+  juce::MidiBuffer midi;
+  processor.processBlock(audio, midi);
+  (void)processor.state().copyState();
+  processor.undoManager().beginNewTransaction("Finish capture");
+  setValue(processor, "capture", 0);
+  (void)processor.state().copyState();
+  processor.processBlock(audio, midi);
+  const auto saved = processor.tapeSnapshot();
+  require(processor.undoEdit(),
+          "The capture-control transaction can be undone");
+  processor.processBlock(audio, midi);
+  require(value(processor, "capture") == 0 &&
+              processor.retainedGenerations() == 1 &&
+              processor.tapeSnapshot().audio == saved.audio,
+          "Undo of a capture control never starts another recording");
+  require(processor.undoEdit(true),
+          "Disarming capture does not destroy the redo chain");
+  processor.processBlock(audio, midi);
+  require(value(processor, "capture") == 0 &&
+              processor.tapeSnapshot().audio == saved.audio,
+          "Redo cannot re-arm capture either");
+}
+
 void testSafeTakesAndUndo() {
   Loop processor;
   processor.prepareToPlay(8000, 127);
@@ -823,6 +854,7 @@ void testTapeRecallAndMidiRelease() {
 int main(int argc, char** argv) {
   juce::ScopedJuceInitialiser_GUI juce;
   testPartialCaptureRecall();
+  testCaptureUndoCannotRecord();
   testSafeTakesAndUndo();
   testHostTimingAndAutomation();
   testPerformanceGestures();

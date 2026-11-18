@@ -171,8 +171,8 @@ class MemoryPanel final : public juce::Component, private juce::Timer {
     addAndMakeVisible(repeat_);
     undo_.setButtonText("UNDO");
     redo_.setButtonText("REDO");
-    undo_.onClick = [this] { processor_.undoManager().undo(); };
-    redo_.onClick = [this] { processor_.undoManager().redo(); };
+    undo_.onClick = [this] { processor_.undoEdit(); };
+    redo_.onClick = [this] { processor_.undoEdit(true); };
     addAndMakeVisible(undo_);
     addAndMakeVisible(redo_);
     latch_.setButtonText("LATCH");
@@ -780,7 +780,8 @@ Parameters LoopAudioProcessor::currentParameters() const noexcept {
                             ? static_cast<float>(60.0 * value(lengthBeats) /
                                                  std::clamp(bpm, 20.0, 400.0))
                             : value(freeLength);
-  return {.capture = value(capture) >= 0.5F || midiCapture_,
+  return {.capture = !editingHistory_.load() &&
+                     (value(capture) >= 0.5F || midiCapture_),
           .overdub = value(overdub) * 0.01F,
           .feedback = value(feedback) * 0.01F,
           .loopLengthSeconds = seconds,
@@ -925,8 +926,9 @@ void LoopAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     if (message.isNoteOn() && pitchClass == 1)
       engine_.load()->processor.nextGeneration();
     parameters.capture =
-        parameterValues_[capture]->load(std::memory_order_relaxed) >= 0.5F ||
-        midiCapture_;
+        !editingHistory_.load() &&
+        (parameterValues_[capture]->load(std::memory_order_relaxed) >= 0.5F ||
+         midiCapture_);
   }
   processRange(buffer, processed, buffer.getNumSamples() - processed,
                parameters);
@@ -1029,6 +1031,24 @@ TapeState LoopAudioProcessor::tapeSnapshot() const {
   auto* source = pending_.load();
   if (!source) source = engine_.load();
   return source->processor.tapeState();
+}
+
+bool LoopAudioProcessor::undoEdit(bool redo) {
+  if (isCapturing() || isPrinting()) return false;
+  (void)state_.copyState();
+  editingHistory_.store(true);
+  struct Release {
+    std::atomic<bool>& flag;
+    ~Release() { flag.store(false); }
+  } release{editingHistory_};
+  const bool changed = redo ? undo_.redo() : undo_.undo();
+  // Capture is a command. An undo transaction may restore its previous
+  // value, but must never create another take as a side effect. Set the
+  // tree without an undo action so the redo chain remains intact.
+  state_.state.getChildWithProperty("id", "capture")
+      .setProperty("value", 0.F, nullptr);
+  state_.getParameter("capture")->setValueNotifyingHost(0);
+  return changed;
 }
 
 void LoopAudioProcessor::neutralTransforms() {
