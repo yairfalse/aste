@@ -170,12 +170,14 @@ Use the normal repository build:
 
 ```sh
 cmake -S . -B build-plugin-universal -DASTE_BUILD_VST3=ON
-cmake --build build-plugin-universal --target ClickK01_VST3 click_engine_tests click_plugin_tests --parallel 3
+cmake --build build-plugin-universal --target ClickK01_VST3 click_engine_tests click_memory_tests click_plugin_tests vst3_smoke_host --parallel 3
 ctest --test-dir build-plugin-universal -R '^click_' --output-on-failure
 python3 tools/install_development_vst3.py --build-root build-plugin-universal --only click-k01
 ```
 
 See [CONTRACT.md](CONTRACT.md) for parameter/state/resource contracts and
-[VALIDATION.md](VALIDATION.md) for actual validation and installation results.
+[PERFORMANCE_VALIDATION.md](PERFORMANCE_VALIDATION.md) for this refinement's
+validation and installation results. [VALIDATION.md](VALIDATION.md) retains
+the earlier build's evidence.
 Native Cubase insertion, performance and musical quality must be judged locally;
 headless transport tests and pluginval are not a claim of Cubase testing.
