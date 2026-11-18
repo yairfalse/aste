@@ -282,6 +282,33 @@ void testCaptureUndoCannotRecord() {
           "Redo cannot re-arm capture either");
 }
 
+void testPausedCaptureOwnsItsTake() {
+  Loop processor;
+  processor.prepareToPlay(8000, 127);
+  setValue(processor, "sync", 0);
+  setValue(processor, "free_length", .05F);
+  setValue(processor, "capture", 1);
+  juce::AudioBuffer<float> audio{2, 127};
+  audio.clear();
+  juce::MidiBuffer midi;
+  processor.processBlock(audio, midi);
+  const auto partial = processor.tapeSnapshot();
+  processor.setTapeTransport(aste::loop::Transport::Stop);
+  processor.processBlock(audio, midi);
+  require(processor.isCapturing(),
+          "A paused one-shot still owns its capture slot");
+  processor.clearWithUndo();
+  processor.processBlock(audio, midi);
+  require(processor.tapeSnapshot().audio == partial.audio,
+          "History editing cannot replace a paused unfinished capture");
+  processor.setTapeTransport(aste::loop::Transport::Play);
+  for (int i = 0; i < 4; ++i) processor.processBlock(audio, midi);
+  const auto complete = processor.tapeSnapshot();
+  require(!processor.isCapturing() && complete.generations[0] == 1 &&
+              complete.audio[0].size() == 800,
+          "Play resumes the same capture and completes its original duration");
+}
+
 void testSafeTakesAndUndo() {
   Loop processor;
   processor.prepareToPlay(8000, 127);
@@ -855,6 +882,7 @@ int main(int argc, char** argv) {
   juce::ScopedJuceInitialiser_GUI juce;
   testPartialCaptureRecall();
   testCaptureUndoCannotRecord();
+  testPausedCaptureOwnsItsTake();
   testSafeTakesAndUndo();
   testHostTimingAndAutomation();
   testPerformanceGestures();

@@ -80,6 +80,8 @@ changed the tape set. They must never silently erase a newly created take.
 The editor's Undo/Redo also disarms Capture: undoing a button value is not
 permission to record another take. The audio callback observes an atomic
 guard while that edit is applied; parameter history and redo remain intact.
+Paused one-shot captures retain ownership of their deck; history edits stay
+unavailable until the take finishes or Capture is turned off.
 History edits prepare replacement engines off-thread. At adoption, unchanged
 active audio inherits its playback/motion/filter state on the audio thread,
 so removing another take does not restart the playing tape. Host recall still

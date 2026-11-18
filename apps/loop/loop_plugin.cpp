@@ -932,8 +932,9 @@ void LoopAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
   }
   processRange(buffer, processed, buffer.getNumSamples() - processed,
                parameters);
-  captureActive_.store(engine_.load()->processor.meters().recording &&
-                       parameters.transport == Transport::Play);
+  // A paused one-shot still owns its deck: history actions must not replace
+  // that unfinished recording before Play resumes it or Capture finishes it.
+  captureActive_.store(engine_.load()->processor.meters().recording);
   engine_.load()->processor.publishTape();
   publishMeters(engine_.load()->processor.meters());
   outputPeak_.store(masterGain_.process(buffer), std::memory_order_relaxed);
