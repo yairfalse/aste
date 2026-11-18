@@ -168,7 +168,8 @@ in-flight print, live ring, filter integrators or undo stack.
 
 Quick repeat divisions are 1, 1/2, 1/4, 1/8 and 1/16 quarter notes (labels 1/4
 through 1/64), plus FREE. Fragment traversal is varispeed. If the selected region
-is shorter than the requested period it repeats at its available length. Continue
+is shorter than the requested period, silence fills the remaining time instead
+of making the rhythm faster. Continue
 advances the underlying Engine; Hold sets its existing musical hold while the
 durable audio repeat runs. Old outer/inner repeats remain upstream and continue
 to own their existing buffers. Releasing the durable repeat reveals their current

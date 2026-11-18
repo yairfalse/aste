@@ -237,16 +237,18 @@ void MasterMemory::process(float* l, float* r, std::size_t frames,
       const double step =
           bound(p.speed, .125, 4, 1) * std::exp2(bound(p.pitch, -48, 48) / 12);
       constexpr std::array<double, 6> divisions{1, .5, .25, .125, .0625, 0};
+      double repeatSpan = 0;
       if (playback.repeat) {
         const double beats =
             playback.division == 5
                 ? bound(playback.freeBeats, .015625, 4, .125)
                 : divisions[std::clamp(playback.division, 0, 4)];
-        z = std::min(
-            z, a + std::max(1., beats * 60 / (printing_ ? printTempo_ : bpm) *
-                                    rate_ * step));
+        repeatSpan = std::max(
+            step, beats * 60 / (printing_ ? printTempo_ : bpm) * rate_ * step);
+        z = std::min(z, a + repeatSpan);
       }
-      const double span = z - a;
+      const double audioSpan = z - a;
+      const double span = playback.repeat ? repeatSpan : audioSpan;
       cursor_ = wrap(cursor_, span);
       const int mode = std::clamp(p.playback, 0, 3);
       const auto rawRead = [&](double position, int ch) {
@@ -271,13 +273,20 @@ void MasterMemory::process(float* l, float* r, std::size_t frames,
             levels[mode];
         return mode == 1 ? std::lerp(a, b, position / grid - cell) : a;
       };
-      const double position = p.reverse ? z - 1 - cursor_ : a + cursor_;
+      const double reverseStart = a + std::max(0., audioSpan - 1);
+      const double position =
+          p.reverse ? std::max(a, reverseStart - cursor_) : a + cursor_;
       for (int ch = 0; ch < 2; ++ch) {
+        if (cursor_ >= audioSpan)
+          continue;  // Space belongs to the clock, not to the sample's
+                     // duration.
         wet[ch] = read(position, ch);
-        const double seam = std::min(span * .125, rate_ * .001 * step);
-        if (seam > 0 && cursor_ > span - seam)
-          wet[ch] = std::lerp(wet[ch], read(p.reverse ? z - 1 : a, ch),
-                              (cursor_ - span + seam) / seam);
+        const double seam = std::min(audioSpan * .125, rate_ * .001 * step);
+        if (seam > 0 && cursor_ > audioSpan - seam)
+          wet[ch] = std::lerp(
+              wet[ch],
+              span > audioSpan ? 0. : read(p.reverse ? reverseStart : a, ch),
+              (cursor_ - audioSpan + seam) / seam);
       }
       const double cutoff = bound(p.cutoff, 30, 20000, 20000),
                    res = bound(p.resonance, 0, .95),
@@ -333,10 +342,11 @@ void MasterMemory::process(float* l, float* r, std::size_t frames,
         }
       }
       if (!committed) cursor_ += step;
-      position_.store(static_cast<float>(bound(
-          (p.reverse ? z - 1 - wrap(cursor_, span) : a + wrap(cursor_, span)) /
-              b.length,
-          0, 1)));
+      position_.store(static_cast<float>(
+          bound((p.reverse ? std::max(a, reverseStart - wrap(cursor_, span))
+                           : a + std::min(audioSpan, wrap(cursor_, span))) /
+                    b.length,
+                0, 1)));
     }
     mix_ += (((c.play || c.repeat) && count_.load() > 0 ? 1 : 0) - mix_) * fade;
     for (int ch = 0; ch < 2; ++ch) {

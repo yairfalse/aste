@@ -34,6 +34,8 @@ Impact dynamics and project persistence. See the [workflow](README.md) and
 - Exact 1/64 periods at 120 and 240 BPM, SKEW block-partition invariance, abrupt
   extremes, full-history refusal, oversize-print refusal, and sample-rate recall
   are checked. Existing host seek/stop and Continue/Hold checks still pass.
+  A short-fragment regression first failed, then passed after separating its
+  audible duration from the repeat period: silence now preserves the selected division.
 
 Tests caught and corrected: undo before the selection acknowledgement reached
 audio; loss of negative-zero PCM bits during same-rate restore; a speed grid

@@ -102,6 +102,22 @@ int main() {
   restored.process(l.data(), r.data(), 750, repeat, 240, MasterMemory::None,
                    true);
   require(restored.position() == 0, "tempo change keeps exact repeat division");
+  MasterMemory shortRegion;
+  shortRegion.prepare(48000);
+  shortRegion.restore(printed);
+  repeat.division = 0;
+  for (int n = 0; n < 4; ++n) {
+    std::fill(l.begin(), l.end(), 0);
+    std::fill(r.begin(), r.end(), 0);
+    shortRegion.process(l.data(), r.data(), l.size(), repeat, 120);
+  }
+  require(std::all_of(l.begin(), l.end(),
+                      [](float x) { return std::abs(x) < 1e-8F; }),
+          "short fragment leaves silence until the selected rhythmic division");
+  for (int n = 0; n < 4; ++n)
+    shortRegion.process(l.data(), r.data(), l.size(), repeat, 120);
+  require(shortRegion.position() == 0,
+          "short fragment retains exact quarter-note cycle");
   repeat.generation[1].pitch = -48;
   repeat.generation[1].speed = .125F;
   repeat.repeat = false;
