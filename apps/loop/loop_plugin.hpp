@@ -86,6 +86,18 @@ class LoopAudioProcessor final : public juce::AudioProcessor {
   void loadFactoryPreset(int index);
   [[nodiscard]] bool usesLegacyBehavior() const;
   void useCurrentResponse();
+  [[nodiscard]] TapeState tapeSnapshot() const;
+  void selectTake(int generation, bool neutral = true);
+  void removeTake(int generation);
+  void clearWithUndo();
+  bool restoreHistory(const juce::MemoryBlock& expected,
+                      const juce::MemoryBlock& replacement);
+  void neutralTransforms();
+  juce::UndoManager& undoManager() noexcept { return undo_; }
+  [[nodiscard]] bool isPrinting() const noexcept { return printActive_.load(); }
+  [[nodiscard]] bool historyFull() const noexcept {
+    return historyFull_.load();
+  }
 
  private:
   enum ParameterIndex : std::size_t {
@@ -122,22 +134,28 @@ class LoopAudioProcessor final : public juce::AudioProcessor {
   struct Engine {
     Processor processor;
     std::atomic<bool> legacyBehavior{};
+    bool preservePlayback{};
     Engine* retiredNext{};
   };
   void adoptPending() noexcept;
   void collectRetired();
+  void restoreState(const void*, int, bool historyOnly);
   std::atomic<Engine*> engine_{new Engine};
   std::atomic<Engine*> pending_{};
   std::atomic<Engine*> retired_{};
   mutable std::mutex lifecycle_;  // Off-thread lifecycle/UI only; never audio.
   double hostRate_{48000};
   bool hostPrepared_{};  // Guarded by lifecycle_, like hostRate_.
+  juce::UndoManager undo_{8192, 1};
   juce::AudioProcessorValueTreeState state_;
   aste::ui::MasterGain masterGain_;
   std::array<std::atomic<float>*, parameterCount> parameterValues_{};
   std::atomic<float>* transportValue_{};
+  std::array<std::atomic<float>*, 5> performanceValues_{};
   bool midiCapture_{};
   std::atomic<bool> captureActive_{};
+  std::atomic<bool> printActive_{}, historyFull_{};
+  std::atomic<int> selectedTake_{};
   std::atomic<bool> clearRequested_{};
   std::atomic<bool> reloopRequested_{};
   std::atomic<int> generationNavigation_{};

@@ -55,3 +55,35 @@ New instances select appended First take, identical to the original reset
 controls except Overdub 0% instead of 50%. Original preset values and missing-key
 defaults are unchanged. This writes full input before tape processing; it does
 not promise unity output through the recording, degradation and output stages.
+
+## Protected history and editing
+
+The Safe Takes update keeps schema 4 and its existing three PCM tape records.
+It appends five optional parameters; missing `safe_takes` restores **off**, so
+old sessions keep continuous overdubbing, recycling history and their original
+signal path. Fresh instances and First take enable Safe Takes; the six earlier
+factory presets retain the original mode. Do not reopen Safe Takes sessions in
+older binaries: those binaries ignore the new controls and cannot honor their
+playback semantics. Retain a project copy when switching binaries.
+
+Safe Takes never evicts a generation or deletes later branches automatically.
+All three slots occupied means CAPTURE/RELOOP are unavailable. Remove an
+inactive take explicitly to continue. Removal and Clear have bounded,
+off-audio undo checkpoints containing actual PCM; audition/parameter edits
+use the same undo manager. At most 8192 KiB of accounted undo payload is kept,
+except the newest transaction is always retained even if larger. Undo history
+is transient; the three retained audio generations and current controls are
+saved in the project. Removed takes are not saved as hidden extra history.
+
+Undo checkpoints refuse to replace audio if a subsequent capture/print has
+changed the tape set. They must never silently erase a newly created take.
+History edits prepare replacement engines off-thread. At adoption, unchanged
+active audio inherits its playback/motion/filter state on the audio thread,
+so removing another take does not restart the playing tape. Host recall still
+starts at the beginning. Same-rate restore preserves the sample bits, including
+signed zero; rate changes retain the existing linear conversion policy.
+
+An unfinished print is still excluded; partial captures remain saveable. A
+live cursor, a partially printed destination, the temporary Hold gesture and
+undo/redo stacks are not persistent performance recordings. Use RELOOP to
+commit a gesture into a retained, portable generation.

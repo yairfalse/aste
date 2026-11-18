@@ -63,3 +63,46 @@ Even 100% Feedback releases. Play can recover the original tape afterwards.
 Clear remains the separate destructive action. Transport is independent of the
 DAW transport; saving recalls the selected mode, with the existing tape-recall
 rule that playback starts at the beginning rather than restoring a live head.
+
+## Safe Takes performance workflow
+
+Five parameters are appended at indices 22–26. The original 22 identities,
+indices, ranges and missing-key defaults are unchanged.
+
+| ID | Range / default | Meaning |
+|---|---|---|
+| `safe_takes` | off/on; missing-key default off | First take / new instances enable it. One-shot capture, protected history, audible print preview and region performance. Off retains the original overdub/recycling graph. |
+| `region_end` | 0–100%; 100 | Right boundary; `start` is the left boundary in Safe Takes. An inverted region cannot be printed. |
+| `repeat` | off/on; off | Repeat selected region while the underlying selected-loop timeline continues. Automatable latch; Hold provides a momentary gesture. |
+| `repeat_division` | FREE, 1/4, 1/8, 1/16, 1/32; FREE | Fragment duration at host tempo, capped by region length. Varispeed also changes its audible duration. |
+| `monitor` | off/on; off | Adds live input during retained-tape playback; excluded from RELOOP. Capture always monitors input. |
+
+Safe capture is edge-triggered and ends at its latched duration or when Capture
+is released. It ignores Overdub and Feedback when writing the new take. The
+editor acknowledges automatic completion by turning Capture off; automation
+without an editor must send off before the next on. It does not require a UI
+timer to stop recording. Capture duration uses the tempo at the initial edge;
+tempo changes and DAW seeks never resize or overwrite an existing take.
+Host Sync selects beat-derived duration, **not a quantized start or PPQ-locked
+playback**. Tape transport remains explicitly independent of DAW transport.
+
+Safe RELOOP prints varispeed, reverse, pitch, drift/wow/flutter, region/splice,
+repeat and the auditioned Record/Loss/IPS processing once. Monitoring, Mix,
+Output, Master and the Stop/Release envelope are not printed. Length is the
+selected fragment's source duration divided by Speed, capped at 16 seconds;
+it is latched on entry. Parameter changes during printing are captured.
+At zero Record and Loss the new coloration path is transparent. The original
+graph remains available with Safe Takes off.
+
+The source keeps playing after printing. Click the new generation's tile to
+listen: this selects its actual PCM and neutralizes temporary transforms
+(including splice), preserving Mix, Output, Master, capture length and
+release time. This action is undoable. Older/Newer buttons do the same in Safe
+Takes; legacy MIDI navigation retains its immediate transform-in-place behavior.
+
+Hold to Repeat temporarily permits changes to start/end, speed, reverse and
+pitch. Mouse/key release or focus loss restores those five controls and the
+prior repeat latch. Latch keeps edits until explicitly changed. Start/end,
+reverse and repeat transitions use a 5 ms fade. Splice zero allows deliberately
+hard fragment seams; positive Splice crossfades them. Speed remains positive
+(0.125–4x); Reverse owns direction and Stop owns zero motion.
