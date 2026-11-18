@@ -1186,6 +1186,11 @@ void LoopAudioProcessor::getStateInformation(juce::MemoryBlock& destination) {
   const std::lock_guard lock{lifecycle_};
   collectRetired();
   auto state = state_.copyState();
+  // Capture is a one-shot command in Safe Takes, not an instruction to
+  // record again when a host restores a project saved mid-take.
+  if (performanceValues_[0]->load() >= .5F)
+    state.getChildWithProperty("id", "capture")
+        .setProperty("value", 0.F, nullptr);
   state.setProperty("schema", kStateSchema, nullptr);
   state.setProperty("product", kStateType, nullptr);
   auto* source = pending_.load();

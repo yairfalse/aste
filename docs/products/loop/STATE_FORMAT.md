@@ -84,6 +84,9 @@ starts at the beginning. Same-rate restore preserves the sample bits, including
 signed zero; rate changes retain the existing linear conversion policy.
 
 An unfinished print is still excluded; partial captures remain saveable. A
+Safe Takes save stores Capture off without interrupting the live recording,
+so restoring a partial take cannot re-arm a new recording. Legacy capture
+latches retain their previous serialized behavior. A
 live cursor, a partially printed destination, the temporary Hold gesture and
 undo/redo stacks are not persistent performance recordings. Use RELOOP to
 commit a gesture into a retained, portable generation.

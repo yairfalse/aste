@@ -112,6 +112,7 @@ void Processor::continuePlaybackFrom(const Processor& source) noexcept {
     return;
   }
   readPosition_ = source.readPosition_;
+  generationCounter_ = std::max(generationCounter_, source.generationCounter_);
   repeatPosition_ = source.repeatPosition_;
   pitchPhase_ = source.pitchPhase_;
   modulationPhase_ = source.modulationPhase_;

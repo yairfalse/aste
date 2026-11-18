@@ -219,6 +219,38 @@ void testProcessingMidiAndRealtime() {
           "Loop adapter prints and publishes a second generation");
 }
 
+void testPartialCaptureRecall() {
+  Loop source;
+  source.prepareToPlay(8000, 127);
+  setValue(source, "sync", 0);
+  setValue(source, "free_length", .05F);
+  setValue(source, "capture", 1);
+  juce::AudioBuffer<float> audio{2, 127};
+  juce::MidiBuffer midi;
+  for (int c = 0; c < 2; ++c)
+    for (int s = 0; s < 127; ++s) audio.setSample(c, s, .25F);
+  source.processBlock(audio, midi);
+  const auto partial = source.tapeSnapshot();
+  juce::MemoryBlock saved;
+  source.getStateInformation(saved);
+  require(source.isCapturing() && value(source, "capture") == 1,
+          "Saving a partial take does not interrupt live recording");
+  Loop restored;
+  restored.setStateInformation(saved.getData(),
+                               static_cast<int>(saved.getSize()));
+  restored.prepareToPlay(8000, 127);
+  require(value(restored, "capture") == 0,
+          "One-shot capture is disarmed on project reopen");
+  for (int i = 0; i < 5; ++i) {
+    audio.clear();
+    restored.processBlock(audio, midi);
+  }
+  require(restored.tapeSnapshot().audio == partial.audio &&
+              restored.retainedGenerations() == 1,
+          "Reopening a partial take preserves its audio without creating an "
+          "unintended new take");
+}
+
 void testSafeTakesAndUndo() {
   Loop processor;
   processor.prepareToPlay(8000, 127);
@@ -790,6 +822,7 @@ void testTapeRecallAndMidiRelease() {
 
 int main(int argc, char** argv) {
   juce::ScopedJuceInitialiser_GUI juce;
+  testPartialCaptureRecall();
   testSafeTakesAndUndo();
   testHostTimingAndAutomation();
   testPerformanceGestures();
