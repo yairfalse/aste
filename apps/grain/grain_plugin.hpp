@@ -4,10 +4,11 @@
 #include <mutex>
 namespace aste::grain::plugin {
 static_assert(std::atomic<void*>::is_always_lock_free);
+static_assert(std::atomic<float>::is_always_lock_free);
 class GrainAudioProcessor final : public aste::experimental::Instrument {
  public:
   static constexpr std::size_t globalCount = 8, liveBase = 8, routeBase = 11,
-                               nodeBase = 20, nodeFields = 24;
+                               nodeBase = 20, nodeFields = 24, meterFields = 11;
   GrainAudioProcessor();
   ~GrainAudioProcessor() override;
   void releaseResources() override {
@@ -27,7 +28,7 @@ class GrainAudioProcessor final : public aste::experimental::Instrument {
   void clearAll() noexcept { clearMask_.fetch_or(8U); }
   void mutate(std::size_t n);
   float nodeMeter(std::size_t n, std::size_t field) const noexcept {
-    return meters_[n * 8 + field].load(std::memory_order_relaxed);
+    return meters_[n * meterFields + field].load(std::memory_order_relaxed);
   }
   static const std::array<const char*, nodeFields> fieldIds;
 
@@ -52,6 +53,6 @@ class GrainAudioProcessor final : public aste::experimental::Instrument {
   double hostRate_{48000};
   bool prepared_{};
   std::atomic<unsigned> clearMask_{};
-  std::array<std::atomic<float>, 24> meters_{};
+  std::array<std::atomic<float>, 3 * meterFields> meters_{};
 };
 }  // namespace aste::grain::plugin

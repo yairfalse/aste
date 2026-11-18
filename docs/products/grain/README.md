@@ -10,8 +10,10 @@ while the first source bank fills. Set Dry / Network to 1 for only the network.
 
 ## Start playing
 
-1. Feed audio for at least half a second. The graph identifies stored source and
-   active grains. Select Object A/B/C to edit its sound without changing routes.
+1. Feed audio for at least half a second. Three node cards show stored duration,
+   capture/freeze state, active grains, capture-input RMS and output RMS.
+   Each card exposes size, density, speed, pitch, stereo scatter, monitor level,
+   memory length, live input, capture, freeze and reverse without changing views.
 2. Change Grain ms, Grains / Second, Speed and Pitch. Independent time moves
    fragment selection without multiplying in-grain pitch; Varispeed couples them.
 3. Freeze one node to keep its material. Other nodes can keep capturing and
@@ -19,16 +21,63 @@ while the first source bank fills. Set Dry / Network to 1 for only the network.
    edge shape, cluster, erosion and accumulation are local to the selected node.
 4. Use Time, Spread, Erosion and Inheritance to perform the network. Morph to
    Cycle moves the matrix toward a feedback cycle without changing node sounds.
-5. Routing starting points change connections/live sends only. Matrix sliders
-   edit base levels; the graph displays the target after morph and row limiting.
+5. Press **SEND A TO...**, then **TO B**, and adjust **SEND AMOUNT x**.
+   An inactive route opens at 0.65; an existing route keeps its amount. Any node
+   can send to any other, including itself. Routing starting points change
+   connections/live sends only. The optional **MATRIX** edits the same base
+   levels; the routing map displays targets after morph and row limiting.
    Route transitions smooth over 15 ms. Monitor Level affects the audible mix;
    it does not remove that node from other nodes’ inputs.
-6. Clear Selected forgets one node. Other nodes may refill it. Clear Network
-   resets all sound. Bypass suspends processing and preserves memory, passing
+6. **CLEAR** requires a second click within three seconds and forgets only that
+   node. Other nodes may refill it. **CLEAR NETWORK**, under **DETAILS**, uses
+   the same confirmation and resets all sound. Bypass suspends processing and preserves memory, passing
    dry audio. Master Output is the final level after dry/network mixing.
 
 Mutate Position writes the real Position parameter through host gestures, so
 Cubase can record the change as automation.
+
+## SEND is a connection, not a copy
+
+SEND routes a node's live granular output into another node's **capture input**.
+It never clears either memory. The destination must have Capture enabled and
+must not be frozen to replace its stored material. It publishes a new grain
+source when the memory window fills. A frozen destination keeps playing its
+existing sound; the send strip explains this rather than silently unfreezing it.
+Stopping Capture or enabling Freeze seals any partial capture, which may include
+a silent gap. A stored silent bank is not an empty bank.
+
+**HOLD SEND** (mouse or focused Space key) temporarily raises the selected route
+to at least 0.65. Drag up/down while holding to adjust it. Release, loss of focus,
+application deactivation, switching routes or closing the editor restores its
+previous amount. A different value arriving from host automation/state recall
+takes ownership and is not overwritten on release. **LATCH SEND** keeps a route
+open for hands-free editing; **REMOVE ROUTE** closes it without erasing audio.
+All these actions use the existing automatable route parameters and the existing
+15 ms DSP smoothing. New material already captured during a hold remains after
+release; this is not an audio undo operation.
+
+The routing map groups arrows by destination, with numerical target gains.
+Amber identifies self-routing and routes participating in feedback cycles.
+Click an arrow row to inspect it without opening a closed connection; keyboard
+users can select source/destination with the labeled buttons and set amount zero.
+The same route is available in the matrix. Targets are not activity meters:
+the node cards show actual last-processed-block capture/output RMS and grain count.
+REC's display floor is -100 dB; it is not a claim of measured signal below that.
+
+When **MORPH TO CYCLE** is nonzero, direct SEND editing pauses explicitly:
+**EDIT CURRENT ROUTES** writes the current morph target into the existing base
+parameters and resets morph to zero (subject to host float normalization).
+It preserves the resulting target routing, not a separate copy of audio. The
+matrix remains available for deliberate base-level editing while morphing.
+If Cubase is automating Cycle Morph, stop writing that automation before taking
+manual ownership. Routing starting points also reset morph, as before.
+
+**DETAILS** exposes all 24 controls for the selected node, plus Inheritance,
+Seed, Mutate Position and Clear Network. SEND and all three node identities and
+statuses remain visible. Sliders accept typed values, fine adjustment and reset;
+buttons and standard JUCE controls are keyboard-focusable. No drag-only essential
+operation or hidden modifier is required. Screen-reader behavior in Cubase still
+requires testing with the creator's actual setup.
 
 ## Memory and session recall
 
@@ -47,8 +96,8 @@ new material. A silent stored bank is still material; clear it to arm anew.
 
 Each node has three prepared immutable banks, up to four seconds each. Long
 grains may pin old banks; capture waits rather than overwrite readers. Graph
-and node output meters report actual DSP state. `waits` and `drops` are cumulative
-since clear, not claims that the node is currently stalled. Node Source Memory
+and node output meters report actual DSP state. Capture waits and dropped births
+are bounded engine behavior, not extra memory allocation. Node Source Memory
 can be shorter than its grain: the grain then wraps the selected source bank.
 
 ## Timing, quality and bounds
