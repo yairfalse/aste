@@ -64,6 +64,20 @@ int main() {
   render(partitionB, 37);
   require(partitionA == partitionB, "sample scheduling block invariance");
   require(hits == engine->meter().hits && hits > 4, "curved rolls schedule");
+  const auto straight = partitionA;
+  controls.skew = 1;
+  render(partitionA, 128);
+  render(partitionB, 37);
+  require(partitionA == partitionB, "SKEW fixed-seed block invariance");
+  require(partitionA != straight, "SKEW changes actual rhythmic audio");
+  controls.skew = 0;
+  render(partitionA, 128);
+  require(partitionA == straight,
+          "SKEW zero restores original pattern without mutation");
+  controls.compressorMode = 1;
+  render(partitionA, 128);
+  require(partitionA != straight, "Impact compressor changes actual dynamics");
+  controls.compressorMode = 0;
   engine->reset();
   controls.mode = 1;
   engine->process(l.data(), r.data(), 0, controls);

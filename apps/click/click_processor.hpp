@@ -17,6 +17,8 @@ struct Step {
   int sound{}, condition{}, count{1};
 };
 struct Sound {
+  float speed{1};
+  int playback{};
   int source{}, interpolation{1};
   float velocityResponse{1};
   float pitch{60}, tune{}, excite{.5F}, body{.5F}, decay{160}, resonance{.25F},
@@ -31,6 +33,8 @@ struct Object : Sound {
   std::array<Step, steps> step{};
 };
 struct Controls {
+  float skew{};
+  int compressorMode{};
   std::array<Object, objects> object{};
   int mode{1}, masterLength{16}, regionStart{}, regionEnd{16}, shiftSteps{1};
   float innerSpan{.25F}, rollSpan{1};

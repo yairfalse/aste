@@ -52,11 +52,20 @@ std::unique_ptr<Control> control(Processor& p, const juce::String& id) {
               p.set(Processor::eventId(object, step, "decay"), sound.decay);
             };
         if (auto* slider = dynamic_cast<juce::Slider*>(child)) {
+          const auto previous = slider->onDragStart;
+          slider->onDragStart = [&p, title, previous] {
+            p.beginEdit(title);
+            if (previous) previous();
+          };
           const auto key = id.fromLastOccurrenceOf("_", false, false);
           const bool boundary = key == "start" || key == "end" || key == "mod";
           slider->textFromValueFunction = [slider](double value) {
             return aste::ui::formattedValue(*slider, value);
           };
+          if (id.endsWith("_speed") || id == "repeat_free")
+            slider->textFromValueFunction = [](double value) {
+              return juce::String(value, 4);
+            };
           slider->updateText();
           slider->valueFromTextFunction = [slider](const juce::String& text) {
             double parsed = 0;
@@ -65,7 +74,7 @@ std::unique_ptr<Control> control(Processor& p, const juce::String& id) {
                        ? parsed
                        : slider->getValue();
           };
-          if (boundary) {
+          if (boundary && id.startsWith("o")) {
             const auto source = [&p, id] {
               int object =
                   juce::jlimit(0, 3, id.substring(1).getIntValue() - 1);
@@ -88,9 +97,6 @@ std::unique_ptr<Control> control(Processor& p, const juce::String& id) {
               return juce::String(static_cast<juce::int64>(
                          std::llround(value * (length - 1)))) +
                      " fr";
-            };
-            slider->textFromValueFunction = [slider](double value) {
-              return aste::ui::formattedValue(*slider, value);
             };
             slider->updateText();
             slider->valueFromTextFunction = [&p, source, slider](
@@ -123,8 +129,9 @@ std::unique_ptr<Control> control(Processor& p, const juce::String& id) {
 }
 class Gate final : public juce::TextButton {
  public:
-  Gate(Processor& processor, juce::String id, juce::String title)
-      : p_{processor}, id_{std::move(id)} {
+  Gate(Processor& processor, juce::String id, juce::String title,
+       int division = -1)
+      : p_{processor}, id_{std::move(id)}, division_{division} {
     setButtonText(title);
     setTitle(title);
     setTooltip(
@@ -135,6 +142,8 @@ class Gate final : public juce::TextButton {
     if (pressed_) release();
   }
   void mouseDown(const juce::MouseEvent& e) override {
+    if (division_ >= 0)
+      p_.set("repeat_division", static_cast<float>(division_));
     juce::TextButton::mouseDown(e);
     auto* parameter = p_.state().getParameter(id_);
     if (e.mods.isShiftDown()) {
@@ -151,6 +160,8 @@ class Gate final : public juce::TextButton {
   }
   bool keyPressed(const juce::KeyPress& key) override {
     if (key.getKeyCode() == juce::KeyPress::spaceKey) {
+      if (division_ >= 0)
+        p_.set("repeat_division", static_cast<float>(division_));
       p_.set(id_, parameter(p_, id_) >= .5F ? 0 : 1);
       return true;
     }
@@ -162,9 +173,12 @@ class Gate final : public juce::TextButton {
     unsigned bit = 0;
     for (std::size_t i = 0; i < ids.size(); ++i)
       if (id_ == ids[i]) bit = 1U << i;
-    setToggleState(parameter(p_, id_) >= .5F ||
-                       (static_cast<unsigned>(p_.meter(19)) & bit) != 0,
-                   juce::dontSendNotification);
+    setToggleState(
+        (parameter(p_, id_) >= .5F ||
+         (static_cast<unsigned>(p_.meter(19)) & bit) != 0) &&
+            (division_ < 0 ||
+             static_cast<int>(parameter(p_, "repeat_division")) == division_),
+        juce::dontSendNotification);
   }
 
  private:
@@ -176,6 +190,7 @@ class Gate final : public juce::TextButton {
   }
   Processor& p_;
   juce::String id_;
+  int division_{-1};
   bool pressed_{};
 };
 class Grid final : public juce::Component {
@@ -230,13 +245,31 @@ class Grid final : public juce::Component {
           g.fillRect(bounds.getX(), n * height + 2, width - 3, 2.F);
         }
       }
+    const auto& roll = c.object[object].step[event];
+    if (roll.on && roll.count > 1) {
+      const float y = (object + 1) * height - 6;
+      g.setColour(juce::Colour{ink});
+      const float span = roll.span * width;
+      for (int hit = 0; hit < roll.count; ++hit) {
+        const float t = static_cast<float>(hit) / roll.count;
+        const float x =
+            event * width + std::pow(t, std::exp2(-2.F * roll.curve)) * span;
+        g.drawVerticalLine(static_cast<int>(x), y - 9, y);
+      }
+      g.drawHorizontalLine(
+          static_cast<int>(y), event * width,
+          std::min(static_cast<float>(getWidth()), event * width + span));
+    }
   }
   void mouseDown(const juce::MouseEvent& e) override {
+    p_.beginEdit("Edit event / roll");
     grabKeyboardFocus();
     const int n =
         juce::jlimit(0, 3, static_cast<int>(e.position.y * 4 / getHeight()));
     const int s =
         juce::jlimit(0, 31, static_cast<int>(e.position.x * 32 / getWidth()));
+    removeOnClick_ = object == n && event == s &&
+                     parameter(p_, Processor::eventId(n, s, "on")) >= .5F;
     object = n;
     event = s;
     origin_ = s;
@@ -264,6 +297,8 @@ class Grid final : public juce::Component {
              static_cast<float>(
                  juce::jlimit(2, 16, static_cast<int>(std::ceil(span * 4)))));
       p_.set(Processor::eventId(object, origin_, "span"), span);
+      p_.set(Processor::eventId(object, origin_, "curve"),
+             juce::jlimit(-1.F, 1.F, -e.getDistanceFromDragStartY() / 70.F));
     } else
       event =
           juce::jlimit(0, 31, static_cast<int>(e.position.x * 32 / getWidth()));
@@ -274,6 +309,8 @@ class Grid final : public juce::Component {
       p_.moveEvent(object, origin_, event);
       if (selected) selected(object, event);
     }
+    if (!drag_ && !edge_ && removeOnClick_)
+      p_.set(Processor::eventId(object, event, "on"), 0);
     repaint();
   }
   bool keyPressed(const juce::KeyPress& key) override {
@@ -309,7 +346,7 @@ class Grid final : public juce::Component {
  private:
   Processor& p_;
   int origin_{};
-  bool drag_{}, edge_{};
+  bool drag_{}, edge_{}, removeOnClick_{};
 };
 class Timeline final : public juce::Component {
  public:
@@ -498,6 +535,200 @@ class Fields final : public juce::Component {
   std::vector<juce::String> ids_;
   int columns_{6}, rowHeight_{80};
 };
+class CaptureWave final : public juce::Component {
+ public:
+  explicit CaptureWave(Processor& p) : p_{p} {
+    setTitle("Captured master waveform");
+    setWantsKeyboardFocus(true);
+    setDescription(
+        "Drag across the waveform to select a loop. Drag the upper trim "
+        "handles to change start and end. Arrow keys move loop start; Shift "
+        "arrows move loop end.");
+  }
+  void refresh() {
+    if (count_ != p_.memoryCount() || selected_ != p_.memorySelection() ||
+        epoch_ != p_.memoryEpoch()) {
+      count_ = p_.memoryCount();
+      selected_ = p_.memorySelection();
+      wave_ = p_.memoryWave(selected_);
+      epoch_ = p_.memoryEpoch();
+    }
+    repaint();
+  }
+  void paint(juce::Graphics& g) override {
+    g.fillAll(juce::Colour{0xff1b2326});
+    if (count_ == 0) {
+      g.setColour(juce::Colour{ink});
+      g.drawText("PLAY A PHRASE  /  CAPTURE  /  HOLD A DIVISION  /  RESAMPLE",
+                 getLocalBounds(), juce::Justification::centred);
+      return;
+    }
+    const auto c = p_.memoryControls().generation[selected_];
+    g.setColour(juce::Colour{accent}.withAlpha(.18F));
+    g.fillRect(c.loopStart * getWidth(), 0.F,
+               (c.loopEnd - c.loopStart) * getWidth(),
+               static_cast<float>(getHeight()));
+    g.setColour(juce::Colour{accent});
+    const float peak = *std::max_element(wave_.begin(), wave_.end());
+    const float displayScale = .9F / std::max(.000001F, peak);
+    for (int n = 0; n < 128; ++n) {
+      const float x = n * getWidth() / 128.F,
+                  height = std::min(1.F, wave_[n] * displayScale) *
+                           (getHeight() - 10) * .5F;
+      g.drawVerticalLine(static_cast<int>(x), getHeight() * .5F - height,
+                         getHeight() * .5F + height);
+    }
+    for (float x : {c.start, c.end}) {
+      g.fillRect(x * (getWidth() - 6), 0.F, 6.F, 9.F);
+    }
+    g.setColour(juce::Colour{ink});
+    for (float x : {c.loopStart, c.loopEnd})
+      g.fillRect(x * (getWidth() - 3), getHeight() - 10.F, 3.F, 10.F);
+    g.drawVerticalLine(static_cast<int>(p_.memoryPosition() * getWidth()), 0,
+                       static_cast<float>(getHeight()));
+    g.setFont(juce::FontOptions{10.F});
+    g.drawText(
+        "AUTO SCALE / PEAK " +
+            juce::String(juce::Decibels::gainToDecibels(peak, -100.F), 1) +
+            " dBFS",
+        getLocalBounds().reduced(8, 2).removeFromTop(14),
+        juce::Justification::right);
+  }
+  void mouseDown(const juce::MouseEvent& e) override {
+    grabKeyboardFocus();
+    p_.beginEdit("Edit captured fragment");
+    origin_ = juce::jlimit(0.F, 1.F, e.position.x / getWidth());
+    const auto c = p_.memoryControls().generation[selected_];
+    trim_ = e.position.y < 12;
+    end_ = std::abs(origin_ - c.end) < std::abs(origin_ - c.start);
+    mouseDrag(e);
+  }
+  void mouseDrag(const juce::MouseEvent& e) override {
+    if (count_ == 0) return;
+    const float at = juce::jlimit(0.F, 1.F, e.position.x / getWidth());
+    const auto c = p_.memoryControls().generation[selected_];
+    if (trim_)
+      p_.set(Processor::memoryId(selected_, end_ ? "end" : "start"),
+             end_ ? std::max(c.start + .000001F, at)
+                  : std::min(c.end - .000001F, at));
+    else {
+      p_.set(Processor::memoryId(selected_, "loop_start"),
+             std::min(origin_, std::max(0.F, at - .000001F)));
+      p_.set(Processor::memoryId(selected_, "loop_end"),
+             std::max(origin_ + .000001F, at));
+    }
+    repaint();
+  }
+  bool keyPressed(const juce::KeyPress& k) override {
+    if (k.getKeyCode() != juce::KeyPress::leftKey &&
+        k.getKeyCode() != juce::KeyPress::rightKey)
+      return false;
+    p_.beginEdit("Nudge captured region");
+    const auto id = Processor::memoryId(
+        selected_, k.getModifiers().isShiftDown() ? "loop_end" : "loop_start");
+    p_.set(id,
+           parameter(p_, id) +
+               (k.getKeyCode() == juce::KeyPress::leftKey ? -.001F : .001F));
+    return true;
+  }
+
+ private:
+  Processor& p_;
+  std::array<float, 128> wave_{};
+  int count_{}, selected_{};
+  unsigned epoch_{};
+  float origin_{};
+  bool trim_{}, end_{};
+};
+class CaptureDock final : public juce::Component {
+ public:
+  explicit CaptureDock(Processor& p) : p_{p}, wave_{p}, fields_{p} {
+    addAndMakeVisible(wave_);
+    addAndMakeVisible(fields_);
+    addAndMakeVisible(status_);
+    const std::array<const char*, 8> names{
+        "CAPTURE", "RESAMPLE", "ORIGINAL", "PREVIOUS",
+        "NEXT",    "UNDO",     "REDO",     "PLAY CAPTURE"};
+    for (int n = 0; n < 8; ++n) {
+      buttons_[n].setButtonText(names[n]);
+      addAndMakeVisible(buttons_[n]);
+    }
+    buttons_[0].onClick = [this] { p_.memoryAction(MasterMemory::Capture); };
+    buttons_[1].onClick = [this] { p_.memoryAction(MasterMemory::Resample); };
+    buttons_[2].onClick = [this] { p_.memoryAction(MasterMemory::Original); };
+    buttons_[3].onClick = [this] { p_.memoryAction(MasterMemory::Previous); };
+    buttons_[4].onClick = [this] { p_.memoryAction(MasterMemory::Next); };
+    buttons_[5].onClick = [this] { p_.undoEdit(); };
+    buttons_[6].onClick = [this] { p_.redoEdit(); };
+    buttons_[7].setClickingTogglesState(true);
+    play_ =
+        std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
+            p.state(), "memory_play", buttons_[7]);
+    buttons_[0].setTooltip(
+        "Freeze the selected master phrase from recent rendered audio, after "
+        "compression, before capture processing and Master output.");
+    buttons_[1].setTooltip(
+        "Print one processed cycle into a new PCM generation. The new "
+        "generation starts with neutral controls. Original audio stays "
+        "available.");
+    const std::array<const char*, 6> names2{"1/4",  "1/8",  "1/16",
+                                            "1/32", "1/64", "FREE"};
+    for (int n = 0; n < 6; ++n) {
+      divisions_[n] = std::make_unique<Gate>(p, "memory_repeat", names2[n], n);
+      addAndMakeVisible(*divisions_[n]);
+    }
+    bind(0);
+  }
+  void refresh() {
+    p_.syncMemorySelection();
+    const int generation = p_.memorySelection();
+    if (generation != generation_) bind(generation);
+    wave_.refresh();
+    for (auto& button : divisions_) button->refresh();
+    status_.setText(
+        p_.memoryStatus() == 3
+            ? "PRINTING " + juce::String(p_.memoryProgress() * 100, 0) + "%"
+        : p_.memoryStatus() == 4 ? "PRINT > 8s / SHORTEN OR SPEED UP"
+        : p_.memoryStatus() == 2 ? "HISTORY FULL / 8"
+        : p_.memoryStatus() == 1
+            ? "PLAY BEFORE CAPTURE"
+            : "GEN " + juce::String(p_.memoryCount() ? generation + 1 : 0) +
+                  " / " + juce::String(p_.memoryCount()) +
+                  "   /   HOLD TO REPEAT",
+        juce::dontSendNotification);
+  }
+  void resized() override {
+    const int w = getWidth();
+    for (int n = 0; n < 8; ++n)
+      buttons_[n].setBounds(n * w / 8, 0, w / 8 - 5, 26);
+    wave_.setBounds(0, 32, w - 350, 58);
+    status_.setBounds(w - 340, 30, 340, 24);
+    for (int n = 0; n < 6; ++n)
+      divisions_[n]->setBounds(w - 340 + n * 57, 57, 52, 32);
+    fields_.setBounds(0, 95, w, 112);
+  }
+
+ private:
+  void bind(int generation) {
+    generation_ = generation;
+    std::vector<juce::String> ids;
+    for (const char* id : {"pitch", "speed", "cutoff", "resonance", "morph",
+                           "playback", "reverse"})
+      ids.push_back(Processor::memoryId(generation, id));
+    for (const char* id : {"skew", "pressure", "recovery", "dirt", "parallel",
+                           "time_mode", "repeat_free"})
+      ids.emplace_back(id);
+    fields_.bind(ids, 7, 55);
+  }
+  Processor& p_;
+  CaptureWave wave_;
+  Fields fields_;
+  juce::Label status_;
+  std::array<juce::TextButton, 8> buttons_;
+  std::array<std::unique_ptr<Gate>, 6> divisions_;
+  std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> play_;
+  int generation_{};
+};
 class Editor final : public juce::AudioProcessorEditor, private juce::Timer {
  public:
   explicit Editor(Processor& p)
@@ -509,7 +740,8 @@ class Editor final : public juce::AudioProcessorEditor, private juce::Timer {
         wave_{p, object_},
         eventFields_{p},
         soundFields_{p},
-        performanceFields_{p} {
+        performanceFields_{p},
+        capture_{p} {
     look_.setColour(juce::Slider::thumbColourId, juce::Colour{accent});
     look_.setColour(juce::Slider::trackColourId, juce::Colour{accent});
     look_.setColour(juce::TextButton::buttonOnColourId,
@@ -522,6 +754,7 @@ class Editor final : public juce::AudioProcessorEditor, private juce::Timer {
       addAndMakeVisible(view_[i]);
     }
     addAndMakeVisible(master_);
+    addAndMakeVisible(capture_);
     preset_.addItemList({"First impacts", "Microscopic", "Sub pressure",
                          "Broken lattice", "Fragment material", "Sample ready"},
                         1);
@@ -578,13 +811,38 @@ class Editor final : public juce::AudioProcessorEditor, private juce::Timer {
       row.soloAttachment = std::make_unique<
           juce::AudioProcessorValueTreeState::ButtonAttachment>(
           p.state(), Processor::objectId(n, "solo"), row.solo);
-      row.length = control(p_, Processor::objectId(n, "length"));
-      row.division = control(p_, Processor::objectId(n, "division"));
+      row.length.setSliderStyle(juce::Slider::IncDecButtons);
+      row.length.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 30, 20);
+      row.length.setTitle("Object cycle length in steps");
+      row.length.setTooltip(
+          "Independent cycle length in steps. Type or use +/-.");
+      row.span.setSliderStyle(juce::Slider::IncDecButtons);
+      row.span.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 25, 20);
+      row.span.setTitle("Voice repeat length in steps");
+      row.span.setTooltip(
+          "Length of the local phrase repeated by VOICE. Release returns to "
+          "the running cycle.");
+      row.repeat =
+          std::make_unique<Gate>(p_, Processor::objectId(n, "repeat"), "VOICE");
+      for (const auto& spec : p_.specs())
+        if (spec.id == Processor::objectId(n, "division"))
+          row.division.addItemList(
+              juce::StringArray::fromTokens(spec.choices, "|", ""), 1);
+      row.division.setTitle("Object step division");
+      row.lengthAttachment = std::make_unique<
+          juce::AudioProcessorValueTreeState::SliderAttachment>(
+          p.state(), Processor::objectId(n, "length"), row.length);
+      row.spanAttachment = std::make_unique<
+          juce::AudioProcessorValueTreeState::SliderAttachment>(
+          p.state(), Processor::objectId(n, "repeat_steps"), row.span);
+      row.divisionAttachment = std::make_unique<
+          juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+          p.state(), Processor::objectId(n, "division"), row.division);
       for (auto* c : std::initializer_list<juce::Component*>{
                &row.name, &row.audition,
                static_cast<juce::Component*>(&row.mute),
-               static_cast<juce::Component*>(&row.solo), row.length.get(),
-               row.division.get()})
+               static_cast<juce::Component*>(&row.solo), &row.length,
+               &row.division, row.repeat.get(), &row.span})
         addAndMakeVisible(c);
     }
     more_.setButtonText("MORE EVENT");
@@ -638,8 +896,9 @@ class Editor final : public juce::AudioProcessorEditor, private juce::Timer {
     addAndMakeVisible(eventViewport_);
     performanceFields_.bind(
         {"pressure", "recovery", "dirt", "parallel", "time_mode", "reverse",
-         "shift_steps", "inner_span", "fill", "roll_span", "seed"},
-        6, 86);
+         "shift_steps", "inner_span", "fill", "roll_span", "seed",
+         "compressor_mode"},
+        6, 60);
     addAndMakeVisible(performanceFields_);
     const std::array<const char*, 6> ids{"repeat", "nested", "void",
                                          "crush",  "shift",  "hold"};
@@ -661,8 +920,8 @@ class Editor final : public juce::AudioProcessorEditor, private juce::Timer {
     panic_.setButtonText("ALL SOUND OFF");
     panic_.onClick = [this] {
       p_.panic();
-      for (const char* id :
-           {"repeat", "nested", "hold", "void", "crush", "shift"})
+      for (const char* id : {"repeat", "nested", "hold", "void", "crush",
+                             "shift", "memory_play", "memory_repeat"})
         p_.set(id, 0);
     };
     addAndMakeVisible(panic_);
@@ -717,7 +976,8 @@ class Editor final : public juce::AudioProcessorEditor, private juce::Timer {
     header_[0]->setBounds(400, 73, 210, 55);
     header_[1]->setBounds(625, 73, 175, 55);
     header_[2]->setBounds(810, 73, 175, 55);
-    const int timelineY = 166, laneTop = 220, laneBottom = h - 290,
+    capture_.setBounds(24, h - 308, w - 48, 208);
+    const int timelineY = 162, laneTop = 208, laneBottom = h - 430,
               laneHeight = (laneBottom - laneTop) / 4;
     cue_.setBounds(24, 138, w - 48, 24);
     timeline_.setBounds(282, timelineY, w - 310, 46);
@@ -729,12 +989,14 @@ class Editor final : public juce::AudioProcessorEditor, private juce::Timer {
       row.audition.setBounds(181, y + 4, 48, 25);
       row.mute.setBounds(232, y + 4, 23, 25);
       row.solo.setBounds(256, y + 4, 23, 25);
-      row.length->setBounds(24, y + 32, 125, laneHeight - 34);
-      row.division->setBounds(150, y + 32, 127, laneHeight - 34);
+      row.length.setBounds(24, y + 31, 63, 20);
+      row.division.setBounds(91, y + 31, 69, 20);
+      row.repeat->setBounds(164, y + 31, 56, 20);
+      row.span.setBounds(224, y + 31, 55, 20);
     }
     selected_.setBounds(24, laneBottom + 10, w - 220, 24);
     more_.setBounds(w - 180, laneBottom + 8, 154, 28);
-    eventViewport_.setBounds(24, laneBottom + 42, w - 48, 140);
+    eventViewport_.setBounds(24, laneBottom + 36, w - 48, 80);
     eventFields_.setSize(w - 64, eventFields_.neededHeight());
     soundSelect_.setBounds(24, 145, 190, 32);
     replace_.setBounds(226, 145, 200, 32);
@@ -742,30 +1004,44 @@ class Editor final : public juce::AudioProcessorEditor, private juce::Timer {
     duplicate_.setBounds(645, 145, 190, 32);
     advanced_.setBounds(w - 215, 145, 190, 32);
     sampleLabel_.setBounds(24, 184, w - 48, 24);
-    wave_.setBounds(24, 214, w - 48, 155);
-    soundViewport_.setBounds(24, 382, w - 48, h - 495);
+    wave_.setBounds(24, 214, w - 48, 80);
+    soundViewport_.setBounds(24, 306, w - 48, h - 624);
     soundFields_.setSize(w - 64, soundFields_.neededHeight());
     for (int i = 0; i < 6; ++i)
-      largeGates_[i]->setBounds(24 + (i % 3) * (w - 48) / 3,
-                                176 + (i / 3) * 104, (w - 72) / 3, 88);
-    performanceFields_.setBounds(24, 402, w - 48,
+      largeGates_[i]->setBounds(24 + (i % 3) * (w - 48) / 3, 166 + (i / 3) * 60,
+                                (w - 72) / 3, 50);
+    performanceFields_.setBounds(24, 292, w - 48,
                                  performanceFields_.neededHeight());
-    store_.setBounds(24, h - 185, 160, 38);
+    store_.setBounds(24, h - 355, 160, 32);
     for (int i = 0; i < 4; ++i)
-      scenes_[i].setBounds(200 + i * 150, h - 185, 138, 38);
+      scenes_[i].setBounds(200 + i * 150, h - 355, 138, 32);
     const int gateWidth = (w - 210) / 6;
     for (int i = 0; i < 6; ++i)
       gates_[i]->setBounds(24 + i * gateWidth, h - 62, gateWidth - 7, 34);
     panic_.setBounds(w - 175, h - 62, 150, 34);
-    status_.setBounds(24, h - 106, w - 48, 32);
+    status_.setBounds(24, h - 94, w - 48, 26);
+  }
+  bool keyPressed(const juce::KeyPress& key) override {
+    if ((key.getModifiers().isCommandDown() ||
+         key.getModifiers().isCtrlDown()) &&
+        juce::CharacterFunctions::toLowerCase(key.getTextCharacter()) == 'z') {
+      if (key.getModifiers().isShiftDown())
+        p_.redoEdit();
+      else
+        p_.undoEdit();
+      return true;
+    }
+    return false;
   }
 
  private:
   void eventInspector() {
     std::vector<juce::String> ids;
     const std::vector<const char*> main{
-        "on",        "velocity", "count", "span",  "curve",  "probability",
-        "condition", "sound",    "lock",  "pitch", "cutoff", "decay"};
+        "on",       "velocity",    "count",        "span",
+        "curve",    "probability", "end_velocity", "end_pitch",
+        "mutation", "irregular",   "sound",        "lock",
+        "pitch",    "cutoff",      "decay",        "condition"};
     if (more_.getToggleState())
       for (auto* id : Processor::eventIds)
         ids.push_back(Processor::eventId(object_, event_, id));
@@ -784,17 +1060,18 @@ class Editor final : public juce::AudioProcessorEditor, private juce::Timer {
     soundSelect_.setSelectedId(object_ + 1, juce::dontSendNotification);
     std::vector<juce::String> ids;
     const std::vector<const char*> essential{
-        "source",    "tune",   "pitch",     "decay", "body",  "excite", "noise",
-        "character", "cutoff", "resonance", "morph", "level", "roll",   "pan"};
+        "source",    "tune",  "speed",   "playback", "cutoff",
+        "resonance", "morph", "start",   "end",      "loop_start",
+        "loop_end",  "loop",  "reverse", "colour",   "pitch",
+        "decay",     "body",  "excite",  "noise",    "character",
+        "level",     "roll",  "pan",     "repeat",   "repeat_steps"};
     const std::vector<const char*> advanced{
-        "filter_env",    "start",       "end",     "loop_start",
-        "loop_end",      "loop",        "reverse", "loop_mod",
-        "interpolation", "colour",      "bits",    "repeat",
-        "repeat_steps",  "phase_reset", "midi",    "velocity_response"};
+        "filter_env",  "loop_mod", "interpolation",    "bits",
+        "phase_reset", "midi",     "velocity_response"};
     for (auto* id : essential) ids.push_back(Processor::objectId(object_, id));
     if (advanced_.getToggleState())
       for (auto* id : advanced) ids.push_back(Processor::objectId(object_, id));
-    soundFields_.bind(ids, 7, 88);
+    soundFields_.bind(ids, 7, 65);
     resized();
     wave_.repaint();
   }
@@ -810,7 +1087,8 @@ class Editor final : public juce::AudioProcessorEditor, private juce::Timer {
     for (auto& row : row_)
       for (auto* c : std::initializer_list<juce::Component*>{
                static_cast<juce::Component*>(&row.name), &row.audition,
-               &row.mute, &row.solo, row.length.get(), row.division.get()})
+               &row.mute, &row.solo, &row.length, &row.division,
+               row.repeat.get(), &row.span})
         c->setVisible(view == 0);
     for (auto* c : std::initializer_list<juce::Component*>{
              static_cast<juce::Component*>(&soundSelect_), &replace_,
@@ -822,8 +1100,8 @@ class Editor final : public juce::AudioProcessorEditor, private juce::Timer {
     store_.setVisible(view == 2);
     for (auto& scene : scenes_) scene.setVisible(view == 2);
     cue_.setText(
-        view == 0 ? "Click: add/select / double-click: remove / drag: move / "
-                    "right edge: roll / drag master timeline: fragment"
+        view == 0   ? "Click: add/select / double-click: remove / drag: move / "
+                      "right edge: roll / drag master timeline: fragment"
         : view == 1 ? "Synthesis, sample or layer / drag top handles: trim / "
                       "bottom handles: loop / drop audio to load"
                     : "Hold a gesture to perform / Shift-click to latch / "
@@ -908,6 +1186,7 @@ class Editor final : public juce::AudioProcessorEditor, private juce::Timer {
         });
   }
   void timerCallback() override {
+    capture_.refresh();
     const int match = p_.factoryIndex();
     if (match >= 0) {
       preset_.setSelectedId(match + 1, juce::dontSendNotification);
@@ -929,6 +1208,7 @@ class Editor final : public juce::AudioProcessorEditor, private juce::Timer {
     }
     for (auto& g : gates_) g->refresh();
     for (auto& g : largeGates_) g->refresh();
+    for (auto& row : row_) row.repeat->refresh();
     for (int i = 0; i < 4; ++i)
       scenes_[i].setButtonText(
           "SCENE " +
@@ -950,7 +1230,13 @@ class Editor final : public juce::AudioProcessorEditor, private juce::Timer {
   struct Row {
     juce::TextButton name, audition;
     juce::TextButton mute, solo;
-    std::unique_ptr<Control> length, division;
+    juce::Slider length, span;
+    juce::ComboBox division;
+    std::unique_ptr<Gate> repeat;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
+        lengthAttachment, spanAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>
+        divisionAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>
         muteAttachment, soloAttachment;
   };
@@ -968,6 +1254,7 @@ class Editor final : public juce::AudioProcessorEditor, private juce::Timer {
   Timeline timeline_;
   Wave wave_;
   Fields eventFields_, soundFields_, performanceFields_;
+  CaptureDock capture_;
   juce::Viewport soundViewport_, eventViewport_;
   std::array<std::unique_ptr<Gate>, 6> gates_, largeGates_;
   std::array<juce::TextButton, 4> scenes_;

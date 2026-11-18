@@ -32,7 +32,8 @@ inline ControlSpec toggle(juce::String id, juce::String name,
 class Instrument : public juce::AudioProcessor {
  public:
   Instrument(juce::String name, juce::String type,
-             std::vector<ControlSpec> specs, bool effect = false)
+             std::vector<ControlSpec> specs, bool effect = false,
+             juce::UndoManager* undo = nullptr)
       : AudioProcessor{
             effect
                 ? BusesProperties{}
@@ -45,7 +46,7 @@ class Instrument : public juce::AudioProcessor {
         name_{name},
         type_{type},
         specs_{std::move(specs)},
-        state_{*this, nullptr, type_, layout(specs_)} {
+        state_{*this, undo, type_, layout(specs_)} {
     for (const auto& spec : specs_)
       values_.push_back(state_.getRawParameterValue(spec.id));
     master_.bind(state_);

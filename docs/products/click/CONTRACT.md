@@ -7,7 +7,8 @@ precision-entry and Master components. Existing products are not linked into it.
 
 ## Stable host order
 
-**2592 parameters**, version hints 1. IDs and order are permanent for this identity:
+**2697 parameters**, version hints 1. The original 2592 IDs and positions are
+unchanged; 105 performance parameters are appended after `master` and `bypass`:
 
 - 22 global IDs, in source order: `mode`, `master_length`, `region_start`,
   `region_end`, `repeat`, `nested`, `reverse`, `hold`, `time_mode`, `void`, `crush`,
@@ -21,7 +22,17 @@ precision-entry and Master components. Existing products are not linked into it.
   Decay, Microtiming, Probability, Span, Curve, End Velocity, End Pitch, Mutation,
   Irregularity, Sound Object, Condition, Count. Exact ASCII field names are in
   `eventIds`. Every event field is independently automatable.
-- Shared `master` (−36..+18 dB) and `bypass` follow all product fields.
+- Shared `master` (−36..+18 dB) and `bypass` follow the original product fields.
+
+The extension adds `skew`, `compressor_mode`, `memory_play`, `memory_repeat`,
+`repeat_division`, `repeat_free`, `memory_generation`, `capture_audio`,
+`resample_audio`, then `o{1..4}_speed` and `o{1..4}_playback` in object order.
+Finally eight generations `m{0..7}_{field}` each have Start, End, Loop Start,
+Loop End, Pitch, Speed, Cutoff, Resonance, Morph, Playback and Reverse, in that
+order. Exact IDs are `memoryIds`. Speed uses a binary 1/8192 grid so neutral 1×
+survives host normalization exactly. Pitch and speed are varispeed, not time
+stretching. Missing extensions restore neutral playback, zero SKEW and Original
+dynamics. Fresh factory starting points select Impact dynamics explicitly.
 
 Object/step host titles contain their object/event address. No emulated VST3
 MIDI-CC parameters are appended. Host values are normalized by physical ranges;
@@ -93,7 +104,7 @@ All per-sample DSP, MIDI, queued hits and meter storage is fixed.
 ## State and presets
 
 Shared binary ValueTree/XML schema **1**, root/type/product `click-k01`, retains
-family material metadata (currently no alternative K-01 response). Scalars are
+family material metadata; dynamics selection has its own explicit parameter. Scalars are
 validated transactionally: wrong root/product/schema, duplicate known IDs or
 nonfinite/malformed values reject restore; missing IDs restore reset defaults;
 unknown IDs are ignored; finite out-of-range values clamp.
@@ -104,17 +115,90 @@ Optional `AUDIO0`–`AUDIO3` children embed loaded external samples, including i
 each stored scene. Format 1 stores rate, frames and interleaved little-endian
 float32 Base64; maximum 1,048,576 frames, 8–192 kHz, finite samples in [-8, 8].
 Duplicate or malformed audio rejects the complete restore. The state envelope
-is limited to 256 MiB before parsing. Embedded audio takes precedence over the
+is limited to 512 MiB before parsing. Embedded audio takes precedence over the
 path and loads through the existing off-thread sample handoff. Original
 path-only state is still accepted; older binaries cannot use embedded audio.
 Sample-boundary automation values are normalized fractions; editor text fields
 show frames and accept either frame numbers or ms. Their continuous host ranges
 preserve subframe precision rather than quantizing edits to percentages.
 
-No voices, pending hits, compressor detector, random execution history or
-captured master audio is serialized. Restore clears live DSP and queues
+No voices, pending hits, compressor detector or random execution history is
+serialized. Restore clears live DSP and queues
 sample decoding on the worker; missing path-only references remain relinkable.
 Full `.k01` presets use the host state format. `.k01sound` is a separate strict
 `click-sound` schema 1 XML format containing sound fields, sample reference and
 optional embedded `AUDIO` using the same format;
 pattern, MIDI mapping, cycle and mute/solo are preserved on sound import.
+Optional Speed and Playback fields extend this sound format; missing fields
+restore 1× / Clean. Old binaries do not understand the new sound fields.
+
+## Durable master generations
+
+`MasterMemory` receives the Engine's rendered stereo output **after** its
+compressor, old transient repeats and performance effects, **before** the durable
+sampler and final Master trim/ceiling. Its live ring never receives its own
+playback. CAPTURE freezes the requested recent master-region audio by swapping
+preallocated buffers. A partial history captures only the available material;
+an empty capture reports that playback is required.
+
+Eight immutable generations (original plus seven successors) and one live ring
+each hold at most eight seconds, stereo float32. Additional heap is 27,648,000
+bytes at 48 kHz or 110,592,000 at 192 kHz. Existing Engine memory is additional.
+There is no eviction: full history refuses another capture/print visibly, leaving
+every generation playable. Session serialization and replacement allocate only
+off audio; old engines retire to a control-thread collection list.
+
+RESAMPLE freezes the source generation and controls at invocation, resets the
+print filter state, and writes one processed cycle into the next unused bank
+over audio callbacks. It publishes only a complete generation. An output cycle
+longer than eight seconds is rejected, not cropped. A seek cancels an unfinished
+print and resets playback phase but retains completed PCM. New generations have
+independent neutral parameters, so baked pitch/filter/PCM effects are not applied
+again. Playback seams and monitor entry/exit use short fades. Continuous controls
+have 3 ms smoothing; printing uses the frozen targets for reproducibility.
+
+`MASTER_MEMORY` format 1 contains contiguous `GEN0`…`GEN7` codec children and a
+selected index. Each child uses the existing bounded audio codec, at 22.05–192
+kHz and at most eight seconds. Duplicate, out-of-order, mixed-rate, oversized or
+nonfinite payloads reject the entire restore. Same-rate recall preserves sample
+bits, including signed zero. Rate changes resample off audio. Full `.k01` files
+include these generations. Scenes reference the session-wide generations rather
+than duplicating their audio. Closing/reopening preserves generations, not the
+in-flight print, live ring, filter integrators or undo stack.
+
+Quick repeat divisions are 1, 1/2, 1/4, 1/8 and 1/16 quarter notes (labels 1/4
+through 1/64), plus FREE. Fragment traversal is varispeed. If the selected region
+is shorter than the requested period it repeats at its available length. Continue
+advances the underlying Engine; Hold sets its existing musical hold while the
+durable audio repeat runs. Old outer/inner repeats remain upstream and continue
+to own their existing buffers. Releasing the durable repeat reveals their current
+output. PLAY CAPTURE is independently latched and can play with host transport
+stopped; turn it off to return to the live bus. VOID/CRUSH and dynamics process
+the live bus, not an already printed generation.
+
+Undo/redo covers parameter edits, generation selection, and sample replacement;
+redo retains decoded PCM after an import completes. Generations stay immutable
+and available when their selection is undone. Undo capacity is bounded; sample
+edits reserve units for two maximum-size encoded payloads. Undo is not serialized.
+
+## SKEW and playback character
+
+SKEW deforms each row's phase using two sinusoidal terms, deterministic seed
+offsets and distinct signed row weights. The maximum derivative deviation is
+0.85: phase stays monotonic under fixed settings and master endpoints stay fixed.
+Zero bypasses the warp exactly. Pattern data is never rewritten. Automation
+changes the phase target at the normal block boundary; it is not random jitter.
+
+Clean playback remains available. The original 16-bit / 44.1 kHz model quantizes
+PCM on a modeled source grid; 12-bit / 22.05 kHz and 8-bit / 11.025 kHz are
+explicit degraded choices. These are original digital playback models, **not an
+E6400 emulation**, measured hardware matches or claims of anti-aliased rate
+conversion. Object interpolation remains selectable; durable 16-bit playback
+uses linear reconstruction, degraded modes use nearest. The morph filter uses
+the product's original two-resonance TPT topology, not proprietary algorithms.
+
+Impact dynamics adds pressure-dependent attack (~1.5 to 0.094 ms), program-
+dependent recovery, threshold down to −48 dB, ratio up to 40:1 and stronger Dirt
+drive. Original retains its previous equations. Both retain parallel blending,
+2× nonlinear processing, DC removal and the final output ceiling. This is an
+optional response, not proof of musical superiority or alias-free extremes.

@@ -3,6 +3,46 @@
 Four sound objects for impacts, sampled fragments, repetition, pressure and silence.
 A real VST3 instrument in the main Aste build; there is no separate research app.
 
+## The fast route
+
+1. Play a sparse pattern. Drag an event's right edge sideways to grow a roll;
+   drag upward for acceleration or downward for deceleration. White ticks show
+   the selected roll. Its inspector exposes end velocity, pitch and mutation.
+2. **CAPTURE** the rendered phrase, then hold **1/32** or **1/64**. Release to
+   return. With no capture yet, a division press captures the recent audio first.
+3. Drag across the captured waveform to choose a loop; top handles trim start/end.
+   **PLAY CAPTURE** latches playback. Pitch, Speed, Filter, Resonance, Morph and
+   PCM are directly below it, in every view. Speed and Pitch both change duration.
+4. **RESAMPLE** prints one processed cycle into a new audio generation. Wait for
+   PRINTING to complete. Adjust the new generation and repeat. ORIGINAL,
+   PREVIOUS, NEXT, UNDO and REDO keep the earlier material available.
+5. Raise **SKEW** to bend the rows differently without editing the source pattern.
+   Zero restores straight timing. **VOICE** repeats just one row; its adjacent
+   number sets the local fragment length. Release resumes that running cycle.
+
+Eight generations, each up to eight seconds, are retained in the project and
+full presets. Full history refuses another print instead of overwriting work.
+A print longer than eight seconds asks you to shorten the region or increase
+speed. Captures and printed audio survive transport seeks and session reload;
+an unfinished print does not. The waveform auto-scales for editing and labels
+the recorded peak; it does not normalize the audio.
+
+The 16-bit / 44.1k PCM choice is an original, historically informed playback
+model, not an exact E-mu emulation. Separate 12-bit / 22k and 8-bit / 11k modes
+are deliberately degraded. Clean stays available. Filter Morph moves between
+low-pass, resonant bands, notch and high-pass.
+
+Pressure, Recovery, Dirt and Parallel act on live objects **before capture**;
+printed generations already contain that processing. PERFORM's Dynamics choice
+selects Original or the new Impact response. Existing sessions default to
+Original; new factory starting points use Impact. Keep Master output in view
+when comparing—the louder result is not automatically the better one.
+
+Undo/redo also covers completed sample imports. Cmd/Ctrl-Z undoes; use the REDO
+button or Cmd/Ctrl-Shift-Z to redo. Arrow keys edit/select events; Space toggles.
+On the captured waveform, arrows nudge loop start, Shift-arrows nudge loop end.
+Precise sample-boundary fields in SOUND accept frames or milliseconds.
+
 ## Start in Cubase
 
 Create an Instrument Track and choose **Click K-01**. The default **Host sequence**
@@ -33,7 +73,7 @@ first/after-first and Fill.
 
 Each row has its own length and subdivision. Dimmed cells remain editable for a
 future longer cycle. M and S mute/solo; PLAY auditions. Click the object name to
-edit its sound. Advanced Sound includes voice fragment repeat, its length, local
+edit its sound. Sound includes voice fragment repeat, its length, local
 roll count and optional reset with the master phrase. Otherwise local cycles
 continue independently through master wraps. Master Steps sets the phrase ruler
 and capture reference; it does not force every independent cycle to that length.
@@ -55,7 +95,7 @@ unsupported files report an error. The limit is **1,048,576 frames per object**
 Samples retain their original rate, with supported file rates 8–192 kHz.
 
 Top waveform handles edit Start/End; bottom handles edit Loop Start/End. All four
-also have precise fields under Advanced. Loop Motion moves the loop window over
+also have precise fields in Sound. Loop Motion moves the loop window over
 the amplitude envelope. Reverse, loop, nearest/linear/cubic interpolation, optional
 digital quantization and its blend remain separate choices. Nearly coincident
 bounds are constrained to a safe minimum internally. Body softens sample trim edges; set it to zero for an unsoftened microscopic
@@ -108,8 +148,8 @@ Buffers hold up to eight seconds. If you capture before a whole region has been
 recorded, the available material is used and the actual captured seconds are
 shown. An empty capture arms until sufficient material is recorded. After release,
 the buffer starts collecting new material. Transport stop/seek, sample-rate
-preparation, panic and session restore clear live voices/repeats. Captured audio
-is temporary performance state; parameters, patterns, scenes and loaded samples
+preparation, panic and session restore clear live voices/repeats. These older
+MASTER/INNER buffers are temporary performance state; parameters, patterns, scenes and loaded samples
 are recalled. A recalled latched repeat arms again rather than restoring audio.
 
 **Pressure** controls threshold, ratio and compensated gain in the internal

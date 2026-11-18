@@ -28,6 +28,8 @@ int mod(long long x, int n) noexcept {
   return static_cast<int>((x % n + n) % n);
 }
 Sound safe(Sound s) noexcept {
+  s.speed = static_cast<float>(clamp(s.speed, .125, 4, 1));
+  s.playback = std::clamp(s.playback, 0, 3);
   s.velocityResponse = static_cast<float>(clamp(s.velocityResponse, 0, 1, 1));
   s.source = std::clamp(s.source, 0, 2);
   s.interpolation = std::clamp(s.interpolation, 0, 2);
@@ -193,8 +195,8 @@ void Engine::trigger(int object, const Sound& input, float velocity,
     bank.users.fetch_add(1, std::memory_order_relaxed);
     v.cursor = (v.sound.reverse ? v.sound.end : v.sound.start) *
                static_cast<double>(bank.frames - 1);
-    v.increment = bank.rate / internal_ * std::exp2(v.sound.tune / 12.) *
-                  (v.sound.reverse ? -1 : 1);
+    v.increment = bank.rate / internal_ * v.sound.speed *
+                  std::exp2(v.sound.tune / 12.) * (v.sound.reverse ? -1 : 1);
   }
   ++meter_.hits;
 }
@@ -276,8 +278,19 @@ void Engine::schedule(const Controls& c, double q, double increment) noexcept {
     const auto& o = c.object[n];
     const int length = std::clamp(o.length, 1, steps);
     const double division = divisions[std::clamp(o.division, 0, 5)];
+    double warped = q;
+    if (c.skew != 0) {
+      const double phase = tau * (q / phrase - std::floor(q / phrase));
+      const double offset = unit(c.seed + static_cast<unsigned>(n) * 971) * tau;
+      constexpr std::array<double, 4> weight{1, -.8, .6, -.4};
+      // Positive derivative, fixed phrase endpoints: a deformation, not jitter.
+      warped += clamp(c.skew, 0, 1) * weight[n] * phrase / tau *
+                (.55 * (std::sin(phase + offset) - std::sin(offset)) +
+                 .15 * std::sin(2 * phase));
+    }
     double x =
-        (o.phaseReset ? std::fmod(std::fmod(q, phrase) + phrase, phrase) : q) /
+        (o.phaseReset ? std::fmod(std::fmod(warped, phrase) + phrase, phrase)
+                      : warped) /
         division;
     // Global phrase reset is applied by process through previous_ at a master
     // wrap.
@@ -370,8 +383,14 @@ std::array<float, 2> Engine::voice(Voice& v, const Controls& c) noexcept {
     else
       for (int ch = 0; ch < 2; ++ch) {
         const auto& data = bank.data[ch];
-        const auto index = static_cast<long long>(std::floor(v.cursor));
-        const double fraction = v.cursor - index;
+        constexpr std::array<double, 4> pcmRate{0, 44100, 22050, 11025};
+        const double position =
+            s.playback == 0
+                ? v.cursor
+                : std::floor(v.cursor * pcmRate[s.playback] / bank.rate) *
+                      bank.rate / pcmRate[s.playback];
+        const auto index = static_cast<long long>(std::floor(position));
+        const double fraction = position - index;
         const auto at = [&](long long i) {
           if (wrapping && v.cursor >= loopStart && v.cursor < loopEnd &&
               (i < static_cast<long long>(loopStart) ||
@@ -396,6 +415,11 @@ std::array<float, 2> Engine::voice(Voice& v, const Controls& c) noexcept {
                                (d - a +
                                 fraction * (2 * a - 5 * b + 4 * d - e +
                                             fraction * (3 * (b - d) + e - a)));
+        }
+        if (s.playback != 0) {
+          constexpr std::array<double, 4> pcmLevels{0, 32768, 2048, 128};
+          sample[ch] = std::round(sample[ch] * pcmLevels[s.playback]) /
+                       pcmLevels[s.playback];
         }
         // Short edge fades remove accidental trim/loop discontinuities without
         // hiding intentional nearest-neighbour artifacts.
@@ -642,12 +666,17 @@ void Engine::process(float* left, float* right, std::size_t frames,
         detected =
             std::max(detected, std::abs(sum[ch] - .65 * detectorLow_[ch]));
       }
-      const double coefficient =
-          detected > envelope_ ? std::exp(-1 / (.0003 * internal_))
-                               : std::exp(-1 / (recovery_ * .001 * internal_));
+      const bool impact = c.compressorMode == 1;
+      const double attack = impact ? .0015 * std::exp2(-4 * pressure_) : .0003;
+      const double release =
+          recovery_ * .001 * (impact ? .65 + .35 * std::min(1., envelope_) : 1);
+      const double coefficient = detected > envelope_
+                                     ? std::exp(-1 / (attack * internal_))
+                                     : std::exp(-1 / (release * internal_));
       envelope_ = detected + coefficient * (envelope_ - detected);
-      const double threshold = std::exp2((-10 - 30 * pressure_) / 6.020599913),
-                   ratio = 1 + 19 * pressure_;
+      const double threshold = std::exp2(
+                       (-10 - (impact ? 38 : 30) * pressure_) / 6.020599913),
+                   ratio = 1 + (impact ? 39 : 19) * pressure_;
       const double target = envelope_ > threshold
                                 ? std::pow(envelope_ / threshold, 1 / ratio - 1)
                                 : 1;
@@ -656,7 +685,7 @@ void Engine::process(float* left, float* right, std::size_t frames,
           static_cast<float>(-20 * std::log10(std::max(gain_, 1e-9)));
       for (int ch = 0; ch < 2; ++ch) {
         double compressed = sum[ch] * gain_ * std::exp2(pressure_ * 1.5);
-        double drive = 1 + 12 * dirt_, bias = .22 * dirt_;
+        double drive = 1 + (impact ? 32 : 12) * dirt_, bias = .22 * dirt_;
         const double shaped =
             (std::tanh(compressed * drive + bias) - std::tanh(bias)) /
             std::sqrt(drive);

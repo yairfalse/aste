@@ -1,11 +1,17 @@
 #pragma once
 #include "click_processor.hpp"
+#include "click_memory.hpp"
 #include "experimental_instrument.hpp"
 #include <mutex>
 
 namespace aste::click::plugin {
-class Processor final : public aste::experimental::Instrument,
-                        private juce::Thread {
+struct EditHistory {
+  juce::UndoManager edits{200000, 1};
+};
+class Processor final : private EditHistory,
+                        public aste::experimental::Instrument,
+                        private juce::Thread,
+                        private juce::Timer {
  public:
   Processor();
   ~Processor() override;
@@ -43,6 +49,24 @@ class Processor final : public aste::experimental::Instrument,
     return meters_[static_cast<std::size_t>(index)].load();
   }
   float outputPeak() const noexcept { return finalPeak_.load(); }
+  static constexpr int extensionBase = 2590, memoryFields = 11,
+                       memoryBase = extensionBase + 17;
+  static juce::String memoryId(int, const char*);
+  static const std::array<const char*, memoryFields> memoryIds;
+  MemoryControls memoryControls() const noexcept;
+  void memoryAction(MasterMemory::Command);
+  void clearMemory();
+  int memoryCount() const noexcept { return memoryCount_.load(); }
+  int memorySelection() const noexcept { return memorySelected_.load(); }
+  float memoryPosition() const noexcept { return memoryPosition_.load(); }
+  float memoryProgress() const noexcept { return memoryProgress_.load(); }
+  int memoryStatus() const noexcept { return memoryStatus_.load(); }
+  unsigned memoryEpoch() const noexcept { return memoryEpoch_.load(); }
+  std::array<float, 128> memoryWave(int) const;
+  void syncMemorySelection();
+  void beginEdit(const juce::String& name);
+  void undoEdit();
+  void redoEdit();
 
  private:
   static std::vector<aste::experimental::ControlSpec> controls();
@@ -50,13 +74,31 @@ class Processor final : public aste::experimental::Instrument,
   void render(juce::AudioBuffer<float>&,
               const juce::MidiBuffer&) noexcept override;
   void run() override;
+  void timerCallback() override;
   void writeProductMetadata(juce::ValueTree&) const override;
   bool validateProductMetadata(const juce::ValueTree&) const override;
   void restoreProductMetadata(const juce::ValueTree&) override;
   void applySound(int, const Object&);
   void loadStoredSample(int, const juce::String&, const juce::ValueTree&);
+  class SampleEdit;
+  void editSample(int, const juce::String&, const juce::ValueTree&);
   void writeSamples(juce::ValueTree&) const;  // metadata_ held by caller.
   static bool validSamples(const juce::ValueTree&);
+  struct MemoryEngine {
+    MasterMemory dsp;
+    MemoryEngine* next{};
+  };
+  void adoptMemory() noexcept;
+  void collectMemory();
+  std::atomic<MemoryEngine*> memory_{new MemoryEngine}, pendingMemory_{},
+      retiredMemory_{};
+  std::atomic<int> memoryCommand_{}, memoryCount_{}, memorySelected_{},
+      memoryStatus_{};
+  std::atomic<float> memoryPosition_{}, memoryProgress_{};
+  std::atomic<unsigned> memoryEpoch_{};
+  int mirroredCount_{}, mirroredSelection_{};
+  bool memoryPrepared_{}, clockKnown_{};
+  double memoryRate_{48000}, expectedQuarter_{};
   Engine engine_;
   std::array<float, 512> mono_{};
   std::atomic<unsigned> audition_{};
