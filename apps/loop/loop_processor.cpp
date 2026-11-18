@@ -440,6 +440,10 @@ void Processor::process(float* left, float* right, std::size_t frames,
         smoothedSpeed_ = bounded(repeatTimeline_.speed, .125F, 4, 1);
     }
     wasRepeating_ = parameters.repeat;
+  } else {
+    // The original overdub graph does not own a one-shot capture or repeat.
+    // A preset/mode change must not leave that ownership blocking RELOOP.
+    recording_ = captureLatched_ = wasRepeating_ = false;
   }
   if (parameters.reloop && playing) {
     auto printFrames = playbackLength;

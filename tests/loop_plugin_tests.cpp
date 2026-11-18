@@ -330,6 +330,12 @@ void testSafeTakesAndUndo() {
   require(!processor.isCapturing() && processor.generation() == 1,
           "A fresh plugin finishes one capture without an editor or note-off");
   const auto original = processor.tapeSnapshot();
+  juce::AudioBuffer<float> emptyBlock{2, 0};
+  processor.processBlock(emptyBlock, midi);
+  require(processor.generation() == 1 && processor.retainedGenerations() == 1 &&
+              processor.capturedAmount() > 0,
+          "A zero-frame host callback does not make retained tape disappear "
+          "from the interface");
   tick();
   require(processor.tapeSnapshot().audio == original.audio,
           "One-shot capture cannot overwrite itself while its host parameter "

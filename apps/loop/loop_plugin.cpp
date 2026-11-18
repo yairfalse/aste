@@ -899,7 +899,9 @@ void LoopAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     engine_.load()->processor.selectGeneration(
         static_cast<std::uint32_t>(take));
   if (buffer.getNumChannels() < 1 || buffer.getNumSamples() == 0) {
-    publishMeters({});
+    auto meters = engine_.load()->processor.meters();
+    meters.inputPeak = meters.outputPeak = 0;
+    publishMeters(meters);
     return;
   }
   Parameters parameters = currentParameters();

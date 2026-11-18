@@ -425,7 +425,27 @@ void testRegionPerformance() {
           "second saturation pass");
 }
 
+void testWorkflowHandoff() {
+  aste::loop::Processor processor;
+  processor.prepare(8000, 1, true);
+  aste::loop::Parameters parameters;
+  parameters.safeWorkflow = parameters.capture = true;
+  parameters.loopLengthSeconds = .1F;
+  std::array<float, 400> audio;
+  audio.fill(.25F);
+  processor.process(audio.data(), nullptr, audio.size(), parameters);
+  parameters.safeWorkflow = parameters.capture = false;
+  parameters.reloop = true;
+  audio.fill(0);
+  processor.process(audio.data(), nullptr, audio.size(), parameters);
+  require(processor.meters().generation == 2 &&
+              processor.meters().retainedGenerations == 2,
+          "Leaving Safe Takes during capture releases ownership so legacy "
+          "RELOOP remains usable");
+}
+
 int main() {
+  testWorkflowHandoff();
   testRegionPerformance();
   testSafeWorkflow();
   testTapeTransport();
