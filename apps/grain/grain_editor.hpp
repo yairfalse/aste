@@ -544,8 +544,21 @@ class Editor final : public juce::AudioProcessorEditor, private juce::Timer {
     if (canEdit)
       for (unsigned i = 0; i < 4; ++i) {
         const auto candidate = aste::grain::scene(i);
-        if (candidate.live == c.live && candidate.routes == c.routes)
-          match = static_cast<int>(i + 1);
+        const auto sameParameter = [this](const juce::String& id, float actual,
+                                          float expected) {
+          const auto* parameter = p_.state().getParameter(id);
+          return parameter->convertTo0to1(actual) ==
+                 parameter->convertTo0to1(expected);
+        };
+        bool same = true;
+        for (std::size_t d = 0; d < 3; ++d) {
+          same &= sameParameter(GrainAudioProcessor::nodeId(d, "live"),
+                                c.live[d], candidate.live[d]);
+          for (std::size_t s = 0; s < 3; ++s)
+            same &= sameParameter(GrainAudioProcessor::routeId(d, s),
+                                  c.routes[d][s], candidate.routes[d][s]);
+        }
+        if (same) match = static_cast<int>(i + 1);
       }
     scene_.setTextWhenNothingSelected(canEdit ? "CUSTOM ROUTES"
                                               : "MORPHED ROUTES");

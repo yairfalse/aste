@@ -283,6 +283,25 @@ int main(int argc, char** argv) {
   if (argc == 2) {
     juce::File folder{juce::String::fromUTF8(argv[1])};
     folder.createDirectory();
+    {
+      Processor fresh;
+      std::unique_ptr<juce::AudioProcessorEditor> freshEditor{
+          fresh.createEditor()};
+      juce::ComboBox* scene = nullptr;
+      for (auto* child : freshEditor->getChildren())
+        if (child->getTitle() == "Routing starting points")
+          scene = dynamic_cast<juce::ComboBox*>(child);
+      require(scene != nullptr, "routing starting points are accessible");
+      if (scene) {
+        require(scene->getSelectedId() == 2,
+                "fresh editor correctly identifies the default Cascade");
+        for (int id = 1; id <= 4; ++id) {
+          scene->setSelectedId(id, juce::sendNotificationSync);
+          require(scene->getSelectedId() == id,
+                  "routing starting point stays identified after selection");
+        }
+      }
+    }
     Processor ui;
     ui.prepareToPlay(48000, 511);
     ui.scene(0);
